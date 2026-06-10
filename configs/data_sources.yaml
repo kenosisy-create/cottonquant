@@ -1,0 +1,31 @@
+sources:
+  CZCE_DAILY_QUOTE:
+    layer: raw_snapshot
+    status: implemented_d2_fixture_safe
+    network_required: true
+    fixture_required_for_tests: true
+    normalizes_business_fields: false
+    parser_version: czce_daily_quote.raw.v1
+    live_endpoint: TODO_REQUIRES_HUMAN_REVIEW
+  CZCE_HISTORY_QUOTE:
+    layer: raw_snapshot
+    status: implemented_d3_fixture_safe
+    network_required: true
+    fixture_required_for_tests: true
+    normalizes_business_fields: false
+    parser_version: czce_history_quote.raw.v1
+    live_endpoint: TODO_REQUIRES_HUMAN_REVIEW
+  CZCE_SETTLEMENT_PARAM:
+    layer: raw_snapshot
+    status: implemented_d4_fixture_safe
+    network_required: true
+    fixture_required_for_tests: true
+    normalizes_business_fields: false
+    parser_version: czce_settlement_param.raw.v1
+    live_endpoint: TODO_REQUIRES_HUMAN_REVIEW
+  CZCE_OPTION_REF:
+    layer: raw_snapshot
+    status: month_1_placeholder
+    network_required: false
+    fixture_required_for_tests: false
+    normalizes_business_fields: false

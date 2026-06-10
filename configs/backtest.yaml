@@ -1,0 +1,12 @@
+strategy_id: cf_equal_weight_v1
+status: implemented_d17_equal_weight_targets
+signal_timing: t_post_settlement
+execution_timing: t_plus_1
+execution_price_modes:
+  - next_open
+  - next_settle
+position_object: real_tradable_contract
+capital: TODO_REQUIRES_HUMAN_REVIEW
+vol_target:
+  enabled: false
+  placeholder: rv20

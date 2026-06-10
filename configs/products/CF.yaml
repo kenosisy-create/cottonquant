@@ -1,0 +1,16 @@
+product_code: CF
+display_name: Cotton futures
+exchange: CZCE
+instrument_type: futures
+status: mvp_primary
+currency: CNY
+multiplier: 5
+tick_size: TODO_REQUIRES_HUMAN_REVIEW
+delivery_months: [1, 3, 5, 7, 9, 11]
+last_trade_day_rule: delivery_month_10th_trading_day
+option_style: TODO_REQUIRES_HUMAN_REVIEW
+human_review_required:
+  - tick_size
+  - last_trade_day_rule
+  - option_style
+  - official_field_units

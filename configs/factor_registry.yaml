@@ -1,0 +1,33 @@
+factors:
+  carry_nf_v1:
+    family: carry
+    version: v1
+    owner: TODO_REQUIRES_HUMAN_REVIEW
+    status: implemented_d12
+    required_inputs:
+      - core_quote_daily
+      - core_contract_master
+  mom_20_v1:
+    family: momentum
+    version: v1
+    owner: TODO_REQUIRES_HUMAN_REVIEW
+    status: implemented_d12
+    required_inputs:
+      - research_continuous_price_daily
+  curve_slope_v1:
+    family: curve_slope
+    version: v1
+    owner: TODO_REQUIRES_HUMAN_REVIEW
+    status: implemented_d13
+    required_inputs:
+      - core_quote_daily
+      - core_chain_map_daily
+      - core_contract_master
+  oi_pressure_v1:
+    family: oi_pressure
+    version: v1
+    owner: TODO_REQUIRES_HUMAN_REVIEW
+    status: implemented_d13
+    required_inputs:
+      - core_quote_daily
+      - core_chain_map_daily

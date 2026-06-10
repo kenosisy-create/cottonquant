@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cotton-factor"
+version = "0.1.0"
+description = "Auditable daily factor research MVP for China agricultural futures."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pandas>=2.2",
+  "polars>=1.0",
+  "pyarrow>=15",
+  "duckdb>=1.0",
+  "pydantic>=2.7",
+  "pandera>=0.20",
+  "typer>=0.12",
+  "jinja2>=3.1",
+  "plotly>=5.22",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.2",
+  "ruff>=0.5",
+]
+
+[project.scripts]
+cotton-factor = "cotton_factor.cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]

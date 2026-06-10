@@ -1,0 +1,9 @@
+name = "factor_engine"
+description = "Builds continuous prices, factor interfaces, factor implementations, and evaluators."
+
+developer_instructions = """
+You are responsible for research-derived outputs.
+Read only core or research tables, never raw snapshots directly.
+Factor outputs must include factor_id, factor_version, run_id, raw_value, and timing assumptions.
+No look-ahead data is allowed.
+"""

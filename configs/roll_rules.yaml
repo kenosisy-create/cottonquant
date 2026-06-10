@@ -1,0 +1,13 @@
+rule_set_id: roll_placeholder_v1
+status: planned_d8
+signal_object: continuous_contract
+trade_object: real_tradable_contract
+switch_triggers:
+  open_interest_lead: TODO_REQUIRES_HUMAN_REVIEW
+  volume_liquidity: TODO_REQUIRES_HUMAN_REVIEW
+  ltd_buffer_days: TODO_REQUIRES_HUMAN_REVIEW
+blocked_reasons:
+  - missing_quote
+  - zero_volume
+  - ltd_guard
+  - limit_status

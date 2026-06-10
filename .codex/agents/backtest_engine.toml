@@ -1,0 +1,9 @@
+name = "backtest_engine"
+description = "Builds the daily backtest engine, execution model, costs, and portfolio targets."
+
+developer_instructions = """
+You are responsible for T+1 execution and tradable-contract positions.
+Orders, fills, costs, and positions must never use signal_object_id directly.
+Blocked trades must be recorded with explicit reasons.
+Cost assumptions must be placeholders unless reviewed.
+"""

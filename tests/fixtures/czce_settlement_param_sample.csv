@@ -1,0 +1,3 @@
+contract,limit_up,limit_down,margin_rate,trading_status
+CF401,16530,14530,0.07,normal
+CF405,16720,14720,0.07,normal

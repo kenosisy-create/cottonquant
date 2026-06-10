@@ -1,0 +1,91 @@
+{
+  "cf_smoke_row_counts": {
+    "archive_artifacts": 5,
+    "backtest_blocked_signals": 0,
+    "backtest_equity_points": 5,
+    "backtest_fills": 1,
+    "backtest_orders": 1,
+    "backtest_target_lot_daily": 5,
+    "core_chain_map_daily": 25,
+    "core_contract_master": 6,
+    "core_quote_daily": 56,
+    "core_quote_daily_signal_window": 50,
+    "core_settlement_param_daily": 2,
+    "core_trade_mapping_daily": 25,
+    "raw_snapshots": 2,
+    "research_continuous_price_daily": 25,
+    "research_factor_evaluation": 6,
+    "research_factor_value_daily": 79,
+    "research_forward_return_daily": 25,
+    "research_multifactor_score_daily": 5
+  },
+  "cf_smoke_warnings": [
+    "2024-01-02: missing factors ['mom_20_v1', 'oi_pressure_v1']; score skipped",
+    "2024-01-03: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-04: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-05: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-08: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-09: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-10: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-11: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-12: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-15: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-16: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-17: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-18: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-19: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-22: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-23: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-24: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-25: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-26: missing factors ['mom_20_v1']; score skipped",
+    "2024-01-29: missing factors ['mom_20_v1']; score skipped",
+    "TODO_REQUIRES_HUMAN_REVIEW: fee uses D16 placeholder cost",
+    "TODO_REQUIRES_HUMAN_REVIEW: impact uses D16 placeholder cost",
+    "TODO_REQUIRES_HUMAN_REVIEW: slippage uses D16 placeholder cost",
+    "last_trade_day_rule requires human review",
+    "last_trade_day_rule requires human review before production use",
+    "official_field_units requires human review",
+    "option_style requires human review",
+    "tick_size is TODO_REQUIRES_HUMAN_REVIEW; emitted as null",
+    "tick_size requires human review"
+  ],
+  "fixture_sha256": {
+    "tests/fixtures/core_quote_daily_cf_chain_sample.csv": "69e019a73037084b6922d36d0968405cb0c83a3ac57755d3b468c2a2d04ad979",
+    "tests/fixtures/czce_history_full_chain_2024/CF_2024_full_chain.csv": "12c345a95f3789b01bfe03679d1253db2764bb732441978fd43e963d0ca3453e",
+    "tests/fixtures/czce_settlement_param_sample.csv": "995697c42415ae5bf856d5559b9f0d514776a2708263554ec8b2d62cf1b5a0d3"
+  },
+  "normalized_quote_edges": [
+    {
+      "contract_code": "CF405",
+      "open_interest": 3000,
+      "settle": 15600.0,
+      "trade_date": "2024-01-02"
+    },
+    {
+      "contract_code": "CF407",
+      "open_interest": 2805,
+      "settle": 16064.0,
+      "trade_date": "2024-02-08"
+    }
+  ],
+  "product_contracts": {
+    "AP": [
+      "AP401",
+      "AP403",
+      "AP404",
+      "AP405",
+      "AP410",
+      "AP411",
+      "AP412"
+    ],
+    "SR": [
+      "SR401",
+      "SR403",
+      "SR405",
+      "SR407",
+      "SR409",
+      "SR411"
+    ]
+  }
+}

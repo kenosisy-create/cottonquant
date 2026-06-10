@@ -1,0 +1,18 @@
+product_code: C
+display_name: Corn futures
+exchange: TODO_REQUIRES_HUMAN_REVIEW
+instrument_type: futures
+status: config_placeholder
+currency: CNY
+multiplier: TODO_REQUIRES_HUMAN_REVIEW
+tick_size: TODO_REQUIRES_HUMAN_REVIEW
+delivery_months: TODO_REQUIRES_HUMAN_REVIEW
+last_trade_day_rule: TODO_REQUIRES_HUMAN_REVIEW
+option_style: TODO_REQUIRES_HUMAN_REVIEW
+human_review_required:
+  - exchange
+  - multiplier
+  - tick_size
+  - delivery_months
+  - last_trade_day_rule
+  - option_style

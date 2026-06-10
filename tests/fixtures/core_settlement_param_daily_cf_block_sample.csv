@@ -1,0 +1,2 @@
+source_snapshot_id,exchange,product_code,contract_code,trade_date,limit_up,limit_down,margin_rate_long,margin_rate_short,trading_status,settlement_status
+raw_settlement_block_1,CZCE,CF,CF401,2024-01-10,,,,,halted,official

@@ -1,0 +1,13 @@
+model_id: cost_placeholder_v1
+status: implemented_d16_placeholder
+fee:
+  mode: TODO_REQUIRES_HUMAN_REVIEW
+slippage:
+  minimum_ticks: 1
+  bps: TODO_REQUIRES_HUMAN_REVIEW
+impact:
+  mode: placeholder
+human_review_required:
+  - fee
+  - slippage
+  - impact
