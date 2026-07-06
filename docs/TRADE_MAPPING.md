@@ -2,6 +2,8 @@
 
 D9 builds `core_trade_mapping_daily` from signal-object chain rows to real
 tradable contracts.
+R08 writes research-mode CSV/Parquet outputs and a Markdown summary so blocked
+dates remain visible before factor or backtest work.
 
 ## Rules
 
@@ -28,6 +30,7 @@ tradable contracts.
 
 ```bash
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main core build-trade-mapping --product CF --start 2024-01-09 --end 2024-01-12 --quote-fixture tests/fixtures/core_quote_daily_cf_chain_sample.csv --ltd-buffer-days 2
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-mapping --start 2024-01-09 --end 2024-01-12 --ltd-buffer-days 2
 ```
 
 The command currently rebuilds chain map rows from the normalized quote fixture,

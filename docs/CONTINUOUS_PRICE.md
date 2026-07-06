@@ -1,6 +1,7 @@
 # Continuous Price
 
 D10 builds `research_continuous_price_daily` for signal objects such as `CF.C1`.
+R09 writes research-mode continuous price CSV/Parquet files and roll diagnostics.
 
 ## Inputs
 
@@ -45,4 +46,5 @@ must use D9 `core_trade_mapping_daily`.
 
 ```bash
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main core build-continuous-price --product CF --start 2024-01-09 --end 2024-01-12 --quote-fixture tests/fixtures/core_quote_daily_cf_chain_sample.csv --ltd-buffer-days 2
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-continuous --start 2024-01-09 --end 2024-01-12
 ```

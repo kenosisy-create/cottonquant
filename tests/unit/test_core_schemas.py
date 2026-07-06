@@ -55,6 +55,22 @@ def _sample_rows() -> dict[str, dict[str, object]]:
             "volume": 1000,
             "open_interest": 2000,
         },
+        "core_option_quote_daily": {
+            "source_snapshot_id": "raw_option_1",
+            "exchange": "CZCE",
+            "product_code": "CF",
+            "trade_date": "2024-01-02",
+            "option_symbol": "CF401C15000",
+            "underlying_contract": "CF401",
+            "option_type": "C",
+            "strike": 15000,
+            "settle": 120,
+            "volume": 100,
+            "open_interest": 200,
+            "moneyness": 1.02,
+            "liquidity_flag": "liquid",
+            "data_quality_flag": "normal",
+        },
         "core_settlement_param_daily": {
             "source_snapshot_id": "raw_settlement_1",
             "exchange": "CZCE",
@@ -115,6 +131,23 @@ def _sample_rows() -> dict[str, dict[str, object]]:
             "trade_date": "2024-01-02",
             "raw_value": 0.02,
             "processed_value": 0.1,
+            "input_snapshot_ids": ["raw_quote_1"],
+        },
+        "research_factor_diagnostic_daily": {
+            "run_id": "factor_run_1",
+            "factor_id": "mom_20_v1",
+            "factor_version": "v1",
+            "product_code": "CF",
+            "universe": "CF_MAIN",
+            "signal_object_id": "CF.C1",
+            "trade_date": "2024-01-02",
+            "raw_value": 0.02,
+            "processed_value": 0.1,
+            "signal_state": "long",
+            "diagnostic_reason": "processed value above long threshold",
+            "warning_flags": [],
+            "human_review_required": ["factor_thresholds"],
+            "diagnostic_rule_version": "factor_diagnostic_v1",
             "input_snapshot_ids": ["raw_quote_1"],
         },
         "research_forward_return_daily": {
@@ -201,11 +234,13 @@ def test_all_required_d5_schemas_are_registered_and_validate_samples() -> None:
         "core_contract_rule_version",
         "core_trading_calendar",
         "core_quote_daily",
+        "core_option_quote_daily",
         "core_settlement_param_daily",
         "core_chain_map_daily",
         "core_trade_mapping_daily",
         "research_continuous_price_daily",
         "research_factor_value_daily",
+        "research_factor_diagnostic_daily",
         "research_forward_return_daily",
         "research_factor_evaluation",
         "research_multifactor_score_daily",
@@ -244,6 +279,27 @@ def test_core_quote_requires_source_snapshot_id_and_valid_high_low() -> None:
         validate_row("core_quote_daily", {**valid_quote, "high": 10, "low": 11})
 
 
+def test_core_option_quote_requires_type_and_missing_fields_flag() -> None:
+    row = _sample_rows()["core_option_quote_daily"]
+
+    assert validate_row("core_option_quote_daily", row).option_type == "C"
+
+    with pytest.raises(SchemaValidationError, match="option_type"):
+        validate_row("core_option_quote_daily", {**row, "option_type": "CALL"})
+
+    with pytest.raises(SchemaValidationError, match="missing option market fields"):
+        validate_row(
+            "core_option_quote_daily",
+            {
+                **row,
+                "settle": None,
+                "volume": None,
+                "open_interest": None,
+                "data_quality_flag": "normal",
+            },
+        )
+
+
 def test_core_settlement_rejects_inverted_limits() -> None:
     row = _sample_rows()["core_settlement_param_daily"]
 
@@ -278,6 +334,31 @@ def test_factor_values_require_input_snapshot_ids() -> None:
 
     with pytest.raises(SchemaValidationError, match="input_snapshot_ids"):
         validate_row("research_factor_value_daily", {**row, "input_snapshot_ids": []})
+
+
+def test_factor_diagnostics_keep_unknown_state_explicit() -> None:
+    row = _sample_rows()["research_factor_diagnostic_daily"]
+
+    assert validate_row("research_factor_diagnostic_daily", row).signal_state == "long"
+
+    with pytest.raises(SchemaValidationError, match="unknown diagnostic"):
+        validate_row(
+            "research_factor_diagnostic_daily",
+            {
+                **row,
+                "signal_state": "unknown",
+                "warning_flags": [],
+                "human_review_required": [],
+            },
+        )
+
+    valid_unknown = {
+        **row,
+        "signal_state": "unknown",
+        "warning_flags": ["missing_input"],
+        "human_review_required": [],
+    }
+    assert validate_row("research_factor_diagnostic_daily", valid_unknown).signal_state == "unknown"
 
 
 def test_forward_returns_require_t_plus_one_and_future_exit() -> None:

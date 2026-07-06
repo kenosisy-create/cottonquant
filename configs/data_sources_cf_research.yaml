@@ -1,0 +1,50 @@
+source_name: CF_RESEARCH_LOCAL_FILE
+product: CF
+exchange: CZCE
+frequency: daily
+incoming_dir: data/incoming/CF
+raw_output_dir: data/raw/CF
+raw_manifest_path: data/raw/CF/raw_manifest.jsonl
+core_quote_output: data/core/CF/core_quote_daily.parquet
+official_history_page_url: https://www.czce.com.cn/cn/jysj/lshqxz/H077003019index_1.htm
+official_history_incoming_dir: data/incoming/CF/history
+official_history_years_mvp: [2023, 2024, 2025]
+official_history_archive_pattern: https://www.czce.com.cn/cn/DFSStaticFiles/Future/YYYY/ALLFUTURESYYYY.zip
+supported_formats:
+  - csv
+  - xlsx
+  - html
+  - zip
+required_quote_fields:
+  - trade_date
+  - exchange
+  - product_code
+  - contract_id
+  - open
+  - high
+  - low
+  - close
+  - settle
+  - volume
+  - open_interest
+optional_settlement_fields:
+  - limit_up
+  - limit_down
+  - margin_rate
+  - trading_status
+trade_date_aliases: [trade_date, date, trading_day, 交易日期]
+exchange_aliases: [exchange, exch, 交易所]
+product_code_aliases: [product_code, product, 品种]
+contract_id_aliases: [contract_id, contract, symbol, 合约, 合约代码]
+open_aliases: [open, open_price, 开盘价]
+high_aliases: [high, high_price, 最高价]
+low_aliases: [low, low_price, 最低价]
+close_aliases: [close, close_price, 收盘价]
+settle_aliases: [settle, settlement, settle_price, 结算价]
+volume_aliases: [volume, vol, 成交量]
+open_interest_aliases: [open_interest, oi, 持仓量]
+human_review_required:
+  - official_field_units
+  - volume_unit_interpretation
+  - settlement_status_semantics
+  - margin_field_semantics

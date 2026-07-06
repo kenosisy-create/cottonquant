@@ -1,89 +1,117 @@
-# Task Breakdown
+# Research Workbench Task Breakdown
 
-The implementation follows the planned DAG. The priority is to close a CF MVP
-loop first, then harden quality, then prove product extension by config.
+The completed CF-first research workbench route is `R00` through `R22`. The
+historical `D0` through `D23` work remains the engineering foundation, but it is
+no longer the execution queue.
 
 ## Current Progress
 
-- D0 complete: repository skeleton, configs, docs, and minimal CLI.
-- D1 complete: immutable raw snapshot store, SHA256 manifest, and snapshot_id replay.
-- D2 complete: CZCE daily quote raw ingestion through a fixture-safe fetcher.
-- D3 complete: CZCE historical quote raw backfill through the same raw store.
-- D4 complete: CZCE settlement parameter raw ingestion.
-- D5 complete: core and archive schema definitions plus field dictionary.
-- D6 complete: product config validation and CF contract master generation.
-- D7 complete: trading calendar abstraction with reviewed CZCE 2024 official fixture.
-- D8 complete: chain_map_daily with explicit switch reasons and LTD/liquidity guards.
-- D9 complete: trade_mapping_daily with real contracts, T+1 execution date, and blocks.
-- D10 complete: continuous price builder with additive back adjustment and roll traceability.
-- D11 complete: factor interface, registry, preprocessing, and dependency validation.
-- D12 complete: carry and momentum factors with golden sample tests.
-- D13 complete: curve slope and OI pressure factors with golden sample tests.
-- D14 complete: forward returns and single factor evaluator with golden sample tests.
-- D15 complete: Jinja2 report renderer for single factor and backtest reports.
-- D16 complete: daily backtest MVP with T+1 execution, blocked handling, and cost placeholders.
-- D17 complete: equal-weight multifactor score and target lots.
-- D18 complete: run manifest, artifact registry, audit log, and archive bundle helpers.
-- D19 complete: CF full-chain smoke test from fixture/raw to report/archive.
-- D20 complete: SR/AP config-only smoke test and extension guide.
-- D21 complete: golden fixtures, reproducibility, and CLI validation hardening.
-- D22 complete: UAT replay command and JSON/HTML UAT report.
-- D23 complete: version freeze, changelog, release bundle, and TODO classification.
-- Next task: post-MVP production hardening and human-review closure.
+| Task | Status | Scope |
+| --- | --- | --- |
+| R00 | Complete | Scope locked to a CF-first research-grade production data decision workbench. |
+| R01 | Complete | Existing D0-D23 modules mapped into reuse, simplify, pause, and defer groups. |
+| R02 | Complete | `configs/research_mode.yaml` defines CF daily mode and paused platform features. |
+| R03 | Complete | CF research data source, field mapping, and data quality rules documented. |
+| R04 | Complete | Local CF files are preserved under research raw storage with manifest rows. |
+| R05 | Complete | Preserved CF CSV files normalize into `core_quote_daily.parquet`. |
+| R06 | Complete | Core quote data quality checks write CSV/Markdown and block critical failures. |
+| R07 | Complete | CF contract rule review table writes CSV/Markdown with human-review gates. |
+| R08 | Complete | Research-mode chain/trade mapping writes CSV/Parquet/Markdown outputs. |
+| R09 | Complete | Continuous price artifacts write CSV/Parquet plus roll diagnostics. |
+| R10 | Complete | Downstream factor diagnostic output contracts write JSON/Markdown and schema rules. |
+| R11 | Complete | Momentum factor value and warning outputs follow the R10 contract. |
+| R12 | Complete | Carry factor value and warning outputs follow the R10 contract. |
+| R13 | Complete | Curve slope and OI pressure factor outputs follow the R10 contract. |
+| R14 | Complete | Daily factor diagnostic table writes long/short/neutral/unknown states. |
+| R15 | Complete | T+1-safe forward returns write multi-horizon labels from real contracts. |
+| R16 | Complete | Single-factor research backtest summaries write evaluation metrics and warnings. |
+| R17 | Complete | Equal-weight multifactor score diagnostics write score rows and warnings. |
+| R18 | Complete | Cost sensitivity summaries compare hypothetical cost scenarios. |
+| R19 | Complete | Daily CF research brief summarizes R06-R18 evidence and watch items. |
+| R20 | Complete | One-command research pipeline runs R04-R19 and writes a simple run log. |
+| R21 | Complete | Lightweight replay checks preserved R20 artifacts and optional baselines. |
+| R22 | Complete | Expansion gate blocks broader ingestion until CF evidence and review gates exist. |
 
-## Phase 1: Foundation And Core Facts
+## Sprint 0: Scope And Configuration
 
 | Task | Scope | Gate |
 | --- | --- | --- |
-| D0 | Repository skeleton, AGENTS.md, config skeleton, CLI placeholder, docs. | CLI help, tests, lint. |
-| D1 | Immutable raw snapshot store, SHA256, manifest, replay by snapshot_id. | Gate A. |
-| D2 | CZCE daily quote raw ingestion through fixture-safe fetcher. | Gate A. |
-| D3 | CZCE historical quote raw backfill through the same raw store. | Gate A. |
-| D4 | CZCE settlement parameter raw ingestion. | Gate A. |
-| D5 | Core and archive schema definitions plus field dictionary. | Gate B. |
-| D6 | Product config validation and CF contract master generation. | Gate B. |
-| D7 | Trading calendar abstraction and provisional fixture calendar. | Gate B. |
+| R00 | Lock project mission to research workbench, not production factor platform. | README/AGENTS direction is explicit. |
+| R01 | Classify existing D0-D23 modules for reuse or pause. | Current-state map exists. |
+| R02 | Add research mode config for CF daily workflow. | Config loads without release/UAT side effects. |
 
-## Phase 2: Mapping, Prices, Factors
+## Sprint 1: CF Production-Like Data Path
 
 | Task | Scope | Gate |
 | --- | --- | --- |
-| D8 | chain_map_daily with switch_reason, LTD guard, and liquidity rules. | Gate B. |
-| D9 | trade_mapping_daily from signal objects to real tradable contracts. | Gate B. |
-| D10 | Continuous price builder with roll traceability. | Gate B. |
-| D11 | Factor interface, registry, preprocessing, dependency validation. | Gate C. |
-| D12 | Carry and momentum factors. | Gate C. |
-| D13 | Curve slope and OI pressure factors. | Gate C. |
-| D14 | Forward returns and single factor evaluator. | Gate C. |
+| R03 | Document CF source convention, field aliases, and data quality rules. | Source docs and mapping docs exist. |
+| R04 | Preserve local `data/incoming/CF/YYYY-MM-DD/` files into raw storage. | Raw manifest captures hash, size, source file, and run id. |
+| R05 | Normalize preserved CSV raw files into core quote facts. | Core parquet rows carry research raw lineage. |
+| R06 | Validate core quote completeness, price sanity, uniqueness, and warnings. | Quality CSV/Markdown blocks factors on critical failures. |
 
-## Phase 3: Reports, Backtest, Archive
+## Sprint 2: Mapping And Continuous Signal Objects
 
 | Task | Scope | Gate |
 | --- | --- | --- |
-| D15 | Jinja2 report renderer for single factor and backtest reports. | Gate C. |
-| D16 | Daily backtest with T+1 execution, blocked handling, cost placeholders. | Gate D. |
-| D17 | Equal-weight multifactor score and target lots. | Gate D. |
-| D18 | Run manifest, artifact registry, audit log, archive bundle. | Gate D. |
-| D19 | CF full-chain smoke test from fixture/raw to report/archive. | Gate E. |
+| R07 | Build CF contract rule review table. | Human-review items are visible. |
+| R08 | Produce research-mode chain and trade mapping outputs. | Switch and blocked reasons are inspectable. |
+| R09 | Build continuous price artifacts with roll annotations. | Continuous contracts remain signal objects only. |
+| R10 | Define output contract for downstream factor diagnostics. | Stable file paths and schemas are documented and machine-readable. |
 
-## Phase 4: Extension And Release
+## Sprint 3: Factor Diagnostics
 
 | Task | Scope | Gate |
 | --- | --- | --- |
-| D20 | SR/AP config-only smoke test and extension guide. | Gate E. |
-| D21 | Golden fixtures, reproducibility, CLI validation hardening. | Gate E. |
-| D22 | UAT replay command and UAT report. | Gate E. |
-| D23 | Version freeze, changelog, release bundle, TODO classification. | Gate E. |
+| R11 | Adapt momentum factor output to the research workbench path. | Factor rows include input lineage. |
+| R12 | Adapt carry factor output to the research workbench path. | Carry assumptions are marked for review. |
+| R13 | Adapt curve slope and OI pressure outputs. | Missing inputs surface as warnings, not silent zeros. |
+| R14 | Produce daily factor diagnostic table. | Long/short/neutral/unknown state is visible. |
+
+## Sprint 4: Research Backtest
+
+| Task | Scope | Gate |
+| --- | --- | --- |
+| R15 | Compute forward returns with explicit horizons and price basis. | T+1 rule is enforced. |
+| R16 | Run single-factor research backtest summaries. | Results are analysis support, not trading approval. |
+| R17 | Run equal-weight multifactor score diagnostics. | Factor weights and missing-factor handling are explicit. |
+| R18 | Compare cost scenarios for research sensitivity. | Cost assumptions remain human-review items. |
+
+## Sprint 5: Daily Research Decision Workbench
+
+| Task | Scope | Gate |
+| --- | --- | --- |
+| R19 | Generate daily CF research brief. | Data quality, factor evidence, mapping, and risks are readable. |
+| R20 | Add one-command research pipeline. | R04-R19 can run in order for one date. |
+
+## Sprint 6: Replay And Expansion Gate
+
+| Task | Scope | Gate |
+| --- | --- | --- |
+| R21 | Add lightweight replay against preserved research outputs. | Results are reproducible enough for analyst review. |
+| R22 | Define expansion gate for SR/AP or external data. | CF is validated before broader ingestion begins. |
+
+R00-R22 are now complete for the CF-first research workbench route.
+
+## Deferred Platform Scope
+
+- release freeze
+- gray deployment
+- production OMS
+- minute-level execution
+- service API platform
+- multi-user dashboard
+- SRE-grade monitoring
+- full metadata catalog
+- SR/AP real production ingest before CF validation
+- external spot, weather, and USDA ingestion
 
 ## Review Gates
 
-- Gate A: raw payloads land completely, every payload has SHA256, manifest replay works,
-  raw ingestion does no business normalization, repeated ingestion does not overwrite.
-- Gate B: core facts have lineage, contract master follows config, chain map switch reasons
-  are explicit, trade mapping uses real contracts or blocked states.
-- Gate C: factors declare metadata and inputs, no future data is used, CF-only mode is
-  labeled as time-series mode, reports include lineage and warnings.
-- Gate D: backtest is strictly T+1, orders use real contracts, costs and blocked states are
-  recorded, run manifest captures code/config/input/artifact lineage.
-- Gate E: one command runs the fixture chain end to end, replay is deterministic, SR/AP pass
-  by config only, release bundle exposes TODOs instead of hiding them.
+- Raw files must be preserved before parsing.
+- Research functions must read core or research artifacts, not incoming files.
+- Core rows must include source lineage.
+- Continuous contracts are signal objects only.
+- Backtest and decision outputs must use real tradable contracts.
+- T-day post-settlement signals execute no earlier than T+1.
+- Ambiguous exchange, contract, roll, execution, and cost rules must be marked
+  `HUMAN_REVIEW_REQUIRED`.

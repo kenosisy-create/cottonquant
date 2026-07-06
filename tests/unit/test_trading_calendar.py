@@ -25,7 +25,7 @@ def test_provisional_weekday_calendar_marks_version_and_weekends() -> None:
     result = build_trading_calendar(
         start=date(2026, 1, 5),
         end=date(2026, 1, 9),
-        exchange="CZCE",
+        exchange="TESTEX",
     )
 
     assert result.calendar.calendar_version == PROVISIONAL_CALENDAR_VERSION
@@ -59,6 +59,28 @@ def test_build_calendar_defaults_to_official_fixture_when_available() -> None:
     assert result.calendar.is_trading_day(date(2024, 1, 1)) is False
     assert result.calendar.is_trading_day(date(2024, 1, 2)) is True
     assert all(row.source_snapshot_id == OFFICIAL_SOURCE_ID for row in result.rows)
+    assert result.warnings == []
+
+
+def test_build_calendar_defaults_to_2025_official_history_fixture() -> None:
+    assert official_calendar_path(exchange="CZCE", year=2025).exists()
+
+    result = build_trading_calendar(
+        start=date(2025, 1, 1),
+        end=date(2025, 1, 15),
+        exchange="CZCE",
+    )
+
+    assert result.calendar.calendar_version == "CZCE_OFFICIAL_2025_FUTURES_HISTORY"
+    assert result.calendar.is_trading_day(date(2025, 1, 1)) is False
+    assert result.calendar.is_trading_day(date(2025, 1, 2)) is True
+    assert result.calendar.nth_trading_day_of_month(year=2025, month=1, n=10) == date(
+        2025, 1, 15
+    )
+    assert all(
+        row.source_snapshot_id == "czce_2025_official_futures_history_cf"
+        for row in result.rows
+    )
     assert result.warnings == []
 
 

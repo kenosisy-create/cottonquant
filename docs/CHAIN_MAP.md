@@ -1,6 +1,8 @@
 # Chain Map
 
 D8 builds `core_chain_map_daily` for signal objects such as `CF.C1`.
+R08 adds research-mode CSV/Parquet outputs that persist these rows for the
+workbench route.
 
 ## Inputs
 
@@ -29,4 +31,5 @@ D8 builds `core_chain_map_daily` for signal objects such as `CF.C1`.
 
 ```bash
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main core build-chain-map --product CF --start 2024-01-09 --end 2024-01-12 --quote-fixture tests/fixtures/core_quote_daily_cf_chain_sample.csv --ltd-buffer-days 2
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-mapping --start 2024-01-09 --end 2024-01-12 --ltd-buffer-days 2
 ```
