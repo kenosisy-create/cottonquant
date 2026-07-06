@@ -89,6 +89,10 @@ class ReleaseError(CottonFactorError):
     """Raised when a release freeze package cannot be prepared."""
 
 
+class ResearchWorkbenchError(CottonFactorError):
+    """Raised when a research workbench workflow cannot proceed."""
+
+
 class RawSnapshotError(CottonFactorError):
     """Base exception for raw snapshot storage failures."""
 

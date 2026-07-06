@@ -2,6 +2,7 @@
 
 D6 adds product config validation and CF futures contract master generation.
 D20 extends config-only contract master smoke to SR/AP.
+R07 adds CF contract rule review artifacts for the research workbench route.
 
 ## Rules
 
@@ -42,6 +43,7 @@ factors, and backtests remain out of D20 scope.
 ```bash
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main core build-contract-master --product CF --year 2024
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main smoke products --products SR,AP --year 2024
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research review-cf-contract-rules --year 2024
 ```
 
 The command emits JSON containing:
@@ -59,3 +61,10 @@ Human review is still required before production use for:
 - SR/AP last-trade-day rule interpretation
 - option-style placeholders
 - official exchange field interpretation
+
+R07 writes the visible review table to:
+
+```text
+reports/research/contract_rules/CF_2024_contract_rule_review.csv
+reports/research/contract_rules/CF_2024_contract_rule_review.md
+```

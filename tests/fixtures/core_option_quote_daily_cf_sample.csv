@@ -1,0 +1,2 @@
+schema_version,source_snapshot_id,exchange,product_code,trade_date,option_symbol,underlying_contract,option_type,strike,settle,volume,open_interest,moneyness,liquidity_flag,data_quality_flag
+core_option_quote_daily.v1,raw_option_fixture,CZCE,CF,2024-01-02,CF401C15000,CF401,C,15000,120,100,200,1.02,liquid,normal

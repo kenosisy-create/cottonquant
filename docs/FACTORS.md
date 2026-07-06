@@ -67,6 +67,20 @@ The implementation uses the T-day adjusted continuous settlement series for the
 signal object, sorted by trade date. It emits rows only after the 20-observation
 lookback is available. It does not read T+1 data.
 
+## Research Workbench R11
+
+R11 reuses `mom_20_v1` and writes research-workbench artifacts under the R10
+contract:
+
+- `data/research/CF/factors/CF_{start}_{end}_factor_value_daily.parquet`
+- `data/research/CF/factors/CF_{start}_{end}_factor_value_daily.csv`
+- `data/research/CF/factors/CF_{start}_{end}_factor_warnings.csv`
+- `reports/research/factors/CF_{start}_{end}_momentum_factor.md`
+
+The R11 builder reads `research_continuous_price_daily` only. It filters output
+rows to the requested date range and does not use rows after `end`. If lookback
+history is insufficient, it writes warning rows instead of filling zeros.
+
 ### `carry_nf_v1`
 
 Input tables: `core_quote_daily`, `core_contract_master`.
@@ -84,6 +98,21 @@ month and emits a `TODO_REQUIRES_HUMAN_REVIEW` warning.
 
 This carry formula is a D12 MVP research convention, not a finalized production
 rule. The registry owner remains `TODO_REQUIRES_HUMAN_REVIEW`.
+
+## Research Workbench R12
+
+R12 reuses `carry_nf_v1` and writes research-workbench artifacts under the R10
+contract:
+
+- `data/research/CF/factors/CF_{start}_{end}_factor_value_daily.parquet`
+- `data/research/CF/factors/CF_{start}_{end}_factor_value_daily.csv`
+- `data/research/CF/factors/CF_{start}_{end}_factor_warnings.csv`
+- `reports/research/factors/CF_{start}_{end}_carry_factor.md`
+
+The R12 builder reads `core_quote_daily.parquet` and generates CF contract master
+rows from product config plus the official CZCE trading calendar. Carry tenor
+and contract-rule assumptions remain visible as warning rows until human review
+closes them.
 
 ## D13 Formulas
 
@@ -124,6 +153,63 @@ date rather than stitching across a roll.
 
 Both D13 formulas are MVP research conventions and still require human review
 before being treated as final production factor definitions.
+
+## Research Workbench R13
+
+R13 reuses `curve_slope_v1` and `oi_pressure_v1` and writes research-workbench
+artifacts under the R10 contract:
+
+- `data/research/CF/factors/CF_{start}_{end}_factor_value_daily.parquet`
+- `data/research/CF/factors/CF_{start}_{end}_factor_value_daily.csv`
+- `data/research/CF/factors/CF_{start}_{end}_factor_warnings.csv`
+- `reports/research/factors/CF_{start}_{end}_structure_factors.md`
+
+The R13 builder reads normalized `core_quote_daily` rows and R08
+`core_chain_map_daily` rows. It generates CF contract master rows from product
+config plus the official CZCE calendar. Missing far-leg quotes, missing mapped
+quotes, and missing prior same-contract quotes are warning rows, not silent
+zero factor values.
+
+## Research Workbench R14
+
+R14 reads the shared R10 factor value and warning artifacts from R11-R13 and
+writes daily `research_factor_diagnostic_daily` rows:
+
+- `data/research/CF/factors/CF_{start}_{end}_factor_diagnostic_daily.parquet`
+- `data/research/CF/factors/CF_{start}_{end}_factor_diagnostic_daily.csv`
+- `reports/research/factors/CF_{start}_{end}_factor_diagnostics.md`
+
+The MVP diagnostic rule maps positive values to `long`, negative values to
+`short`, zero values to `neutral`, and missing factor/date observations to
+`unknown`. The rule is a research sign heuristic. Final thresholds and
+direction mapping remain `HUMAN_REVIEW_REQUIRED`.
+
+## Research Workbench R15
+
+R15 reads R08 `core_trade_mapping_daily` rows and normalized `core_quote_daily`
+rows, then writes multi-horizon historical labels:
+
+- `data/research/CF/returns/CF_{start}_{end}_forward_return_daily.parquet`
+- `data/research/CF/returns/CF_{start}_{end}_forward_return_daily.csv`
+- `data/research/CF/returns/CF_{start}_{end}_forward_return_warnings.csv`
+- `reports/research/returns/CF_{start}_{end}_forward_returns.md`
+
+Forward returns are labels for historical evaluation. They use future outcome
+quotes by design, but they must not become same-day signal inputs. Entry
+contracts come from R08 real-contract trade mapping, not continuous contracts.
+
+## Research Workbench R16
+
+R16 reads R14 factor diagnostics and R15 forward returns, then writes
+single-factor evaluation metrics:
+
+- `data/research/CF/backtests/CF_{start}_{end}_single_factor_evaluation.parquet`
+- `data/research/CF/backtests/CF_{start}_{end}_single_factor_evaluation.csv`
+- `data/research/CF/backtests/CF_{start}_{end}_single_factor_backtest_warnings.csv`
+- `reports/research/backtests/CF_{start}_{end}_single_factor_backtest.md`
+
+Unknown diagnostic states are skipped with warnings. The metrics are research
+evidence only and do not approve trading or production execution.
 
 ## D14 Forward Returns
 
@@ -184,4 +270,9 @@ values fail loudly.
 
 ## Next Step
 
-D15 implements the report renderer for single factor and backtest reports.
+The active research-workbench route has already adapted the four MVP factors
+through R19: factor outputs, daily diagnostic states, T+1 forward returns,
+single-factor research summaries, equal-weight multifactor diagnostics,
+research cost sensitivity summaries, and the daily CF research brief. R20 now
+adds the one-command research pipeline. R21 now adds lightweight replay. The
+R22 expansion gate now completes the current R-series route.

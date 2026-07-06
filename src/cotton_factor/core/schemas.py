@@ -144,6 +144,41 @@ class CoreQuoteDailyRow(SchemaRow):
         return self
 
 
+class CoreOptionQuoteDailyRow(SchemaRow):
+    """core_option_quote_daily row."""
+
+    table_name: ClassVar[str] = "core_option_quote_daily"
+    primary_key: ClassVar[tuple[str, ...]] = ("exchange", "option_symbol", "trade_date")
+    lineage_fields: ClassVar[tuple[str, ...]] = ("source_snapshot_id",)
+
+    schema_version: Literal["core_option_quote_daily.v1"] = "core_option_quote_daily.v1"
+    source_snapshot_id: SnapshotId
+    exchange: NonEmptyStr
+    product_code: NonEmptyStr
+    trade_date: date
+    option_symbol: NonEmptyStr
+    underlying_contract: NonEmptyStr
+    option_type: Literal["C", "P"]
+    strike: PositiveFloat
+    settle: NonNegativeFloat | None = None
+    volume: NonNegativeInt | None = None
+    open_interest: NonNegativeInt | None = None
+    moneyness: NonNegativeFloat | None = None
+    liquidity_flag: NonEmptyStr
+    data_quality_flag: NonEmptyStr
+
+    @model_validator(mode="after")
+    def _missing_market_fields_are_flagged(self) -> CoreOptionQuoteDailyRow:
+        if (
+            self.settle is None
+            and self.volume is None
+            and self.open_interest is None
+            and self.data_quality_flag == "normal"
+        ):
+            raise ValueError("missing option market fields cannot be flagged as normal")
+        return self
+
+
 class CoreSettlementParamDailyRow(SchemaRow):
     """core_settlement_param_daily row."""
 
@@ -292,6 +327,46 @@ class ResearchFactorValueDailyRow(SchemaRow):
     raw_value: float
     processed_value: float | None = None
     input_snapshot_ids: Annotated[list[SnapshotId], Field(min_length=1)]
+
+
+class ResearchFactorDiagnosticDailyRow(SchemaRow):
+    """research_factor_diagnostic_daily row."""
+
+    table_name: ClassVar[str] = "research_factor_diagnostic_daily"
+    primary_key: ClassVar[tuple[str, ...]] = (
+        "run_id",
+        "factor_id",
+        "signal_object_id",
+        "trade_date",
+    )
+    lineage_fields: ClassVar[tuple[str, ...]] = ("input_snapshot_ids",)
+
+    schema_version: Literal["research_factor_diagnostic_daily.v1"] = (
+        "research_factor_diagnostic_daily.v1"
+    )
+    run_id: NonEmptyStr
+    factor_id: NonEmptyStr
+    factor_version: NonEmptyStr
+    product_code: NonEmptyStr
+    universe: NonEmptyStr
+    signal_object_id: NonEmptyStr
+    trade_date: date
+    raw_value: float | None = None
+    processed_value: float | None = None
+    signal_state: Literal["long", "short", "neutral", "unknown"]
+    diagnostic_reason: NonEmptyStr
+    warning_flags: list[NonEmptyStr] = Field(default_factory=list)
+    human_review_required: list[NonEmptyStr] = Field(default_factory=list)
+    diagnostic_rule_version: NonEmptyStr
+    input_snapshot_ids: Annotated[list[SnapshotId], Field(min_length=1)]
+
+    @model_validator(mode="after")
+    def _unknown_state_requires_context(self) -> ResearchFactorDiagnosticDailyRow:
+        if self.signal_state == "unknown" and not (
+            self.warning_flags or self.human_review_required
+        ):
+            raise ValueError("unknown diagnostic rows must include warning or review context")
+        return self
 
 
 class ResearchForwardReturnDailyRow(SchemaRow):
@@ -474,11 +549,13 @@ TABLE_SCHEMAS: dict[str, type[SchemaRow]] = {
         CoreContractRuleVersionRow,
         CoreTradingCalendarRow,
         CoreQuoteDailyRow,
+        CoreOptionQuoteDailyRow,
         CoreSettlementParamDailyRow,
         CoreChainMapDailyRow,
         CoreTradeMappingDailyRow,
         ResearchContinuousPriceDailyRow,
         ResearchFactorValueDailyRow,
+        ResearchFactorDiagnosticDailyRow,
         ResearchForwardReturnDailyRow,
         ResearchFactorEvaluationRow,
         ResearchMultifactorScoreDailyRow,

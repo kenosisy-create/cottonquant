@@ -15,6 +15,14 @@ Commodity Exchange notice on the 2024 national holiday trading schedule.
 Rows carry `source_snapshot_id=czce_2024_holiday_notice_20231226` to preserve
 source lineage for the reviewed official notice.
 
+For CZCE 2025, the default calendar uses
+`configs/calendars/CZCE_2025_OFFICIAL.csv`, derived from the trading dates
+present in the local CZCE official CF futures history normalized into
+`data/core/CF/core_quote_daily.parquet`. Rows carry
+`source_snapshot_id=czce_2025_official_futures_history_cf`. This is suitable for
+research backfill and contract last-trade-date calculation, but the exact
+official calendar provenance should still be reviewed before production use.
+
 `PROVISIONAL_FIXTURE` is not an official calendar. It only marks Monday-Friday as
 trading days and is used only when no reviewed official fixture exists.
 

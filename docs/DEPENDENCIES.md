@@ -14,5 +14,6 @@ reviewable.
 | typer | Public CLI surface. |
 | jinja2 | HTML report templates. |
 | plotly | Report charts and interactive diagnostics. |
+| openpyxl | Inspect manual Excel inputs and detect unrefreshed iFinD formula workbooks. |
 | pytest | Test runner. |
 | ruff | Linting and import ordering. |
