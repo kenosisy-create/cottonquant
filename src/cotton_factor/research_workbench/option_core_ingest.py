@@ -435,11 +435,19 @@ def _read_excel(*, payload: bytes, source_name: str) -> pd.DataFrame:
         raw = pd.read_excel(io.BytesIO(payload), header=None)
     except Exception as exc:
         raise ResearchWorkbenchError(f"{source_name}: cannot read option Excel") from exc
-    header_index = _header_index_from_frame(raw, source_name=source_name)
+    title_trade_date = _title_trade_date_from_frame(raw)
+    header_index = _header_index_from_frame(
+        raw,
+        source_name=source_name,
+        allow_missing_date=title_trade_date is not None,
+    )
     columns = [str(value).strip() for value in raw.iloc[header_index].tolist()]
     frame = raw.iloc[header_index + 1 :].copy()
     frame.columns = columns
     frame = frame.dropna(how="all").reset_index(drop=True)
+    if title_trade_date is not None and "trade_date" not in _column_map(frame.columns):
+        # 郑商所期权日表把日期放在标题里；core 层必须补成逐行 trade_date。
+        frame.insert(0, "trade_date", title_trade_date.isoformat())
     return frame
 
 
@@ -472,19 +480,37 @@ def _header_index_from_lines(lines: list[str], *, source_name: str) -> int:
     raise ResearchWorkbenchError(f"{source_name}: option header not found")
 
 
-def _header_index_from_frame(frame: pd.DataFrame, *, source_name: str) -> int:
+def _header_index_from_frame(
+    frame: pd.DataFrame,
+    *,
+    source_name: str,
+    allow_missing_date: bool = False,
+) -> int:
     for index, row in frame.iterrows():
         text = "|".join("" if pd.isna(value) else str(value) for value in row.tolist())
-        if _looks_like_option_header(text):
+        if _looks_like_option_header(text, allow_missing_date=allow_missing_date):
             return int(index)
     raise ResearchWorkbenchError(f"{source_name}: option header not found")
 
 
-def _looks_like_option_header(text: str) -> bool:
+def _looks_like_option_header(text: str, *, allow_missing_date: bool = False) -> bool:
     normalized = _normalize_column(text)
     has_date = any(_normalize_column(alias) in normalized for alias in TRADE_DATE_ALIASES)
     has_symbol = any(_normalize_column(alias) in normalized for alias in OPTION_SYMBOL_ALIASES)
-    return has_date and has_symbol
+    return has_symbol and (has_date or allow_missing_date)
+
+
+def _title_trade_date_from_frame(frame: pd.DataFrame) -> date | None:
+    for _, row in frame.head(5).iterrows():
+        text = " ".join("" if pd.isna(value) else str(value) for value in row.tolist())
+        match = re.search(r"(?P<year>\d{4})[-/]?(?P<month>\d{2})[-/]?(?P<day>\d{2})", text)
+        if match is not None:
+            return date(
+                int(match.group("year")),
+                int(match.group("month")),
+                int(match.group("day")),
+            )
+    return None
 
 
 def _detect_delimiter(header_line: str) -> str:

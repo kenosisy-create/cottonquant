@@ -1,11 +1,27 @@
-param(
+﻿param(
     [int]$Year = (Get-Date).Year,
     [string]$SourceDir = "data\incoming\CF\history",
+    [string]$OptionSourceDir = "data\incoming\CF\options\history",
+    [string]$MemberPositionSourceDir = "data\incoming\CF\member_positions\history",
+    [string]$DownloadDate = (Get-Date -Format yyyy-MM-dd),
     [string]$RunId = "cf_daily_update_$(Get-Date -Format yyyyMMdd_HHmmss)",
+    [switch]$DownloadOfficialDaily,
+    [switch]$SkipOptionDailyDownload,
+    [switch]$OverwriteOfficialDaily,
+    [switch]$SkipDataContinuityAudit,
+    [switch]$RunDailyOperationAudit,
+    [switch]$RemoveDownloadedDailyAfterIngest,
     [switch]$RunResearchWindow,
+    [switch]$RunOptionCoreIngest,
+    [switch]$RunOptionFactorProxy,
+    [switch]$SkipStateUpgradePack,
     [switch]$RunHistoricalEvidence,
     [switch]$RunEventExplanation,
     [switch]$RunEventThresholdSensitivity,
+    [switch]$RunFuturesOptionDivergence,
+    [switch]$RunFuturesOptionPlaybook,
+    [switch]$RunMemberPositionResearch,
+    [switch]$RunOptionStrikePositionResearch,
     [switch]$RunValidatedBrief,
     [switch]$RunPublishPack,
     [switch]$RunWeeklyResearchPack,
@@ -18,9 +34,11 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$dailyRunStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 $repoRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
 Set-Location $repoRoot
 $env:PYTHONPATH = "src"
+$env:PYTHONIOENCODING = "utf-8"
 
 function Get-LatestResearchPath {
     param(
@@ -44,18 +62,72 @@ $fundamentalContextPath = "data\research\CF\fundamental_context\CF_fundamental_c
 $runHistoricalEvidenceEffective = $RunHistoricalEvidence.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runEventExplanationEffective = $RunEventExplanation.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runEventThresholdSensitivityEffective = $RunEventThresholdSensitivity.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runFuturesOptionDivergenceEffective = $RunFuturesOptionDivergence.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runFuturesOptionPlaybookEffective = $RunFuturesOptionPlaybook.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runMemberPositionResearchEffective = $RunMemberPositionResearch.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runOptionStrikePositionResearchEffective = $RunOptionStrikePositionResearch.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runValidatedBriefEffective = $RunValidatedBrief.IsPresent -or $RunWeeklyResearchPack.IsPresent
-$runPublishPackEffective = $RunPublishPack.IsPresent -or $RunWeeklyResearchPack.IsPresent
-$runWeeklyManifestEffective = (
-    $runHistoricalEvidenceEffective -or
-    $runEventExplanationEffective -or
-    $runEventThresholdSensitivityEffective -or
-    $runValidatedBriefEffective -or
-    $runPublishPackEffective
+$runPublishPackEffective = $RunPublishPack.IsPresent
+$runDailyOperationAuditEffective = $RunDailyOperationAudit.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runWeeklyManifestEffective = $RunWeeklyResearchPack.IsPresent
+$runOptionCoreIngestEffective = (
+    $RunOptionCoreIngest.IsPresent -or
+    ($DownloadOfficialDaily.IsPresent -and -not $SkipOptionDailyDownload.IsPresent)
 )
+$runOptionFactorProxyEffective = (
+    $RunOptionFactorProxy.IsPresent -or
+    ($DownloadOfficialDaily.IsPresent -and -not $SkipOptionDailyDownload.IsPresent)
+)
+$runStateUpgradeEffective = -not $SkipStateUpgradePack.IsPresent
+$effectiveSourceDir = $SourceDir
+$effectiveOptionSourceDir = $OptionSourceDir
+$effectiveOptionFactorPath = $OptionFactorPath
 
-$sourceRoot = Resolve-Path $SourceDir
+if ($DownloadOfficialDaily.IsPresent) {
+    $dailyFetchArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "fetch-cf-official-daily-files",
+        "--date",
+        "$DownloadDate",
+        "--futures-source-dir",
+        "$SourceDir",
+        "--options-source-dir",
+        "$OptionSourceDir",
+        "--report-output-dir",
+        "reports\research\official_daily_files",
+        "--run-id",
+        "$RunId"
+    )
+    if ($SkipOptionDailyDownload.IsPresent) {
+        $dailyFetchArgs += @("--skip-options")
+    }
+    if ($OverwriteOfficialDaily.IsPresent) {
+        $dailyFetchArgs += @("--overwrite")
+    }
+    $officialDailyFetchJson = & py @dailyFetchArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF official daily file download failed."
+    }
+    $officialDailyFetch = $officialDailyFetchJson | ConvertFrom-Json
+    $Year = [int]$officialDailyFetch.trade_date.Substring(0, 4)
+    $effectiveSourceDir = "$($officialDailyFetch.futures_connect_source_dir)"
+    $effectiveOptionSourceDir = "$($officialDailyFetch.options_connect_source_dir)"
+    Write-Host "Official daily date format: $($officialDailyFetch.date_format)"
+    Write-Host "Official futures URL: $($officialDailyFetch.futures_url)"
+    Write-Host "Official options URL: $($officialDailyFetch.options_url)"
+    Write-Host "Official futures file: $($officialDailyFetch.futures_path)"
+    if (-not $SkipOptionDailyDownload.IsPresent) {
+        Write-Host "Official options file: $($officialDailyFetch.options_path)"
+    }
+}
+
+$sourceRoot = Resolve-Path $effectiveSourceDir
 $candidateNames = @(
+    "FutureDataDailyCF.xlsx",
+    "FutureDataDailyCF$Year.xlsx",
     "CFFUTURES$Year.xlsx",
     "CFFUTURES$Year.xls",
     "ALLFUTURES$Year.zip"
@@ -82,7 +154,7 @@ $connectArgs = @(
     "--years",
     "$Year",
     "--source-dir",
-    "$SourceDir",
+    "$effectiveSourceDir",
     "--report-output-dir",
     "reports\research\official_history_$Year",
     "--run-id",
@@ -224,6 +296,164 @@ Write-Host "Latest trade date: $($metadata.max_trade_date)"
 Write-Host "Trading days in year: $($metadata.trading_day_count)"
 Write-Host "Calendar refreshed: $($metadata.calendar_path)"
 
+if ($runOptionCoreIngestEffective) {
+    $optionCoreArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "connect-cf-option-history",
+        "--source-dir",
+        "$effectiveOptionSourceDir",
+        "--raw-root",
+        "data\raw",
+        "--core-output-dir",
+        "data\core",
+        "--core-quote-path",
+        "$($metadata.core_path)",
+        "--report-output-dir",
+        "reports\research\option_core_ingest",
+        "--run-id",
+        "$RunId"
+    )
+    $optionCoreJson = & py @optionCoreArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF option core ingest failed."
+    }
+    $optionCore = $optionCoreJson | ConvertFrom-Json
+    Write-Host "Option core ingest: $($optionCore.markdown_path)"
+    Write-Host "Option core status: $($optionCore.status), rows=$($optionCore.core_row_count)"
+}
+
+if (-not $SkipDataContinuityAudit.IsPresent) {
+    $dataContinuityArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-data-continuity-audit",
+        "--date",
+        "$($metadata.max_trade_date)",
+        "--core-quote-path",
+        "$($metadata.core_path)",
+        "--calendar-path",
+        "$($metadata.calendar_path)",
+        "--raw-root",
+        "data\raw",
+        "--output-root",
+        "runs\daily",
+        "--run-id",
+        "$RunId"
+    )
+    if ($runOptionCoreIngestEffective) {
+        $dataContinuityArgs += @(
+            "--option-core-path",
+            "data\core\CF\core_option_quote_daily.parquet"
+        )
+    }
+    else {
+        $dataContinuityArgs += @("--no-require-options")
+    }
+    $officialDailyFetchValue = Get-Variable -Name "officialDailyFetch" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $officialDailyFetchValue -and $officialDailyFetchValue.json_path) {
+        $dataContinuityArgs += @(
+            "--official-daily-fetch-json-path",
+            "$($officialDailyFetchValue.json_path)"
+        )
+    }
+    $dataContinuityJson = & py @dataContinuityArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF data continuity audit failed."
+    }
+    $dataContinuity = $dataContinuityJson | ConvertFrom-Json
+    Write-Host "Data continuity audit: $($dataContinuity.markdown_path)"
+    Write-Host "Data continuity status: $($dataContinuity.continuity_status), errors=$($dataContinuity.error_count), warnings=$($dataContinuity.warning_count)"
+
+    if ($RemoveDownloadedDailyAfterIngest.IsPresent) {
+        if (-not $dataContinuity.passed) {
+            throw "Refusing to remove official daily files because data continuity audit did not pass."
+        }
+        $incomingRoot = (Resolve-Path -LiteralPath "data\incoming").Path
+        $cleanupRecords = @()
+        foreach ($downloadPath in $dataContinuity.downloaded_file_paths) {
+            if ([string]::IsNullOrWhiteSpace("$downloadPath")) {
+                continue
+            }
+            if (-not (Test-Path -LiteralPath "$downloadPath")) {
+                continue
+            }
+            $resolvedDownloadPath = (Resolve-Path -LiteralPath "$downloadPath").Path
+            if (-not $resolvedDownloadPath.StartsWith($incomingRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "Refusing to remove file outside data\incoming: $resolvedDownloadPath"
+            }
+            Remove-Item -LiteralPath $resolvedDownloadPath -Force
+            $cleanupRecords += [ordered]@{
+                path = "$resolvedDownloadPath"
+                action = "removed_after_successful_core_and_raw_retention_audit"
+            }
+        }
+        $cleanupManifestDir = Join-Path -Path "runs\daily\CF" -ChildPath "$($metadata.max_trade_date)"
+        New-Item -ItemType Directory -Force -Path $cleanupManifestDir | Out-Null
+        $cleanupManifestPath = Join-Path -Path $cleanupManifestDir -ChildPath "official_daily_cleanup_manifest.json"
+        [ordered]@{
+            report_type = "official_daily_cleanup_manifest"
+            rule_version = "R63_official_daily_cleanup_v1"
+            generated_at = (Get-Date).ToUniversalTime().ToString("o")
+            run_id = "$RunId"
+            data_asof = "$($metadata.max_trade_date)"
+            data_continuity_audit_json_path = "$($dataContinuity.json_path)"
+            removed_files = $cleanupRecords
+            protected_roots = @("data\raw", "data\core", "data\research")
+        } |
+            ConvertTo-Json -Depth 8 |
+            Set-Content -Path $cleanupManifestPath -Encoding UTF8
+        Write-Host "Official daily cleanup manifest: $cleanupManifestPath"
+    }
+}
+
+if ($runOptionFactorProxyEffective) {
+    $optionFactorStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $optionCoreValue = Get-Variable -Name "optionCore" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -eq $optionCoreValue -or [string]::IsNullOrWhiteSpace("$($optionCoreValue.core_option_quote_path)")) {
+        throw "RunOptionFactorProxy requires option core ingest output."
+    }
+    $optionFactorArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-option-factor-proxy",
+        "--option-core-path",
+        "$($optionCoreValue.core_option_quote_path)",
+        "--core-quote-path",
+        "$($metadata.core_path)",
+        "--output-dir",
+        "data\research\CF\option_factors",
+        "--report-output-dir",
+        "reports\research\option_factors",
+        "--run-id",
+        "$RunId"
+    )
+    if (-not $RunWeeklyResearchPack.IsPresent) {
+        $optionFactorArgs += @("--incremental")
+    }
+    $optionFactorJson = & py @optionFactorArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF option factor proxy failed."
+    }
+    $optionFactor = $optionFactorJson | ConvertFrom-Json
+    $effectiveOptionFactorPath = "$($optionFactor.factor_parquet_path)"
+    Write-Host "Option factor proxy: $($optionFactor.markdown_path)"
+    Write-Host "Option factor build mode: $($optionFactor.build_mode), elapsed seconds: $([math]::Round($optionFactorStopwatch.Elapsed.TotalSeconds, 2))"
+}
+
+# Reuse the latest option-factor artifact when the daily run does not rebuild it.
+if ([string]::IsNullOrWhiteSpace($effectiveOptionFactorPath)) {
+    if (Test-Path "data\research\CF\option_factors") {
+        $effectiveOptionFactorPath = Get-LatestResearchPath -Directory "data\research\CF\option_factors" -Pattern "CF_*_option_factor_proxy_daily.parquet"
+    }
+}
+
 $signalMatrixArgs = @(
     "-3.12",
     "-m",
@@ -249,10 +479,10 @@ if (-not [string]::IsNullOrWhiteSpace($TrendRuleCandidatePath)) {
         "$TrendRuleCandidatePath"
     )
 }
-if (-not [string]::IsNullOrWhiteSpace($OptionFactorPath)) {
+if (-not [string]::IsNullOrWhiteSpace($effectiveOptionFactorPath)) {
     $signalMatrixArgs += @(
         "--option-factor-path",
-        "$OptionFactorPath"
+        "$effectiveOptionFactorPath"
     )
 }
 $signalMatrixJson = & py @signalMatrixArgs
@@ -262,6 +492,61 @@ if ($LASTEXITCODE -ne 0) {
 $signalMatrix = $signalMatrixJson | ConvertFrom-Json
 Write-Host "Signal matrix: $($signalMatrix.markdown_path)"
 Write-Host "Signal matrix latest snapshot: $($signalMatrix.latest_snapshot_json_path)"
+
+if ($runStateUpgradeEffective) {
+    $dualPriceJson = & py -3.12 -m cotton_factor.cli.main research build-cf-dual-price-state `
+        --core-quote-path "$($metadata.core_path)" `
+        --output-dir "data\research\CF\dual_price_state" `
+        --report-output-dir "reports\research\dual_price_state" `
+        --run-id "$RunId"
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF dual-price state failed."
+    }
+    $dualPriceState = $dualPriceJson | ConvertFrom-Json
+    Write-Host "Dual-price state: $($dualPriceState.markdown_path)"
+
+    $chainOiJson = & py -3.12 -m cotton_factor.cli.main research build-cf-chain-oi-structure `
+        --core-quote-path "$($metadata.core_path)" `
+        --output-dir "data\research\CF\chain_oi_structure" `
+        --report-output-dir "reports\research\chain_oi_structure" `
+        --run-id "$RunId"
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF chain OI structure failed."
+    }
+    $chainOiStructure = $chainOiJson | ConvertFrom-Json
+    Write-Host "Chain OI structure: $($chainOiStructure.markdown_path)"
+
+    if (-not [string]::IsNullOrWhiteSpace($effectiveOptionFactorPath)) {
+        $optionStructureJson = & py -3.12 -m cotton_factor.cli.main research build-cf-option-structure-research `
+            --option-factor-path "$effectiveOptionFactorPath" `
+            --signal-matrix-path "$($signalMatrix.matrix_parquet_path)" `
+            --output-dir "data\research\CF\option_structure" `
+            --report-output-dir "reports\research\option_structure" `
+            --run-id "$RunId"
+        if ($LASTEXITCODE -ne 0) {
+            throw "CF option structure research failed."
+        }
+        $optionStructure = $optionStructureJson | ConvertFrom-Json
+        Write-Host "Option structure: $($optionStructure.markdown_path)"
+
+        $trendPhaseV2Json = & py -3.12 -m cotton_factor.cli.main research build-cf-trend-phase-v2 `
+            --dual-price-path "$($dualPriceState.daily_parquet_path)" `
+            --chain-oi-path "$($chainOiStructure.daily_parquet_path)" `
+            --option-structure-path "$($optionStructure.daily_parquet_path)" `
+            --signal-matrix-path "$($signalMatrix.matrix_parquet_path)" `
+            --output-dir "data\research\CF\trend_phase_v2" `
+            --report-output-dir "reports\research\trend_phase_v2" `
+            --run-id "$RunId"
+        if ($LASTEXITCODE -ne 0) {
+            throw "CF trend phase v2 failed."
+        }
+        $trendPhaseV2 = $trendPhaseV2Json | ConvertFrom-Json
+        Write-Host "Trend phase v2: $($trendPhaseV2.markdown_path)"
+    }
+    else {
+        Write-Warning "R75-R77 skipped because no option factor proxy path is available."
+    }
+}
 
 $latestSignalArgs = @(
     "-3.12",
@@ -341,30 +626,35 @@ if ($trendBoard.trend_quality_calibration_context -and $trendBoard.trend_quality
     Write-Host "Trend quality calibration: $($trendBoard.trend_quality_calibration_context.latest_score_context_label) $($trendBoard.trend_quality_calibration_context.alignment_status)"
 }
 
-$dailyAuditArgs = @(
-    "-3.12",
-    "-m",
-    "cotton_factor.cli.main",
-    "research",
-    "build-cf-daily-operation-audit",
-    "--latest-signal-json-path",
-    "$($latestSignal.json_path)",
-    "--trend-board-json-path",
-    "$($trendBoard.json_path)",
-    "--core-quote-path",
-    "$($metadata.core_path)",
-    "--output-root",
-    "runs\daily",
-    "--run-id",
-    "$RunId"
-)
-$dailyAuditJson = & py @dailyAuditArgs
-if ($LASTEXITCODE -ne 0) {
-    throw "CF daily operation audit failed."
+if ($runDailyOperationAuditEffective) {
+    $dailyAuditArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-daily-operation-audit",
+        "--latest-signal-json-path",
+        "$($latestSignal.json_path)",
+        "--trend-board-json-path",
+        "$($trendBoard.json_path)",
+        "--core-quote-path",
+        "$($metadata.core_path)",
+        "--output-root",
+        "runs\daily",
+        "--run-id",
+        "$RunId"
+    )
+    $dailyAuditJson = & py @dailyAuditArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF daily operation audit failed."
+    }
+    $dailyAudit = $dailyAuditJson | ConvertFrom-Json
+    Write-Host "Daily operation audit: $($dailyAudit.markdown_path)"
+    Write-Host "Daily operation status: $($dailyAudit.operation_status), warnings=$($dailyAudit.warning_count)"
 }
-$dailyAudit = $dailyAuditJson | ConvertFrom-Json
-Write-Host "Daily operation audit: $($dailyAudit.markdown_path)"
-Write-Host "Daily operation status: $($dailyAudit.operation_status), warnings=$($dailyAudit.warning_count)"
+else {
+    Write-Host "Daily operation audit: skipped; run it with -RunDailyOperationAudit or -RunWeeklyResearchPack."
+}
 
 if ($runHistoricalEvidenceEffective) {
     $historicalEvidenceArgs = @(
@@ -396,6 +686,118 @@ if ($runHistoricalEvidenceEffective) {
     }
     $historicalEvidence = $historicalEvidenceJson | ConvertFrom-Json
     Write-Host "Historical evidence pack: $($historicalEvidence.markdown_path)"
+}
+
+if ($runMemberPositionResearchEffective) {
+    # R83 属于周度重研究；只有显式周更下载时才额外拉取会员持仓文件。
+    if ($DownloadOfficialDaily.IsPresent) {
+        $memberFetchArgs = @(
+            "-3.12",
+            "-m",
+            "cotton_factor.cli.main",
+            "research",
+            "fetch-cf-official-member-position",
+            "--date",
+            "$DownloadDate",
+            "--source-dir",
+            "$MemberPositionSourceDir",
+            "--report-output-dir",
+            "reports\research\member_position_ingest"
+        )
+        if ($OverwriteOfficialDaily.IsPresent) {
+            $memberFetchArgs += @("--overwrite")
+        }
+        $memberPositionFetchJson = & py @memberFetchArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "CF official member-position download failed."
+        }
+        $memberPositionFetch = $memberPositionFetchJson | ConvertFrom-Json
+        Write-Host "Member-position file: $($memberPositionFetch.output_path)"
+    }
+
+    $memberIngestArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "connect-cf-member-position-history",
+        "--source-dir",
+        "$MemberPositionSourceDir",
+        "--report-output-dir",
+        "reports\research\member_position_ingest",
+        "--run-id",
+        "$($RunId)_member_ingest"
+    )
+    $memberPositionIngestJson = & py @memberIngestArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF member-position core ingest failed."
+    }
+    $memberPositionIngest = $memberPositionIngestJson | ConvertFrom-Json
+
+    if (-not [string]::IsNullOrWhiteSpace("$($memberPositionIngest.core_member_position_path)")) {
+        $memberResearchArgs = @(
+            "-3.12",
+            "-m",
+            "cotton_factor.cli.main",
+            "research",
+            "build-cf-member-position-research",
+            "--member-position-path",
+            "$($memberPositionIngest.core_member_position_path)",
+            "--core-quote-path",
+            "$($metadata.core_path)",
+            "--output-dir",
+            "data\research\CF\member_position",
+            "--report-output-dir",
+            "reports\research\member_position",
+            "--run-id",
+            "$($RunId)_member_research"
+        )
+        $historicalEvidenceValue = Get-Variable -Name "historicalEvidence" -ValueOnly -ErrorAction SilentlyContinue
+        if ($null -ne $historicalEvidenceValue -and -not [string]::IsNullOrWhiteSpace("$($historicalEvidenceValue.validation_daily_path)")) {
+            $memberResearchArgs += @(
+                "--validation-daily-path",
+                "$($historicalEvidenceValue.validation_daily_path)"
+            )
+        }
+        $memberPositionResearchJson = & py @memberResearchArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "CF member-position research failed."
+        }
+        $memberPositionResearch = $memberPositionResearchJson | ConvertFrom-Json
+        Write-Host "Member-position research: $($memberPositionResearch.markdown_path)"
+    }
+    else {
+        Write-Host "Member-position research skipped: MISSING_MEMBER_POSITION_HISTORY."
+    }
+}
+
+if ($runOptionStrikePositionResearchEffective) {
+    # R84 使用已有 option core；只在周度/显式研究链运行，避免拖慢日更。
+    $optionStrikeArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-option-strike-position-research",
+        "--option-core-path",
+        "data\core\CF\core_option_quote_daily.parquet",
+        "--core-quote-path",
+        "$($metadata.core_path)",
+        "--option-expiry-path",
+        "configs\products\CF_OPTION_EXPIRY_OFFICIAL.csv",
+        "--output-dir",
+        "data\research\CF\option_strike_position",
+        "--report-output-dir",
+        "reports\research\option_strike_position",
+        "--run-id",
+        "$($RunId)_option_strike"
+    )
+    $optionStrikePositionJson = & py @optionStrikeArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF option strike-position research failed."
+    }
+    $optionStrikePosition = $optionStrikePositionJson | ConvertFrom-Json
+    Write-Host "Option strike-position research: $($optionStrikePosition.markdown_path)"
 }
 
 if ($runEventExplanationEffective) {
@@ -459,6 +861,180 @@ if ($runEventThresholdSensitivityEffective) {
     }
     $eventThresholdSensitivity = $eventThresholdSensitivityJson | ConvertFrom-Json
     Write-Host "Event threshold sensitivity: $($eventThresholdSensitivity.markdown_path)"
+}
+
+$trendPhaseV2Value = Get-Variable -Name "trendPhaseV2" -ValueOnly -ErrorAction SilentlyContinue
+if ($runStateUpgradeEffective -and $null -ne $trendPhaseV2Value) {
+    $watchWindowArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-current-watch-window",
+        "--latest-signal-json-path",
+        "$($latestSignal.json_path)",
+        "--dual-price-path",
+        "$($dualPriceState.daily_parquet_path)",
+        "--chain-oi-path",
+        "$($chainOiStructure.daily_parquet_path)",
+        "--option-structure-path",
+        "$($optionStructure.daily_parquet_path)",
+        "--trend-phase-v2-path",
+        "$($trendPhaseV2.daily_parquet_path)",
+        "--core-quote-path",
+        "$($metadata.core_path)",
+        "--output-dir",
+        "data\research\CF\current_watch_window",
+        "--report-output-dir",
+        "reports\research\current_watch_window",
+        "--daily-output-root",
+        "runs\daily",
+        "--run-id",
+        "$RunId"
+    )
+    $latestPlaybookJsonPath = Get-LatestResearchPath `
+        -Directory "reports\research\futures_option_divergence_playbook" `
+        -Pattern "CF_*_futures_option_playbook.json"
+    if (-not [string]::IsNullOrWhiteSpace($latestPlaybookJsonPath)) {
+        $watchWindowArgs += @("--playbook-json-path", "$latestPlaybookJsonPath")
+    }
+    $watchWindowJson = & py @watchWindowArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF current watch window failed."
+    }
+    $currentWatchWindow = $watchWindowJson | ConvertFrom-Json
+    Write-Host "Current watch window: $($currentWatchWindow.markdown_path)"
+}
+
+if ($runFuturesOptionDivergenceEffective) {
+    $signalMatrixValidationPath = ""
+    $historicalEvidenceValue = Get-Variable -Name "historicalEvidence" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $historicalEvidenceValue -and $historicalEvidenceValue.validation_daily_path) {
+        $signalMatrixValidationPath = "$($historicalEvidenceValue.validation_daily_path)"
+    }
+    if ([string]::IsNullOrWhiteSpace($signalMatrixValidationPath)) {
+        $signalMatrixValidationPath = Get-LatestResearchPath `
+            -Directory "data\research\CF\signal_matrix_validation" `
+            -Pattern "CF_*_signal_matrix_validation_daily.parquet"
+    }
+    if ([string]::IsNullOrWhiteSpace($signalMatrixValidationPath)) {
+        $signalValidationArgs = @(
+            "-3.12",
+            "-m",
+            "cotton_factor.cli.main",
+            "research",
+            "build-cf-signal-matrix-validation",
+            "--signal-matrix-path",
+            "$($signalMatrix.matrix_parquet_path)",
+            "--core-quote-path",
+            "$($metadata.core_path)",
+            "--output-dir",
+            "data\research\CF\signal_matrix_validation",
+            "--report-output-dir",
+            "reports\research\signal_matrix_validation",
+            "--run-id",
+            "$RunId"
+        )
+        $signalMatrixValidationJson = & py @signalValidationArgs
+        if ($LASTEXITCODE -ne 0) {
+            throw "CF signal matrix validation failed for futures-option divergence."
+        }
+        $signalMatrixValidation = $signalMatrixValidationJson | ConvertFrom-Json
+        $signalMatrixValidationPath = "$($signalMatrixValidation.daily_parquet_path)"
+        Write-Host "Signal matrix validation: $($signalMatrixValidation.markdown_path)"
+    }
+
+    $eventLifecycleTbmPath = Get-LatestResearchPath `
+        -Directory "data\research\CF\event_lifecycle" `
+        -Pattern "CF_*_event_lifecycle_tbm_labels.parquet"
+
+    $futuresOptionDivergenceArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-futures-option-divergence-research",
+        "--signal-matrix-validation-path",
+        "$signalMatrixValidationPath",
+        "--output-dir",
+        "data\research\CF\futures_option_divergence",
+        "--report-output-dir",
+        "reports\research\futures_option_divergence",
+        "--run-id",
+        "$RunId",
+        "--horizons",
+        "1,3,5,10,20,40"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($effectiveOptionFactorPath)) {
+        $futuresOptionDivergenceArgs += @(
+            "--option-factor-path",
+            "$effectiveOptionFactorPath"
+        )
+    }
+    if (-not [string]::IsNullOrWhiteSpace($eventLifecycleTbmPath)) {
+        $futuresOptionDivergenceArgs += @(
+            "--event-lifecycle-tbm-path",
+            "$eventLifecycleTbmPath"
+        )
+    }
+    $futuresOptionDivergenceJson = & py @futuresOptionDivergenceArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF futures-option divergence research failed."
+    }
+    $futuresOptionDivergence = $futuresOptionDivergenceJson | ConvertFrom-Json
+    Write-Host "Futures-option divergence: $($futuresOptionDivergence.markdown_path)"
+}
+
+if ($runFuturesOptionPlaybookEffective) {
+    $futuresOptionDivergenceValue = Get-Variable -Name "futuresOptionDivergence" -ValueOnly -ErrorAction SilentlyContinue
+    $futuresOptionEventPath = ""
+    $futuresOptionNodeSummaryPath = ""
+    if ($null -ne $futuresOptionDivergenceValue) {
+        if ($futuresOptionDivergenceValue.event_parquet_path) {
+            $futuresOptionEventPath = "$($futuresOptionDivergenceValue.event_parquet_path)"
+        }
+        if ($futuresOptionDivergenceValue.summary_by_node_parquet_path) {
+            $futuresOptionNodeSummaryPath = "$($futuresOptionDivergenceValue.summary_by_node_parquet_path)"
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($futuresOptionEventPath)) {
+        $futuresOptionEventPath = Get-LatestResearchPath `
+            -Directory "data\research\CF\futures_option_divergence" `
+            -Pattern "CF_*_futures_option_divergence_divergence_event_daily.parquet"
+    }
+    if ([string]::IsNullOrWhiteSpace($futuresOptionNodeSummaryPath)) {
+        $futuresOptionNodeSummaryPath = Get-LatestResearchPath `
+            -Directory "data\research\CF\futures_option_divergence" `
+            -Pattern "CF_*_futures_option_divergence_summary_by_node.parquet"
+    }
+    if ([string]::IsNullOrWhiteSpace($futuresOptionEventPath) -or [string]::IsNullOrWhiteSpace($futuresOptionNodeSummaryPath)) {
+        throw "CF futures-option playbook requires R69 event and node summary outputs."
+    }
+    $futuresOptionPlaybookArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-futures-option-divergence-playbook",
+        "--event-path",
+        "$futuresOptionEventPath",
+        "--node-summary-path",
+        "$futuresOptionNodeSummaryPath",
+        "--latest-signal-json-path",
+        "$($latestSignal.json_path)",
+        "--output-dir",
+        "data\research\CF\futures_option_divergence_playbook",
+        "--report-output-dir",
+        "reports\research\futures_option_divergence_playbook",
+        "--run-id",
+        "$RunId"
+    )
+    $futuresOptionPlaybookJson = & py @futuresOptionPlaybookArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF futures-option divergence playbook failed."
+    }
+    $futuresOptionPlaybook = $futuresOptionPlaybookJson | ConvertFrom-Json
+    Write-Host "Futures-option playbook: $($futuresOptionPlaybook.markdown_path)"
 }
 
 if ($runValidatedBriefEffective) {
@@ -542,6 +1118,70 @@ if ($runValidatedBriefEffective) {
             )
         }
     }
+    $futuresOptionDivergenceValue = Get-Variable -Name "futuresOptionDivergence" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $futuresOptionDivergenceValue -and $futuresOptionDivergenceValue.json_path) {
+        $validatedBriefArgs += @(
+            "--futures-option-divergence-json-path",
+            "$($futuresOptionDivergenceValue.json_path)"
+        )
+    }
+    elseif (Test-Path "reports\research\futures_option_divergence") {
+        $latestFuturesOptionDivergenceJsonPath = Get-LatestResearchPath -Directory "reports\research\futures_option_divergence" -Pattern "CF_*_futures_option_divergence.json"
+        if (-not [string]::IsNullOrWhiteSpace($latestFuturesOptionDivergenceJsonPath)) {
+            $validatedBriefArgs += @(
+                "--futures-option-divergence-json-path",
+                "$latestFuturesOptionDivergenceJsonPath"
+            )
+        }
+    }
+    $futuresOptionPlaybookValue = Get-Variable -Name "futuresOptionPlaybook" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $futuresOptionPlaybookValue -and $futuresOptionPlaybookValue.json_path) {
+        $validatedBriefArgs += @(
+            "--futures-option-playbook-json-path",
+            "$($futuresOptionPlaybookValue.json_path)"
+        )
+    }
+    elseif (Test-Path "reports\research\futures_option_divergence_playbook") {
+        $latestFuturesOptionPlaybookJsonPath = Get-LatestResearchPath `
+            -Directory "reports\research\futures_option_divergence_playbook" `
+            -Pattern "CF_*_futures_option_playbook.json"
+        if (-not [string]::IsNullOrWhiteSpace($latestFuturesOptionPlaybookJsonPath)) {
+            $validatedBriefArgs += @(
+                "--futures-option-playbook-json-path",
+                "$latestFuturesOptionPlaybookJsonPath"
+            )
+        }
+    }
+    $currentWatchWindowValue = Get-Variable -Name "currentWatchWindow" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $currentWatchWindowValue -and $currentWatchWindowValue.json_path) {
+        $validatedBriefArgs += @(
+            "--current-watch-window-json-path",
+            "$($currentWatchWindowValue.json_path)"
+        )
+    }
+    # R79/R81 只接入与最新交易日完全一致的周度证据，避免旧后验报告污染当前结论。
+    if (Test-Path "reports\research\state_transition") {
+        $latestStateTransitionJsonPath = Get-LatestResearchPath `
+            -Directory "reports\research\state_transition" `
+            -Pattern "CF_*_$($metadata.max_trade_date)_state_transition_competing_risk.json"
+        if (-not [string]::IsNullOrWhiteSpace($latestStateTransitionJsonPath)) {
+            $validatedBriefArgs += @(
+                "--state-transition-json-path",
+                "$latestStateTransitionJsonPath"
+            )
+        }
+    }
+    if (Test-Path "reports\research\option_volatility") {
+        $latestOptionVolatilityJsonPath = Get-LatestResearchPath `
+            -Directory "reports\research\option_volatility" `
+            -Pattern "CF_*_$($metadata.max_trade_date)_option_volatility.json"
+        if (-not [string]::IsNullOrWhiteSpace($latestOptionVolatilityJsonPath)) {
+            $validatedBriefArgs += @(
+                "--option-volatility-json-path",
+                "$latestOptionVolatilityJsonPath"
+            )
+        }
+    }
     $validatedBriefJson = & py @validatedBriefArgs
     if ($LASTEXITCODE -ne 0) {
         throw "CF validated research brief failed."
@@ -587,6 +1227,48 @@ if ($runPublishPackEffective) {
         $publishPackArgs += @(
             "--event-summary-path",
             "$($eventExplanationValue.summary_parquet_path)"
+        )
+    }
+    $futuresOptionDivergenceValue = Get-Variable -Name "futuresOptionDivergence" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $futuresOptionDivergenceValue -and $futuresOptionDivergenceValue.json_path) {
+        $publishPackArgs += @(
+            "--futures-option-divergence-json-path",
+            "$($futuresOptionDivergenceValue.json_path)"
+        )
+    }
+    elseif (Test-Path "reports\research\futures_option_divergence") {
+        # 日更未重跑 R69 时，发布包必须继续引用最近一次历史后验证据，不能退化为空上下文。
+        $latestFuturesOptionDivergenceJsonPath = Get-LatestResearchPath -Directory "reports\research\futures_option_divergence" -Pattern "CF_*_futures_option_divergence.json"
+        if (-not [string]::IsNullOrWhiteSpace($latestFuturesOptionDivergenceJsonPath)) {
+            $publishPackArgs += @(
+                "--futures-option-divergence-json-path",
+                "$latestFuturesOptionDivergenceJsonPath"
+            )
+        }
+    }
+    $futuresOptionPlaybookValue = Get-Variable -Name "futuresOptionPlaybook" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $futuresOptionPlaybookValue -and $futuresOptionPlaybookValue.json_path) {
+        $publishPackArgs += @(
+            "--futures-option-playbook-json-path",
+            "$($futuresOptionPlaybookValue.json_path)"
+        )
+    }
+    elseif (Test-Path "reports\research\futures_option_divergence_playbook") {
+        $latestFuturesOptionPlaybookJsonPath = Get-LatestResearchPath `
+            -Directory "reports\research\futures_option_divergence_playbook" `
+            -Pattern "CF_*_futures_option_playbook.json"
+        if (-not [string]::IsNullOrWhiteSpace($latestFuturesOptionPlaybookJsonPath)) {
+            $publishPackArgs += @(
+                "--futures-option-playbook-json-path",
+                "$latestFuturesOptionPlaybookJsonPath"
+            )
+        }
+    }
+    $currentWatchWindowValue = Get-Variable -Name "currentWatchWindow" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $currentWatchWindowValue -and $currentWatchWindowValue.json_path) {
+        $publishPackArgs += @(
+            "--current-watch-window-json-path",
+            "$($currentWatchWindowValue.json_path)"
         )
     }
     $publishPackJson = & py @publishPackArgs
@@ -643,9 +1325,14 @@ if ($runWeeklyManifestEffective) {
     $historicalEvidenceValue = Get-Variable -Name "historicalEvidence" -ValueOnly -ErrorAction SilentlyContinue
     $eventExplanationValue = Get-Variable -Name "eventExplanation" -ValueOnly -ErrorAction SilentlyContinue
     $eventThresholdSensitivityValue = Get-Variable -Name "eventThresholdSensitivity" -ValueOnly -ErrorAction SilentlyContinue
+    $futuresOptionDivergenceValue = Get-Variable -Name "futuresOptionDivergence" -ValueOnly -ErrorAction SilentlyContinue
+    $futuresOptionPlaybookValue = Get-Variable -Name "futuresOptionPlaybook" -ValueOnly -ErrorAction SilentlyContinue
     $validatedBriefValue = Get-Variable -Name "validatedBrief" -ValueOnly -ErrorAction SilentlyContinue
     $publishPackValue = Get-Variable -Name "publishPack" -ValueOnly -ErrorAction SilentlyContinue
     $pipelineValue = Get-Variable -Name "pipeline" -ValueOnly -ErrorAction SilentlyContinue
+    $dailyAuditValue = Get-Variable -Name "dailyAudit" -ValueOnly -ErrorAction SilentlyContinue
+    $memberPositionResearchValue = Get-Variable -Name "memberPositionResearch" -ValueOnly -ErrorAction SilentlyContinue
+    $optionStrikePositionValue = Get-Variable -Name "optionStrikePosition" -ValueOnly -ErrorAction SilentlyContinue
 
     $weeklySteps = [ordered]@{
         signal_matrix = [ordered]@{
@@ -664,12 +1351,18 @@ if ($runWeeklyManifestEffective) {
             json_path = "$($trendBoard.json_path)"
             markdown_path = "$($trendBoard.markdown_path)"
         }
-        daily_operation_audit = [ordered]@{
+    }
+
+    if ($null -ne $dailyAuditValue) {
+        $weeklySteps["daily_operation_audit"] = [ordered]@{
             status = "completed"
-            operation_status = "$($dailyAudit.operation_status)"
-            warning_count = $dailyAudit.warning_count
-            markdown_path = "$($dailyAudit.markdown_path)"
+            operation_status = "$($dailyAuditValue.operation_status)"
+            warning_count = $dailyAuditValue.warning_count
+            markdown_path = "$($dailyAuditValue.markdown_path)"
         }
+    }
+    else {
+        $weeklySteps["daily_operation_audit"] = [ordered]@{ status = "skipped" }
     }
 
     if ($null -ne $historicalEvidenceValue) {
@@ -682,6 +1375,43 @@ if ($runWeeklyManifestEffective) {
     }
     else {
         $weeklySteps["historical_evidence"] = [ordered]@{ status = "skipped" }
+    }
+
+    if ($null -ne $memberPositionResearchValue) {
+        $weeklySteps["member_position_research"] = [ordered]@{
+            status = "completed"
+            daily_parquet_path = "$($memberPositionResearchValue.daily_parquet_path)"
+            member_detail_parquet_path = "$($memberPositionResearchValue.member_detail_parquet_path)"
+            roll_parquet_path = "$($memberPositionResearchValue.roll_parquet_path)"
+            validation_parquet_path = "$($memberPositionResearchValue.validation_parquet_path)"
+            markdown_path = "$($memberPositionResearchValue.markdown_path)"
+            history_date_count = $memberPositionResearchValue.history_date_count
+            latest_main_contract = "$($memberPositionResearchValue.latest_main_contract)"
+            latest_member_direction = "$($memberPositionResearchValue.latest_member_direction)"
+            warning_count = $memberPositionResearchValue.warning_count
+        }
+    }
+    else {
+        $weeklySteps["member_position_research"] = [ordered]@{ status = "skipped" }
+    }
+
+    if ($null -ne $optionStrikePositionValue) {
+        $weeklySteps["option_strike_position_research"] = [ordered]@{
+            status = "completed"
+            daily_parquet_path = "$($optionStrikePositionValue.daily_parquet_path)"
+            strike_parquet_path = "$($optionStrikePositionValue.strike_parquet_path)"
+            validation_summary_parquet_path = "$($optionStrikePositionValue.validation_summary_parquet_path)"
+            markdown_path = "$($optionStrikePositionValue.markdown_path)"
+            latest_main_contract = "$($optionStrikePositionValue.latest_main_contract)"
+            latest_call_wall = $optionStrikePositionValue.latest_call_wall
+            latest_put_wall = $optionStrikePositionValue.latest_put_wall
+            latest_max_pain = $optionStrikePositionValue.latest_max_pain
+            latest_key_level_state = "$($optionStrikePositionValue.latest_key_level_state)"
+            warning_count = $optionStrikePositionValue.warning_count
+        }
+    }
+    else {
+        $weeklySteps["option_strike_position_research"] = [ordered]@{ status = "skipped" }
     }
 
     if ($null -ne $eventExplanationValue) {
@@ -715,6 +1445,43 @@ if ($runWeeklyManifestEffective) {
         $weeklySteps["event_threshold_sensitivity"] = [ordered]@{ status = "skipped" }
     }
 
+    if ($null -ne $futuresOptionDivergenceValue) {
+        $weeklySteps["futures_option_divergence"] = [ordered]@{
+            status = "completed"
+            event_parquet_path = "$($futuresOptionDivergenceValue.event_parquet_path)"
+            summary_by_horizon_parquet_path = "$($futuresOptionDivergenceValue.summary_by_horizon_parquet_path)"
+            summary_by_node_parquet_path = "$($futuresOptionDivergenceValue.summary_by_node_parquet_path)"
+            resolution_timing_parquet_path = "$($futuresOptionDivergenceValue.resolution_timing_parquet_path)"
+            markdown_path = "$($futuresOptionDivergenceValue.markdown_path)"
+            json_path = "$($futuresOptionDivergenceValue.json_path)"
+            directional_divergence_count = $futuresOptionDivergenceValue.directional_divergence_count
+            average_resolution_horizon = $futuresOptionDivergenceValue.average_resolution_horizon
+            main_winner_label = "$($futuresOptionDivergenceValue.main_winner_label)"
+        }
+    }
+    else {
+        $weeklySteps["futures_option_divergence"] = [ordered]@{ status = "skipped" }
+    }
+
+    if ($null -ne $futuresOptionPlaybookValue) {
+        $weeklySteps["futures_option_playbook"] = [ordered]@{
+            status = "completed"
+            node_table_parquet_path = "$($futuresOptionPlaybookValue.node_table_parquet_path)"
+            current_mapping_parquet_path = "$($futuresOptionPlaybookValue.current_mapping_parquet_path)"
+            markdown_path = "$($futuresOptionPlaybookValue.markdown_path)"
+            json_path = "$($futuresOptionPlaybookValue.json_path)"
+            manifest_path = "$($futuresOptionPlaybookValue.manifest_path)"
+            node_count = $futuresOptionPlaybookValue.node_count
+            ready_node_count = $futuresOptionPlaybookValue.ready_node_count
+            directional_node_count = $futuresOptionPlaybookValue.directional_node_count
+            current_mapping_count = $futuresOptionPlaybookValue.current_mapping_count
+            warning_count = $futuresOptionPlaybookValue.warning_count
+        }
+    }
+    else {
+        $weeklySteps["futures_option_playbook"] = [ordered]@{ status = "skipped" }
+    }
+
     if ($null -ne $validatedBriefValue) {
         $weeklySteps["validated_brief"] = [ordered]@{
             status = "completed"
@@ -723,6 +1490,9 @@ if ($runWeeklyManifestEffective) {
             manifest_path = "$($validatedBriefValue.manifest_path)"
             event_detail_path = "$($validatedBriefValue.event_detail_path)"
             event_threshold_summary_path = "$($validatedBriefValue.event_threshold_summary_path)"
+            futures_option_divergence_json_path = "$($validatedBriefValue.futures_option_divergence_json_path)"
+            state_transition_json_path = "$($validatedBriefValue.state_transition_json_path)"
+            option_volatility_json_path = "$($validatedBriefValue.option_volatility_json_path)"
         }
     }
     else {
@@ -737,6 +1507,7 @@ if ($runWeeklyManifestEffective) {
             chart_pack_zip_path = "$($publishPackValue.chart_pack_zip_path)"
             manifest_path = "$($publishPackValue.manifest_path)"
             validated_event_context = $publishPackValue.validated_event_context
+            futures_option_divergence_context = $publishPackValue.futures_option_divergence_context
         }
     }
     else {
@@ -766,8 +1537,13 @@ if ($runWeeklyManifestEffective) {
             historical_evidence = $runHistoricalEvidenceEffective
             event_explanation = $runEventExplanationEffective
             event_threshold_sensitivity = $runEventThresholdSensitivityEffective
+            futures_option_divergence = $runFuturesOptionDivergenceEffective
+            futures_option_playbook = $runFuturesOptionPlaybookEffective
+            member_position_research = $runMemberPositionResearchEffective
+            option_strike_position_research = $runOptionStrikePositionResearchEffective
             validated_brief = $runValidatedBriefEffective
             publish_pack = $runPublishPackEffective
+            daily_operation_audit = $runDailyOperationAuditEffective
         }
         steps = $weeklySteps
         research_boundary = [ordered]@{
@@ -779,9 +1555,14 @@ if ($runWeeklyManifestEffective) {
                 "historical_evidence_interpretation",
                 "historical_event_interpretation",
                 "event_thresholds",
+                "futures_option_divergence_interpretation",
+                "futures_option_playbook_interpretation",
+                "member_position_is_member_level_not_customer_identity",
+                "member_position_roll_migration_interpretation",
+                "option_open_interest_long_short_ownership_unknown",
+                "call_put_wall_interpretation",
                 "fundamental_context_interpretation",
-                "publish_wording",
-                "chart_readability"
+                "publish_wording"
             )
         }
     }
@@ -810,3 +1591,5 @@ if ($runWeeklyManifestEffective) {
     $weeklyAudit = $weeklyAuditJson | ConvertFrom-Json
     Write-Host "Weekly research audit: $($weeklyAudit.markdown_path)"
 }
+
+Write-Host "CF daily update elapsed seconds: $([math]::Round($dailyRunStopwatch.Elapsed.TotalSeconds, 2))"

@@ -83,6 +83,35 @@ def test_connect_cf_official_history_from_local_product_excel(tmp_path: Path) ->
     assert set(core["source_snapshot_id"].str.contains("CFFUTURES2026.xlsx")) == {True}
 
 
+def test_connect_cf_official_history_from_local_daily_excel_title_date(
+    tmp_path: Path,
+) -> None:
+    source_dir = tmp_path / "incoming" / "CF" / "history" / "daily" / "2026" / "20260706"
+    source_dir.mkdir(parents=True)
+    excel_path = source_dir / "FutureDataDailyCF.xlsx"
+    _official_daily_future_excel(excel_path)
+
+    result = connect_cf_official_history(
+        years=(2026,),
+        source_dir=source_dir,
+        raw_root=tmp_path / "raw",
+        core_output_dir=tmp_path / "core",
+        report_output_dir=tmp_path / "reports",
+        run_id="official_daily_excel_test",
+    )
+
+    assert result.passed
+    assert result.status == "COMPLETED"
+    assert result.row_count == 2
+    assert result.records[0].source_path == excel_path.resolve()
+
+    core = pd.read_parquet(result.core_output_path)
+    assert list(core["trade_date"]) == ["2026-07-06", "2026-07-06"]
+    assert list(core["contract_code"]) == ["CF607", "CF609"]
+    assert list(core["settle"]) == [16045.0, 16295.0]
+    assert list(core["open_interest"]) == [17335, 581306]
+
+
 def test_connect_cf_official_history_requires_local_or_download(tmp_path: Path) -> None:
     result = connect_cf_official_history(
         years=(2024,),
@@ -200,6 +229,69 @@ def _official_history_excel(year: int, path: Path) -> None:
     )
     with pd.ExcelWriter(path) as writer:
         pd.DataFrame([["郑州商品交易所期货历史行情"]]).to_excel(
+            writer,
+            index=False,
+            header=False,
+            sheet_name="sheet1",
+        )
+        frame.to_excel(writer, index=False, startrow=1, sheet_name="sheet1")
+
+
+def _official_daily_future_excel(path: Path) -> None:
+    frame = pd.DataFrame(
+        [
+            [
+                "CF607",
+                "16,030.00",
+                "16,040.00",
+                "16,100.00",
+                "16,040.00",
+                "16,100.00",
+                "16,045.00",
+                "70.00",
+                "15.00",
+                "112",
+                "17,335",
+                "-112",
+                "898.57",
+                "15,760.00",
+            ],
+            [
+                "CF609",
+                "16,215.00",
+                "16,260.00",
+                "16,355.00",
+                "16,235.00",
+                "16,265.00",
+                "16,295.00",
+                "50.00",
+                "80.00",
+                "318,578",
+                "581,306",
+                "-2,010",
+                "2,595,473.12",
+                "",
+            ],
+        ],
+        columns=[
+            "合约代码",
+            "昨结算",
+            "今开盘",
+            "最高价",
+            "最低价",
+            "今收盘",
+            "今结算",
+            "涨跌1",
+            "涨跌2",
+            "成交量(手)",
+            "持仓量",
+            "增减量",
+            "成交额(万元)",
+            "交割结算价",
+        ],
+    )
+    with pd.ExcelWriter(path) as writer:
+        pd.DataFrame([["郑州商品交易所期货每日行情表(2026-07-06)"]]).to_excel(
             writer,
             index=False,
             header=False,

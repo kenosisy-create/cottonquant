@@ -20,7 +20,7 @@ from cotton_factor.research_workbench.option_data_contract import CORE_OPTION_QU
 
 PRODUCT_CODE = "CF"
 EXCHANGE = "CZCE"
-OPTION_FACTOR_PROXY_VERSION = "R48_option_factor_proxy_v1"
+OPTION_FACTOR_PROXY_VERSION = "R48_option_factor_proxy_v2"
 OUTPUT_DIR = "option_factors"
 WARNING_SEVERITY = "WARN"
 INFO_SEVERITY = "INFO"
@@ -102,6 +102,7 @@ class ResearchOptionFactorProxyResult:
     exchange: str
     run_id: str
     status: str
+    build_mode: str
     start: date
     end: date
     option_row_count: int
@@ -139,6 +140,7 @@ class ResearchOptionFactorProxyResult:
             "exchange": self.exchange,
             "run_id": self.run_id,
             "status": self.status,
+            "build_mode": self.build_mode,
             "passed": self.passed,
             "start": self.start.isoformat(),
             "end": self.end.isoformat(),
@@ -174,6 +176,7 @@ def build_cf_option_factor_proxy(
     atm_moneyness_band: float = DEFAULT_ATM_MONEYNESS_BAND,
     otm_moneyness_min: float = DEFAULT_OTM_MONEYNESS_MIN,
     otm_moneyness_max: float = DEFAULT_OTM_MONEYNESS_MAX,
+    incremental: bool = False,
 ) -> ResearchOptionFactorProxyResult:
     """Build R48 option PCR/skew/ATM-volatility proxy factors from core tables."""
     if iv_rank_lookback_days <= 0:
@@ -194,31 +197,78 @@ def build_cf_option_factor_proxy(
     end = max(option_frame["trade_date"])
     proxy_run_id = run_id or _default_run_id(start=start, end=end)
 
-    surface = _surface_proxy_rows(
+    paths = _output_paths(start=start, end=end, output_dir=output_dir)
+    build_mode = "FULL"
+    incremental_base = _incremental_base(
+        output_root=paths["factor_parquet"].parent,
+        start=start,
+        end=end,
         option_frame=option_frame,
-        quote_frame=quote_frame,
-        run_id=proxy_run_id,
-        atm_moneyness_band=atm_moneyness_band,
-        otm_moneyness_min=otm_moneyness_min,
-        otm_moneyness_max=otm_moneyness_max,
-    )
-    factor_rows = _factor_rows(
-        surface=surface,
-        run_id=proxy_run_id,
-        iv_rank_lookback_days=iv_rank_lookback_days,
-        otm_moneyness_min=otm_moneyness_min,
-        otm_moneyness_max=otm_moneyness_max,
-    )
+    ) if incremental else None
+    if incremental_base is None:
+        surface_rows = _surface_proxy_rows(
+            option_frame=option_frame,
+            quote_frame=quote_frame,
+            run_id=proxy_run_id,
+            atm_moneyness_band=atm_moneyness_band,
+            otm_moneyness_min=otm_moneyness_min,
+            otm_moneyness_max=otm_moneyness_max,
+        )
+        surface_frame = pd.DataFrame(surface_rows)
+        factor_rows = _factor_rows(
+            surface=surface_rows,
+            run_id=proxy_run_id,
+            iv_rank_lookback_days=iv_rank_lookback_days,
+            otm_moneyness_min=otm_moneyness_min,
+            otm_moneyness_max=otm_moneyness_max,
+        )
+    else:
+        # 日更只重算最新交易日；历史表继续保留，周更再做全历史重建校验。
+        latest_option = option_frame.loc[option_frame["trade_date"] == end].copy()
+        latest_quote = quote_frame.loc[quote_frame["trade_date"] == end].copy()
+        latest_surface_rows = _surface_proxy_rows(
+            option_frame=latest_option,
+            quote_frame=latest_quote,
+            run_id=proxy_run_id,
+            atm_moneyness_band=atm_moneyness_band,
+            otm_moneyness_min=otm_moneyness_min,
+            otm_moneyness_max=otm_moneyness_max,
+        )
+        latest_factor_rows = _factor_rows(
+            surface=latest_surface_rows,
+            run_id=proxy_run_id,
+            iv_rank_lookback_days=iv_rank_lookback_days,
+            otm_moneyness_min=otm_moneyness_min,
+            otm_moneyness_max=otm_moneyness_max,
+        )
+        prior_factor, prior_surface = incremental_base
+        factor_frame = pd.concat(
+            [
+                prior_factor.loc[prior_factor["trade_date"] < end],
+                pd.DataFrame(latest_factor_rows),
+            ],
+            ignore_index=True,
+        )
+        factor_frame["run_id"] = proxy_run_id
+        factor_rows = factor_frame.to_dict("records")
+        surface_frame = pd.concat(
+            [
+                prior_surface.loc[prior_surface["trade_date"] < end],
+                pd.DataFrame(latest_surface_rows),
+            ],
+            ignore_index=True,
+        )
+        surface_frame["run_id"] = proxy_run_id
+        build_mode = "INCREMENTAL_LATEST_DATE"
     factor_rows = _attach_iv_rank(
         factor_rows=factor_rows,
         iv_rank_lookback_days=iv_rank_lookback_days,
     )
     warnings = _warning_records(
         run_id=proxy_run_id,
-        surface=surface,
+        surface=surface_frame,
         factor_rows=factor_rows,
     )
-    paths = _output_paths(start=start, end=end, output_dir=output_dir)
     markdown_path = _markdown_path(start=start, end=end, report_output_dir=report_output_dir)
     json_path = _json_path(start=start, end=end, report_output_dir=report_output_dir)
     status = "COMPLETED" if factor_rows else "NO_ELIGIBLE_OPTION_FACTOR_ROWS"
@@ -227,13 +277,14 @@ def build_cf_option_factor_proxy(
         exchange=EXCHANGE,
         run_id=proxy_run_id,
         status=status,
+        build_mode=build_mode,
         start=start,
         end=end,
         option_row_count=len(option_frame),
-        surface_row_count=len(surface),
+        surface_row_count=len(surface_frame),
         factor_row_count=len(factor_rows),
-        eligible_option_row_count=int(sum(row["included_in_factor"] for row in surface)),
-        excluded_option_row_count=int(sum(not row["included_in_factor"] for row in surface)),
+        eligible_option_row_count=int(surface_frame["included_in_factor"].astype(bool).sum()),
+        excluded_option_row_count=int((~surface_frame["included_in_factor"].astype(bool)).sum()),
         warning_records=warnings,
         factor_parquet_path=paths["factor_parquet"],
         factor_csv_path=paths["factor_csv"],
@@ -253,7 +304,7 @@ def build_cf_option_factor_proxy(
         csv_path=result.factor_csv_path,
     )
     _write_table(
-        surface,
+        surface_frame,
         parquet_path=result.surface_parquet_path,
         csv_path=result.surface_csv_path,
     )
@@ -302,6 +353,45 @@ def _load_core_quotes(path: Path) -> pd.DataFrame:
     return working[["trade_date", "contract_code", "settle"]].rename(
         columns={"contract_code": "underlying_contract", "settle": "underlying_settle"}
     )
+
+
+def _incremental_base(
+    *,
+    output_root: Path,
+    start: date,
+    end: date,
+    option_frame: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.DataFrame] | None:
+    factor_path = _latest_existing_path(output_root, "*_option_factor_proxy_daily.parquet")
+    surface_path = _latest_existing_path(output_root, "*_option_surface_proxy_daily.parquet")
+    if factor_path is None or surface_path is None:
+        return None
+    factor = pd.read_parquet(factor_path)
+    surface = pd.read_parquet(surface_path)
+    if factor.empty or surface.empty:
+        return None
+    factor["trade_date"] = pd.to_datetime(factor["trade_date"], errors="coerce").dt.date
+    surface["trade_date"] = pd.to_datetime(surface["trade_date"], errors="coerce").dt.date
+    available_dates = sorted(set(option_frame["trade_date"]))
+    expected_prior = available_dates[-2] if len(available_dates) >= 2 else start
+    if min(factor["trade_date"]) > start or min(surface["trade_date"]) > start:
+        return None
+    if max(factor["trade_date"]) < expected_prior or max(surface["trade_date"]) < expected_prior:
+        return None
+    if end not in set(option_frame["trade_date"]):
+        return None
+    return factor, surface
+
+
+def _latest_existing_path(root: Path, pattern: str) -> Path | None:
+    if not root.exists():
+        return None
+    candidates = sorted(
+        root.glob(pattern),
+        key=lambda path: (path.stat().st_mtime_ns, path.name),
+        reverse=True,
+    )
+    return candidates[0] if candidates else None
 
 
 def _surface_proxy_rows(
@@ -595,10 +685,10 @@ def _moneyness_bucket(
 def _warning_records(
     *,
     run_id: str,
-    surface: list[dict[str, object]],
+    surface: list[dict[str, object]] | pd.DataFrame,
     factor_rows: list[dict[str, object]],
 ) -> tuple[OptionFactorProxyWarningRecord, ...]:
-    surface_frame = pd.DataFrame(surface)
+    surface_frame = surface.copy() if isinstance(surface, pd.DataFrame) else pd.DataFrame(surface)
     warnings: list[OptionFactorProxyWarningRecord] = [
         OptionFactorProxyWarningRecord(
             run_id=run_id,
@@ -735,8 +825,13 @@ def _int_or_none(value: object) -> int | None:
     return int(float(value))
 
 
-def _write_table(rows: list[dict[str, object]], *, parquet_path: Path, csv_path: Path) -> None:
-    frame = pd.DataFrame(rows)
+def _write_table(
+    rows: list[dict[str, object]] | pd.DataFrame,
+    *,
+    parquet_path: Path,
+    csv_path: Path,
+) -> None:
+    frame = rows.copy() if isinstance(rows, pd.DataFrame) else pd.DataFrame(rows)
     parquet_path.parent.mkdir(parents=True, exist_ok=True)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     frame.to_parquet(parquet_path, index=False)
@@ -772,6 +867,7 @@ def _write_markdown(
         "## 数据状态",
         "",
         f"- 状态：`{result.status}`",
+        f"- 构建模式：`{result.build_mode}`",
         f"- 数据区间：{result.start.isoformat()} 至 {result.end.isoformat()}",
         f"- 输入期权 core：`{result.option_core_path}`",
         f"- 输入期货 core：`{result.core_quote_path}`",
@@ -862,6 +958,7 @@ def _write_manifest(result: ResearchOptionFactorProxyResult) -> None:
         "product_code": PRODUCT_CODE,
         "exchange": EXCHANGE,
         "status": result.status,
+        "build_mode": result.build_mode,
         "start": result.start.isoformat(),
         "end": result.end.isoformat(),
         "option_core_path": str(result.option_core_path),

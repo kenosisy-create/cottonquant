@@ -381,24 +381,49 @@ def _parse_official_history_excel(
     year: int,
 ) -> list[CoreQuoteDailyRow]:
     try:
-        frame = pd.read_excel(io.BytesIO(payload), header=1)
+        raw = pd.read_excel(io.BytesIO(payload), header=None)
     except Exception as exc:
         raise ResearchWorkbenchError(f"{source_name}: cannot read official Excel") from exc
-    if frame.shape[1] < 14:
+    if raw.shape[1] < 10:
         raise ResearchWorkbenchError(
-            f"{source_name}: official Excel has too few columns: {frame.shape[1]}"
+            f"{source_name}: official Excel has too few columns: {raw.shape[1]}"
+        )
+    header_index = _excel_header_index(raw, source_name=source_name)
+    title_trade_date = _excel_title_trade_date(raw, header_index=header_index)
+    columns = [str(value).strip() for value in raw.iloc[header_index].tolist()]
+    frame = raw.iloc[header_index + 1 :].copy()
+    frame.columns = columns
+    frame = frame.dropna(how="all").reset_index(drop=True)
+    column_map = _excel_column_map(frame.columns)
+    if "contract_code" not in column_map:
+        raise ResearchWorkbenchError(f"{source_name}: official Excel missing contract column")
+    if "trade_date" not in column_map and title_trade_date is None:
+        raise ResearchWorkbenchError(
+            f"{source_name}: official Excel missing trade date column and title date"
         )
 
     rows: list[CoreQuoteDailyRow] = []
-    for row_number, row in enumerate(frame.itertuples(index=False, name=None), start=3):
-        contract_code = _normalize_contract_code(str(row[1]))
+    for row_number, record in enumerate(frame.to_dict("records"), start=header_index + 2):
+        contract_code = _normalize_contract_code(
+            str(_excel_value(record, column_map["contract_code"]))
+        )
         if not _is_product_contract(contract_code):
             continue
-        trade_date = _excel_trade_date(row[0], source_name=source_name, row_number=row_number)
+        trade_date = (
+            _excel_trade_date(
+                _excel_value(record, column_map["trade_date"]),
+                source_name=source_name,
+                row_number=row_number,
+            )
+            if "trade_date" in column_map
+            else title_trade_date
+        )
+        if trade_date is None:
+            raise ResearchWorkbenchError(f"{source_name}:{row_number}: missing trade date")
         if trade_date.year != year:
             continue
 
-        # 单品种 Excel 表头在部分 Windows 终端会乱码；这里按郑商所固定列位映射。
+        # 日频表把日期放在标题里；年度表把日期放在列里。这里统一标准化到 core。
         rows.append(
             CoreQuoteDailyRow(
                 source_snapshot_id=f"{snapshot_id}:{source_name}",
@@ -406,15 +431,17 @@ def _parse_official_history_excel(
                 product_code=PRODUCT_CODE,
                 contract_code=contract_code,
                 trade_date=trade_date,
-                pre_settle=_optional_float(row[2]),
-                open=_optional_float(row[3]),
-                high=_optional_float(row[4]),
-                low=_optional_float(row[5]),
-                close=_optional_float(row[6]),
-                settle=_optional_float(row[7]),
-                volume=_optional_int(row[10]),
-                open_interest=_optional_int(row[11]),
-                turnover=_optional_float(row[13]),
+                pre_settle=_optional_float(_excel_optional(record, column_map, "pre_settle")),
+                open=_optional_float(_excel_optional(record, column_map, "open")),
+                high=_optional_float(_excel_optional(record, column_map, "high")),
+                low=_optional_float(_excel_optional(record, column_map, "low")),
+                close=_optional_float(_excel_optional(record, column_map, "close")),
+                settle=_optional_float(_excel_optional(record, column_map, "settle")),
+                volume=_optional_int(_excel_optional(record, column_map, "volume")),
+                open_interest=_optional_int(
+                    _excel_optional(record, column_map, "open_interest")
+                ),
+                turnover=_optional_float(_excel_optional(record, column_map, "turnover")),
                 quote_status="normal",
             )
         )
@@ -423,6 +450,74 @@ def _parse_official_history_excel(
             f"{source_name}: official Excel produced no {PRODUCT_CODE} rows"
         )
     return rows
+
+
+def _excel_header_index(frame: pd.DataFrame, *, source_name: str) -> int:
+    for index, row in frame.iterrows():
+        text = "|".join("" if pd.isna(value) else str(value) for value in row.tolist())
+        normalized = _normalize_header_key(text)
+        if "合约代码" in normalized or "品种月份" in normalized or "contract" in normalized:
+            return int(index)
+    raise ResearchWorkbenchError(f"{source_name}: official Excel header not found")
+
+
+def _excel_title_trade_date(frame: pd.DataFrame, *, header_index: int) -> date | None:
+    for index in range(0, header_index + 1):
+        text = " ".join(
+            "" if pd.isna(value) else str(value)
+            for value in frame.iloc[index].tolist()
+        )
+        match = re.search(r"(?P<year>\d{4})[-/]?(?P<month>\d{2})[-/]?(?P<day>\d{2})", text)
+        if match is not None:
+            return date(
+                int(match.group("year")),
+                int(match.group("month")),
+                int(match.group("day")),
+            )
+    return None
+
+
+def _excel_column_map(columns: pd.Index) -> dict[str, str]:
+    aliases = {
+        "trade_date": TRADE_DATE_ALIASES,
+        "contract_code": CONTRACT_ALIASES,
+        "pre_settle": PRE_SETTLE_ALIASES,
+        "open": OPEN_ALIASES,
+        "high": HIGH_ALIASES,
+        "low": LOW_ALIASES,
+        "close": CLOSE_ALIASES,
+        "settle": SETTLE_ALIASES,
+        "volume": VOLUME_ALIASES,
+        "open_interest": OPEN_INTEREST_ALIASES,
+        "turnover": TURNOVER_ALIASES,
+    }
+    normalized_columns = {_normalize_header_key(str(column)): str(column) for column in columns}
+    result: dict[str, str] = {}
+    for field, field_aliases in aliases.items():
+        for alias in field_aliases:
+            source = normalized_columns.get(_normalize_header_key(alias))
+            if source is not None:
+                result[field] = source
+                break
+    return result
+
+
+def _excel_value(record: dict[str, object], column: str) -> object:
+    value = record.get(column)
+    if pd.isna(value):
+        return ""
+    return value
+
+
+def _excel_optional(
+    record: dict[str, object],
+    column_map: dict[str, str],
+    field: str,
+) -> object:
+    column = column_map.get(field)
+    if column is None:
+        return ""
+    return _excel_value(record, column)
 
 
 def _excel_trade_date(value: object, *, source_name: str, row_number: int) -> date:
@@ -505,7 +600,7 @@ def _parse_history_text(
 TRADE_DATE_ALIASES = ("交易日期", "交易日", "日期", "trade_date")
 CONTRACT_ALIASES = ("品种月份", "合约代码", "合约", "合约月份", "contract_id", "contract_code")
 PRE_SETTLE_ALIASES = ("昨结算", "昨结算价", "pre_settle", "prev_settle")
-OPEN_ALIASES = ("今开盘", "开盘价", "开盘", "open")
+OPEN_ALIASES = ("今开盘", "今开", "开盘价", "开盘", "open")
 HIGH_ALIASES = ("最高价", "最高", "high")
 LOW_ALIASES = ("最低价", "最低", "low")
 CLOSE_ALIASES = ("今收盘", "收盘价", "收盘", "close")
@@ -524,6 +619,8 @@ TURNOVER_ALIASES = (
 
 def _find_local_archive(*, source_root: Path, year: int) -> Path | None:
     candidates = [
+        source_root / "FutureDataDailyCF.xlsx",
+        source_root / f"FutureDataDailyCF{year}.xlsx",
         source_root / str(year) / f"ALLFUTURES{year}.zip",
         source_root / f"ALLFUTURES{year}.zip",
         source_root / str(year) / f"CFFUTURES{year}.xlsx",
@@ -539,8 +636,14 @@ def _find_local_archive(*, source_root: Path, year: int) -> Path | None:
     matches = sorted(
         path
         for path in source_root.rglob(f"*{year}*")
-        if path.suffix.lower() in {".zip", ".xlsx", ".xls"}
+        if path.is_file() and path.suffix.lower() in {".zip", ".xlsx", ".xls"}
     )
+    if not matches:
+        matches = sorted(
+            path
+            for path in source_root.rglob("FutureDataDailyCF*.xls*")
+            if path.is_file()
+        )
     return matches[0].resolve() if matches else None
 
 

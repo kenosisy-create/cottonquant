@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -75,6 +76,38 @@ def test_connect_cf_option_history_csv_preserves_raw_and_writes_core(
     assert manifest["option_signal_status"] == "not_connected"
 
 
+def test_connect_cf_option_history_daily_excel_uses_title_date(
+    tmp_path: Path,
+) -> None:
+    source_dir = tmp_path / "incoming" / "CF" / "options" / "history"
+    source_dir.mkdir(parents=True)
+    _write_option_daily_excel(source_dir / "OptionDataDaily_20260706.xlsx")
+    core_quote_path = _write_underlying_core_quotes(
+        tmp_path,
+        trade_date=date(2026, 7, 6),
+        contract_code="CF609",
+        settle=16295,
+    )
+
+    result = connect_cf_option_history(
+        source_dir=source_dir,
+        raw_root=tmp_path / "raw",
+        core_output_dir=tmp_path / "core",
+        core_quote_path=core_quote_path,
+        report_output_dir=tmp_path / "reports",
+        run_id="r47_daily_excel",
+    )
+
+    assert result.status == "COMPLETED"
+    assert result.core_row_count == 2
+
+    core = pd.read_parquet(result.core_option_quote_path)
+    assert set(core["option_symbol"]) == {"CF609C16000", "CF609P16500"}
+    assert set(core["trade_date"]) == {"2026-07-06"}
+    assert set(core["underlying_contract"]) == {"CF609"}
+    assert core["moneyness"].notna().all()
+
+
 def test_cli_connect_cf_option_history(tmp_path: Path) -> None:
     source_dir = _write_option_source(tmp_path)
     core_quote_path = _write_underlying_core_quotes(tmp_path)
@@ -126,15 +159,21 @@ def _write_option_source(tmp_path: Path) -> Path:
     return source_dir
 
 
-def _write_underlying_core_quotes(tmp_path: Path) -> Path:
+def _write_underlying_core_quotes(
+    tmp_path: Path,
+    *,
+    trade_date: date = date(2024, 1, 2),
+    contract_code: str = "CF401",
+    settle: float = 14000,
+) -> Path:
     rows = [
         CoreQuoteDailyRow(
-            source_snapshot_id="underlying_cf401",
+            source_snapshot_id=f"underlying_{contract_code.lower()}",
             exchange="CZCE",
             product_code="CF",
-            contract_code="CF401",
-            trade_date="2024-01-02",
-            settle=14000,
+            contract_code=contract_code,
+            trade_date=trade_date,
+            settle=settle,
             volume=100,
             open_interest=1000,
         )
@@ -143,3 +182,90 @@ def _write_underlying_core_quotes(tmp_path: Path) -> Path:
     path.parent.mkdir(parents=True)
     pd.DataFrame([row.model_dump(mode="json") for row in rows]).to_parquet(path, index=False)
     return path
+
+
+def _write_option_daily_excel(path: Path) -> None:
+    frame = pd.DataFrame(
+        [
+            [
+                "AP610C10000",
+                "7.50",
+                "12.00",
+                "12.50",
+                "9.50",
+                "11.00",
+                "6.50",
+                "3.50",
+                "-1.00",
+                "602",
+                "8,862",
+                "196",
+                "6.31",
+                "0.0195",
+                "33.10",
+                "0",
+            ],
+            [
+                "CF609C16000",
+                "330.00",
+                "360.00",
+                "370.00",
+                "320.00",
+                "350.00",
+                "345.00",
+                "20.00",
+                "15.00",
+                "120",
+                "1,200",
+                "30",
+                "208.00",
+                "0.5000",
+                "20.10",
+                "0",
+            ],
+            [
+                "CF609P16500",
+                "280.00",
+                "300.00",
+                "320.00",
+                "270.00",
+                "290.00",
+                "295.00",
+                "10.00",
+                "15.00",
+                "80",
+                "900",
+                "12",
+                "120.00",
+                "-0.5000",
+                "22.30",
+                "0",
+            ],
+        ],
+        columns=[
+            "合约代码",
+            "昨结算",
+            "今开盘",
+            "最高价",
+            "最低价",
+            "今收盘",
+            "今结算",
+            "涨跌1",
+            "涨跌2",
+            "成交量(手)",
+            "持仓量",
+            "增减量",
+            "成交额(万元)",
+            "DELTA",
+            "隐含波动率",
+            "行权量",
+        ],
+    )
+    with pd.ExcelWriter(path) as writer:
+        pd.DataFrame([["郑州商品交易所期权每日行情表(2026-07-06)"]]).to_excel(
+            writer,
+            index=False,
+            header=False,
+            sheet_name="sheet1",
+        )
+        frame.to_excel(writer, index=False, startrow=1, sheet_name="sheet1")

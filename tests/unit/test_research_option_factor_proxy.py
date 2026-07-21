@@ -108,6 +108,95 @@ def test_cli_build_cf_option_factor_proxy(tmp_path: Path) -> None:
     assert Path(output["surface_parquet_path"]).exists()
 
 
+def test_option_factor_incremental_recomputes_latest_date_only(tmp_path: Path) -> None:
+    option_core_path = _write_option_core(tmp_path)
+    core_quote_path = _write_core_quotes(tmp_path)
+    output_dir = tmp_path / "data" / "option_factors"
+    report_dir = tmp_path / "reports" / "option_factors"
+    build_cf_option_factor_proxy(
+        option_core_path=option_core_path,
+        core_quote_path=core_quote_path,
+        output_dir=output_dir,
+        report_output_dir=report_dir,
+        run_id="r48_full_base",
+        iv_rank_lookback_days=10,
+    )
+
+    option_frame = pd.read_parquet(option_core_path)
+    extra_options = [
+        _option_row("2024-01-04", "CF401C14000", "C", 14000, 360, 120, 220, 1.0),
+        _option_row("2024-01-04", "CF401P14000", "P", 14000, 300, 140, 260, 1.0),
+        _option_row("2024-01-04", "CF401C15000", "C", 15000, 80, 90, 120, 14200 / 15000),
+        _option_row("2024-01-04", "CF401P13000", "P", 13000, 70, 110, 210, 13000 / 14200),
+    ]
+    pd.concat(
+        [
+            option_frame,
+            pd.DataFrame([row.model_dump(mode="json") for row in extra_options]),
+        ],
+        ignore_index=True,
+    ).to_parquet(option_core_path, index=False)
+    quote_frame = pd.read_parquet(core_quote_path)
+    extra_quote = CoreQuoteDailyRow(
+        source_snapshot_id="quote_fixture_20240104",
+        exchange="CZCE",
+        product_code="CF",
+        contract_code="CF401",
+        trade_date="2024-01-04",
+        settle=14200,
+        volume=1300,
+        open_interest=2200,
+    )
+    pd.concat(
+        [quote_frame, pd.DataFrame([extra_quote.model_dump(mode="json")])],
+        ignore_index=True,
+    ).to_parquet(core_quote_path, index=False)
+
+    result = build_cf_option_factor_proxy(
+        option_core_path=option_core_path,
+        core_quote_path=core_quote_path,
+        output_dir=output_dir,
+        report_output_dir=report_dir,
+        run_id="r48_incremental",
+        iv_rank_lookback_days=10,
+        incremental=True,
+    )
+
+    assert result.build_mode == "INCREMENTAL_LATEST_DATE"
+    assert result.factor_row_count == 3
+    assert result.surface_row_count == 13
+    factors = pd.read_parquet(result.factor_parquet_path)
+    assert factors["trade_date"].astype(str).tolist() == [
+        "2024-01-02",
+        "2024-01-03",
+        "2024-01-04",
+    ]
+    full_result = build_cf_option_factor_proxy(
+        option_core_path=option_core_path,
+        core_quote_path=core_quote_path,
+        output_dir=tmp_path / "data" / "option_factors_full_check",
+        report_output_dir=tmp_path / "reports" / "option_factors_full_check",
+        run_id="r48_full_check",
+        iv_rank_lookback_days=10,
+    )
+    full_factors = pd.read_parquet(full_result.factor_parquet_path)
+    comparison_columns = [
+        "trade_date",
+        "underlying_contract",
+        "atm_iv_proxy",
+        "atm_iv_rank",
+        "pcr_volume",
+        "pcr_oi",
+        "skew_proxy",
+        "factor_status",
+    ]
+    pd.testing.assert_frame_equal(
+        factors[comparison_columns].reset_index(drop=True),
+        full_factors[comparison_columns].reset_index(drop=True),
+        check_dtype=False,
+    )
+
+
 class ResearchWorkbenchErrorWrapper(Exception):
     """Small wrapper so pytest does not need to import internal exception twice."""
 

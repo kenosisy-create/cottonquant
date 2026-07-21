@@ -108,15 +108,120 @@ factor platform.
   product registry, and R51 fundamental contract readiness before any
   multi-product pilot. R22 remains available only as a legacy validation-pack
   compatibility mode.
+- R62 turns R60 KEEP/WATCH/REVISE/REJECT threshold candidates into a traceable
+  manual-review ledger. It links each candidate to R60 detail examples, R55
+  event/factor context, available fundamental context, explicit human-review
+  questions, and the research-only boundary that forward returns are historical
+  validation labels rather than trading instructions.
+- R63 adds daily data continuity and retention checks after official futures/
+  option files enter core storage. It verifies core latest date, official
+  calendar continuity, downloaded-file checksums, and raw snapshot traceability.
+- R65 adds a CF stage decision pack before non-CF expansion review. It combines
+  R59 weekly audit, R52 expansion gate, latest signal state, R48 option factors,
+  and R60 threshold review into a Chinese decision artifact with explicit
+  human-review gates and no automatic non-CF ingest.
+- R67 separates current signal strength from historical reliability in
+  validated outputs. It keeps the original factor direction visible, but blocks
+  the misleading shortcut that `high confidence` means `high historical win
+  rate`; it does not introduce automatic contrarian reversal.
+- R68 adds event-lifecycle validation so S1/S2/S3/S4 phase changes can be
+  evaluated with path-aware labels instead of relying only on fixed-horizon
+  forward returns. Fixed horizons remain historical baseline labels, not latest
+  signal inputs.
+- R69 builds the full-history futures-option divergence battle research. It
+  compares futures multi-factor direction with option PCR/IV/skew structure,
+  labels which side was later validated by historical forward returns, and
+  reports resolution windows without changing `composite_score`.
+- R70-R72 connect the futures-option line into the usable research outputs.
+  R70 adds R69 historical battle evidence to the validated brief and publish
+  pack, R71 turns historical divergence nodes into an analyst playbook, and R72
+  maps the current latest-day option/futures structure to those historical
+  nodes in both the validated brief and WeChat publish material. The latest day
+  remains current mapping only and does not enter win/loss statistics until
+  future labels exist.
+- R73 adds a close/settlement dual-price state. It preserves settlement as the
+  official validation basis while using close for break/reclaim and late-session
+  strength warnings. Historical forward returns remain posterior labels only.
+- R74 decomposes main-contract OI changes into chain-wide participation and roll
+  transfer proxies. It distinguishes long build, short build, liquidation,
+  short-cover/exit, and main-to-far-month transfer without pretending total OI
+  is a net-long/net-short position measure. R74 v2 additionally keeps a
+  configurable multi-day roll window and contract-by-contract OI table, so a
+  day can be classified as exit while the wider window is
+  `ROLL_WITH_NET_EXIT`.
+- R75 replaces the static option vote with a continuous PCR/skew/IV structure
+  score, explicit confirmation strength, volatility repricing state, and
+  historical posterior validation. It remains outside `composite_score`.
+- R76 combines R73-R75 with the existing signal matrix into trend phase v2. It
+  can keep a settlement-based S1 observation at S3/weak when close/settlement,
+  chain OI, or option evidence shows unresolved exhaustion risk. R76 v2 reads
+  the R74 multi-day roll context: `ROLL_DOMINANT` is treated as contract
+  migration, while `ROLL_WITH_NET_EXIT` remains a qualified funding-risk flag
+  and is validated separately in historical posterior tables.
+- R77 converts the upgraded evidence into a current watch window with
+  confirmation and invalidation conditions, provisional T+1/T+3/T+5 review
+  dates, and a daily Chinese report. It is connected to validated and publish
+  outputs and does not create trading instructions.
+- The default daily lane now prioritizes data continuity and current research
+  state. R34/R59 audits move to the weekly pack after the final official trading
+  session of the week. The WeChat publishing lane is paused and only runs after
+  an explicit `-RunPublishPack` request.
+- R78 compares 3D/5D/10D cross-contract OI migration windows and joins them to
+  R36 historical posterior labels. It separates `ROLL_DOMINANT`,
+  `ROLL_WITH_NET_EXIT`, and `EXIT_DOMINANT` without changing the live
+  `composite_score`.
+- R79 converts the R68 lifecycle table into a discrete competing-risk study for
+  S1 and S3 episodes. It separates closed-event probabilities from all-episode
+  shares, treats open episodes as right-censored, estimates cause-specific
+  hazards and cumulative incidence by episode age, and maps the current open
+  episode to historical posterior distributions without modifying the latest
+  direction signal.
+- R80 adds an expiry-aware option-volatility research layer. It solves a
+  Black-76 comparable IV for the ATM call/put pair, joins contract-level
+  realized volatility, builds IV-RV and near/far term-structure states, and
+  validates subsequent absolute return and realized volatility from T+1. The
+  model remains an explicit European approximation for American CF options.
+- R81 replaces the global month-start expiry proxy with a reviewed contract
+  registry. The official rule is the third-last trading day on or before the
+  15th calendar day of the month before delivery. Historical dates are checked
+  against CZCE CF/option history; CF609/CF611/CF701 use the published 2026
+  holiday schedule. Contracts whose future official calendar is unavailable
+  keep a visible `MONTH_START_PROXY_FALLBACK` and a mandatory warning.
+- R82 connects R79 competing-risk evidence and R80/R81 option-volatility
+  evidence into the validated weekly brief. Both contexts must match the latest
+  brief date; historical transition probabilities remain posterior evidence,
+  and option IV remains outside `composite_score`.
+- R83 adds the official `FutureDataHolding.xlsx` member-position contract. Raw
+  workbooks are preserved before CF product/contract rankings are normalized
+  into `core_member_position_daily.parquet`. Research outputs separate volume,
+  long and short member lists, calculate Top5/10/20 concentration, decompose
+  member changes, compare price/OI/member divergences, and distinguish roll
+  migration from net exit. Forward returns remain historical posterior labels;
+  R83 does not modify `composite_score` or infer identified customer exposure.
+- R84 drills the existing option core down to strike-level open-interest
+  structure. It tracks Call/Put OI walls, daily build/unwind strikes, weighted
+  OI centers, wall migration and a static max-pain proxy, then validates wall
+  crossing only from T+1 onward. Public OI does not reveal option ownership, so
+  the module does not infer dealer gamma and does not automatically label a
+  high-OI strike as support or resistance.
+- Official daily file fetching is available for the CZCE URL pattern
+  `Future/YYYY/YYYYMMDD/FutureDataDailyCF.xlsx` and
+  `Option/YYYY/YYYYMMDD/OptionDataDaily.xlsx`. The daily update script can fetch
+  both files into incoming storage, connect futures into `core_quote_daily`, and
+  connect option history into `core_option_quote_daily` while preserving the
+  raw/core/research boundary.
 - Post-R52 data-port planning is documented in
   `docs/RESEARCH_DATA_PORTS_NEXT.md` and
   `configs/cf_research_data_ports.csv`. It identifies the P0/P1/P2 data inputs
   that must be supplemented before basic fundamental observation or any
   multi-product research pilot.
-- Next mainline task should refresh the weekly evidence chain to the latest
-  available core date before any product expansion decision: rebuild historical
-  evidence/event explanation/publish pack on the latest full validation window,
-  then re-run the R52 gate.
+- R85 completes the incremental 2021-2026 member-position backfill path. It uses
+  confirmed CF core trade dates, year-aware `.xls`/`.xlsx` fallback, resumable
+  incoming downloads, checksum-based raw reuse and incremental core replacement.
+  The verified baseline covers 2021-01-04 through 2026-07-20. Next mainline work
+  is R84 incremental refresh optimization and out-of-sample review of the new
+  member-position evidence. Product expansion remains blocked until CF
+  transition, option and member-position evidence pass that review.
 
 ## Sprint Order
 

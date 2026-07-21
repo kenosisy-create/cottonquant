@@ -17,15 +17,30 @@ from cotton_factor.common.exceptions import ResearchWorkbenchError
 from cotton_factor.common.paths import data_dir, project_root
 from cotton_factor.common.time import utc_now
 from cotton_factor.research_workbench.core_quotes import CORE_QUOTE_FILE_NAME
+from cotton_factor.research_workbench.research_framework import (
+    RESEARCH_FRAMEWORK_VERSION,
+    build_research_framework_context,
+    display_threshold_status,
+    research_framework_markdown_lines,
+    validated_stance_title_text,
+)
 
 PRODUCT_CODE = "CF"
 PUBLISH_PACK_VERSION = "R45_cf_publish_pack_v1"
 PUBLISH_PACK_EVENT_CONTEXT_VERSION = "R57_publish_pack_event_context_v1"
+PUBLISH_PACK_FUTURES_OPTION_CONTEXT_VERSION = "R70_publish_pack_futures_option_context_v1"
+PUBLISH_PACK_FUTURES_OPTION_PLAYBOOK_CONTEXT_VERSION = (
+    "R72_publish_pack_futures_option_playbook_context_v1"
+)
+PUBLISH_PACK_WATCH_WINDOW_CONTEXT_VERSION = "R77_publish_pack_watch_window_v1"
 DEFAULT_PRICE_LOOKBACK = 120
 HUMAN_REVIEW_REQUIRED = (
     "publish_wording",
     "historical_evidence_interpretation",
     "historical_event_interpretation",
+    "futures_option_divergence_interpretation",
+    "futures_option_playbook_interpretation",
+    "current_watch_window_interpretation",
     "factor_thresholds",
     "chart_readability",
 )
@@ -48,7 +63,13 @@ class ResearchPublishPackResult:
     latest_signal_json_path: Path
     validated_brief_path: Path
     core_quote_path: Path
+    futures_option_divergence_json_path: Path | None
+    futures_option_playbook_json_path: Path | None
+    current_watch_window_json_path: Path | None
     validated_event_context: dict[str, object]
+    futures_option_divergence_context: dict[str, object]
+    futures_option_playbook_context: dict[str, object]
+    current_watch_window_context: dict[str, object]
     human_review_required: tuple[str, ...]
 
     def to_summary(self) -> dict[str, object]:
@@ -67,7 +88,25 @@ class ResearchPublishPackResult:
             "latest_signal_json_path": str(self.latest_signal_json_path),
             "validated_brief_path": str(self.validated_brief_path),
             "core_quote_path": str(self.core_quote_path),
+            "futures_option_divergence_json_path": (
+                None
+                if self.futures_option_divergence_json_path is None
+                else str(self.futures_option_divergence_json_path)
+            ),
+            "futures_option_playbook_json_path": (
+                None
+                if self.futures_option_playbook_json_path is None
+                else str(self.futures_option_playbook_json_path)
+            ),
+            "current_watch_window_json_path": (
+                None
+                if self.current_watch_window_json_path is None
+                else str(self.current_watch_window_json_path)
+            ),
             "validated_event_context": self.validated_event_context,
+            "futures_option_divergence_context": self.futures_option_divergence_context,
+            "futures_option_playbook_context": self.futures_option_playbook_context,
+            "current_watch_window_context": self.current_watch_window_context,
             "human_review_required": list(self.human_review_required),
         }
 
@@ -80,6 +119,9 @@ def build_cf_publish_pack(
     signal_matrix_path: Path | None = None,
     historical_evidence_decay_path: Path | None = None,
     event_summary_path: Path | None = None,
+    futures_option_divergence_json_path: Path | None = None,
+    futures_option_playbook_json_path: Path | None = None,
+    current_watch_window_json_path: Path | None = None,
     output_root: Path | None = None,
     run_id: str | None = None,
     price_lookback: int = DEFAULT_PRICE_LOOKBACK,
@@ -100,6 +142,25 @@ def build_cf_publish_pack(
     event_summary = _load_table(event_path, required={"event_type", "event_count"})
     validated_markdown = _load_validated_brief(brief_path)
     validated_event_context = _validated_brief_publish_context(validated_markdown)
+    futures_option_context = (
+        _futures_option_context_from_validated_markdown(validated_markdown)
+        if futures_option_divergence_json_path is None
+        else _load_futures_option_divergence_context(futures_option_divergence_json_path)
+    )
+    futures_option_playbook_context = (
+        _futures_option_playbook_context_from_validated_markdown(validated_markdown)
+        if futures_option_playbook_json_path is None
+        else _load_futures_option_playbook_context(futures_option_playbook_json_path)
+    )
+    current_watch_window_context = (
+        _watch_window_context_from_validated_markdown(validated_markdown)
+        if current_watch_window_json_path is None
+        else _load_current_watch_window_context(current_watch_window_json_path)
+    )
+    research_framework_context = build_research_framework_context(
+        latest=latest,
+        decay=decay,
+    )
     publish_run_id = run_id or _default_run_id(data_asof=data_asof)
     output_dir = (
         (output_root or project_root() / "runs" / "daily")
@@ -147,8 +208,13 @@ def build_cf_publish_pack(
     )
     article = _render_wechat_article(
         latest=latest,
-        validated_markdown=validated_markdown,
         validated_event_context=validated_event_context,
+        decay=decay,
+        event_summary=event_summary,
+        futures_option_context=futures_option_context,
+        futures_option_playbook_context=futures_option_playbook_context,
+        current_watch_window_context=current_watch_window_context,
+        research_framework_context=research_framework_context,
         chart_paths=chart_paths,
         output_dir=output_dir,
     )
@@ -157,6 +223,9 @@ def build_cf_publish_pack(
         decay=decay,
         event_summary=event_summary,
         validated_event_context=validated_event_context,
+        futures_option_context=futures_option_context,
+        futures_option_playbook_context=futures_option_playbook_context,
+        current_watch_window_context=current_watch_window_context,
     )
     wechat_article_path = publish_dir / "wechat_article.md"
     wechat_summary_path = publish_dir / "wechat_summary.txt"
@@ -175,6 +244,10 @@ def build_cf_publish_pack(
             "contains_historical_forward_return_validation": True,
             "latest_signal_only_contains_forward_return_validation": False,
             "validated_event_context": validated_event_context,
+            "futures_option_divergence_context": futures_option_context,
+            "futures_option_playbook_context": futures_option_playbook_context,
+            "current_watch_window_context": current_watch_window_context,
+            "research_framework_context": research_framework_context,
             "human_review_required": list(HUMAN_REVIEW_REQUIRED),
         },
     )
@@ -198,7 +271,13 @@ def build_cf_publish_pack(
         latest_signal_json_path=latest_path,
         validated_brief_path=brief_path,
         core_quote_path=quote_path,
+        futures_option_divergence_json_path=futures_option_divergence_json_path,
+        futures_option_playbook_json_path=futures_option_playbook_json_path,
+        current_watch_window_json_path=current_watch_window_json_path,
         validated_event_context=validated_event_context,
+        futures_option_divergence_context=futures_option_context,
+        futures_option_playbook_context=futures_option_playbook_context,
+        current_watch_window_context=current_watch_window_context,
         human_review_required=HUMAN_REVIEW_REQUIRED,
     )
     _write_manifest(
@@ -206,6 +285,7 @@ def build_cf_publish_pack(
         signal_matrix_path=matrix_path,
         decay_path=decay_path,
         event_path=event_path,
+        research_framework_context=research_framework_context,
     )
     return result
 
@@ -301,6 +381,138 @@ def _validated_brief_publish_context(validated_markdown: str) -> dict[str, objec
             else "未接入 R56 基本面事件解释链"
         ),
     }
+
+
+def _load_futures_option_divergence_context(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise ResearchWorkbenchError(f"R69 futures-option divergence JSON not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("report_type") != "futures_option_divergence_research":
+        raise ResearchWorkbenchError("R69 JSON must be futures_option_divergence_research")
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        raise ResearchWorkbenchError("R69 JSON missing result summary")
+    boundary = payload.get("research_boundary")
+    if isinstance(boundary, dict):
+        if boundary.get("forward_returns_are_validation_labels") is not True:
+            raise ResearchWorkbenchError("R69 forward returns must be validation labels")
+        if boundary.get("trading_instruction") != "not_a_trading_instruction":
+            raise ResearchWorkbenchError("R69 must not contain trading instructions")
+    horizon_rows = _r69_rows(payload.get("horizon_summary"))
+    return {
+        "connected": True,
+        "source": "r69_json",
+        "source_path": str(path),
+        "rule_version": PUBLISH_PACK_FUTURES_OPTION_CONTEXT_VERSION,
+        "result": result,
+        "directional_divergence_rows": [
+            row
+            for row in horizon_rows
+            if row.get("divergence_type") == "directional_divergence"
+        ][:6],
+        "forward_returns_are_validation_labels": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _futures_option_context_from_validated_markdown(markdown: str) -> dict[str, object]:
+    connected = "期货-期权矛盾节点（R70）" in markdown
+    return {
+        "connected": connected,
+        "source": "validated_brief_markdown",
+        "rule_version": PUBLISH_PACK_FUTURES_OPTION_CONTEXT_VERSION,
+        "result": {},
+        "directional_divergence_rows": [],
+        "forward_returns_are_validation_labels": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _load_futures_option_playbook_context(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise ResearchWorkbenchError(f"R71 futures-option playbook JSON not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("report_type") != "futures_option_divergence_playbook":
+        raise ResearchWorkbenchError("R71 JSON must be futures_option_divergence_playbook")
+    summary = payload.get("summary")
+    if not isinstance(summary, dict):
+        raise ResearchWorkbenchError("R71 JSON missing summary")
+    boundary = payload.get("research_boundary")
+    if isinstance(boundary, dict):
+        if boundary.get("forward_returns_are_validation_labels") is not True:
+            raise ResearchWorkbenchError("R71 forward returns must be validation labels")
+        if boundary.get("trading_instruction") != "not_a_trading_instruction":
+            raise ResearchWorkbenchError("R71 must not contain trading instructions")
+        if boundary.get("auto_reverse_allowed") is not False:
+            raise ResearchWorkbenchError("R71 must not allow auto reverse")
+    return {
+        "connected": True,
+        "source": "r71_json",
+        "source_path": str(path),
+        "rule_version": PUBLISH_PACK_FUTURES_OPTION_PLAYBOOK_CONTEXT_VERSION,
+        "summary": summary,
+        "current_mapping_rows": _r69_rows(payload.get("current_mapping_rows"))[:8],
+        "forward_returns_are_validation_labels": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _futures_option_playbook_context_from_validated_markdown(
+    markdown: str,
+) -> dict[str, object]:
+    connected = "期货-期权当前结构映射（R72）" in markdown
+    return {
+        "connected": connected,
+        "source": "validated_brief_markdown",
+        "rule_version": PUBLISH_PACK_FUTURES_OPTION_PLAYBOOK_CONTEXT_VERSION,
+        "summary": {},
+        "current_mapping_rows": [],
+        "forward_returns_are_validation_labels": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _load_current_watch_window_context(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise ResearchWorkbenchError(f"R77 current watch window JSON not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("report_type") != "current_watch_window":
+        raise ResearchWorkbenchError("R77 JSON must be current_watch_window")
+    watch = payload.get("watch_window")
+    boundary = payload.get("research_boundary")
+    if not isinstance(watch, dict) or not isinstance(boundary, dict):
+        raise ResearchWorkbenchError("R77 JSON missing watch_window or research_boundary")
+    if boundary.get("latest_state_uses_future_data") is not False:
+        raise ResearchWorkbenchError("R77 latest state must not use future data")
+    if boundary.get("trading_instruction") != "not_a_trading_instruction":
+        raise ResearchWorkbenchError("R77 must not contain trading instructions")
+    return {
+        "connected": True,
+        "source": "r77_json",
+        "source_path": str(path),
+        "rule_version": PUBLISH_PACK_WATCH_WINDOW_CONTEXT_VERSION,
+        "watch_window": watch,
+        "research_boundary": boundary,
+    }
+
+
+def _watch_window_context_from_validated_markdown(markdown: str) -> dict[str, object]:
+    return {
+        "connected": "当前确认与失效窗口（R77）" in markdown,
+        "source": "validated_brief_markdown",
+        "rule_version": PUBLISH_PACK_WATCH_WINDOW_CONTEXT_VERSION,
+        "watch_window": {},
+        "research_boundary": {
+            "latest_state_uses_future_data": False,
+            "trading_instruction": "not_a_trading_instruction",
+        },
+    }
+
+
+def _r69_rows(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    return [row for row in value if isinstance(row, dict)]
 
 
 def _extract_markdown_count(markdown: str, label: str) -> int | None:
@@ -425,58 +637,151 @@ def _write_event_distribution_chart(*, event_summary: pd.DataFrame, output_path:
 def _render_wechat_article(
     *,
     latest: dict[str, object],
-    validated_markdown: str,
     validated_event_context: dict[str, object],
+    decay: pd.DataFrame,
+    event_summary: pd.DataFrame,
+    futures_option_context: dict[str, object],
+    futures_option_playbook_context: dict[str, object],
+    current_watch_window_context: dict[str, object],
+    research_framework_context: dict[str, object],
     chart_paths: tuple[Path, ...],
     output_dir: Path,
 ) -> str:
     data_asof = str(latest["data_asof"])
     trend = latest.get("trend_phase") if isinstance(latest.get("trend_phase"), dict) else {}
-    chart_lines = [
-        f"![{path.stem}]({_relative_path(path=path, root=output_dir)})" for path in chart_paths
-    ]
+    trend_code = str(trend.get("phase_code") or "-")
+    trend_label = str(trend.get("phase_label") or "")
+    direction = str(latest.get("signal_direction") or "-")
+    main_contract = str(latest.get("main_contract") or "-")
+    article_title = _wechat_article_title(
+        data_asof=data_asof,
+        trend_code=trend_code,
+        trend_label=trend_label,
+        direction=direction,
+        stance_text=validated_stance_title_text(research_framework_context),
+    )
+    stance = (
+        research_framework_context.get("validated_stance")
+        if isinstance(research_framework_context.get("validated_stance"), dict)
+        else {}
+    )
+    quick_takeaways = _wechat_quick_takeaway_lines(latest=latest, decay=decay)
+    framework_lines = research_framework_markdown_lines(research_framework_context)
+    signal_table = _wechat_signal_matrix_table(latest)
+    threshold_lines = _wechat_threshold_lines(latest)
+    option_lines = _wechat_option_lines(latest)
+    futures_option_lines = _wechat_futures_option_divergence_lines(futures_option_context)
+    futures_option_playbook_lines = _wechat_futures_option_playbook_lines(
+        futures_option_playbook_context
+    )
+    watch_window_lines = _wechat_watch_window_lines(current_watch_window_context)
+    evidence_table = _wechat_decay_table(decay)
+    event_lines = _wechat_event_summary_lines(event_summary)
+    chart_blocks = _wechat_chart_blocks(chart_paths=chart_paths, output_dir=output_dir)
     event_context_lines = _wechat_event_context_lines(validated_event_context)
-    evidence_excerpt = "\n".join(validated_markdown.splitlines()[0:80])
+    trend_reason = str(trend.get("reason") or "趋势阶段原因未在 latest brief 中给出。")
     return "\n".join(
         [
-            f"# 郑棉 CF 日度研究：{data_asof} 结构观察与历史证据",
+            f"# {article_title}",
             "",
-            f"- 数据截至：`{data_asof}`",
-            "- 研究品种：`CF`",
-            "- 报告类型：`validated publish pack`",
-            "- latest signal-only 是否包含 forward-return 验证：`否`",
-            "- 历史证据是否包含 forward-return 后验验证：`是，仅用于历史验证`",
-            "- R56 基本面事件解释链："
-            + (
-                "`已接入`"
-                if validated_event_context.get("r56_event_context_connected")
-                else "`未接入`"
-            ),
-            "- 是否存在人工复核项：`是`",
-            "- 研究边界：`不构成交易指令`",
+            f"> 数据截至 `{data_asof}`。本文是 CF 研究工作台生成的发布稿，"
+            "用于把最新观察和历史证据放在同一条证据链中复核，"
+            "不构成交易指令。",
             "",
-            "## 摘要",
+            "## 先说结论",
             "",
-            f"当前主力合约为 `{latest.get('main_contract')}`，最新方向为 "
-            f"`{latest.get('signal_direction')}`，趋势阶段为 "
-            f"`{trend.get('phase_code')}` {trend.get('phase_label')}。",
+            f"当前主力合约是 `{main_contract}`，原始多因子方向为 `{direction}`，"
+            f"趋势阶段为 `{trend_code}` {trend_label}；验证后研究立场为 "
+            f"`{stance.get('stance')}`。这意味着系统保留原始模型观察，"
+            "但不会把它直接升级为方向性研究结论。",
             "",
-            "## 图表包",
+            *quick_takeaways,
             "",
-            *chart_lines,
+            *framework_lines,
             "",
-            "## 基本面事件解释链",
+            "## 今日市场结构",
+            "",
+            f"- 主力合约：`{main_contract}`",
+            f"- 趋势阶段：`{trend_code}` {trend_label}",
+            f"- 阶段解释：{trend_reason}",
+            "- 需要重点观察：价格是否继续修复、持仓是否配合、期限结构是否继续同向。",
+            "",
+            "## 图表解读",
+            "",
+            *chart_blocks,
+            "",
+            "## 多周期信号矩阵",
+            "",
+            *signal_table,
+            "",
+            "## 历史证据怎么支持或约束当前判断",
+            "",
+            "历史 forward-return 只作为历史后验验证标签，用来回答“过去类似信号之后表现如何”，"
+            "不是 latest signal-only 的输入，也不是交易指令。",
+            "",
+            *evidence_table,
+            "",
+            "### 阈值候选",
+            "",
+            *threshold_lines,
+            "",
+            "## 期权风险定价观察",
+            "",
+            *option_lines,
+            "",
+            "## 期货-期权矛盾节点（R70）",
+            "",
+            *futures_option_lines,
+            "",
+            "## 期货-期权当前结构映射（R72）",
+            "",
+            *futures_option_playbook_lines,
+            "",
+            "## 当前确认与失效窗口（R77）",
+            "",
+            *watch_window_lines,
+            "",
+            "## 历史事件解释",
+            "",
+            *event_lines,
+            "",
+            "### 基本面事件解释链",
             "",
             *event_context_lines,
             "",
-            "## 验证型研究摘要",
+            "## 明日观察清单",
             "",
-            evidence_excerpt,
+            "- 如果价格修复与持仓扩张同步，关注 S1 是否进入 S2 趋势中确认。",
+            (
+                "- 如果 10D/20D 信号继续保持 high，同时期权过滤继续 confirm_long，"
+                "偏多观察的证据链会更完整。"
+            ),
+            "- 如果价格反向、持仓缩减或曲线结构转弱，当前 S1 应降级为观察失败或重新回到 S0。",
+            "- 人工复核必须检查官方数据字段、主力切换原因、成本假设和历史事件解释是否合理。",
+            "",
+            "## 人工复核项",
+            "",
+            "- 发布措辞：避免把观察结论写成确定性交易建议。",
+            "- 历史证据解释：确认 forward-return 后验标签没有被误用为当日输入。",
+            "- 事件解释：确认基本面上下文只用于复盘解释，不生成自动信号。",
+            (
+                "- 期货-期权矛盾节点：确认 R69 背离胜负只作为历史后验证据，"
+                "不改变 `composite_score`，不生成期权策略。"
+            ),
+            (
+                "- 期货-期权当前映射：确认 R71/R72 只回答“当前像哪个历史节点”，"
+                "不把最新日写入胜负统计。"
+            ),
+            "- 阈值参数：READY/WATCH 只能作为研究候选，不能直接升级为生产规则。",
+            "- 图表可读性：发布前需人工检查图片是否清晰、标题是否准确。",
             "",
             "## 研究边界",
             "",
-            "- 图表和文字用于研究复盘与发布素材准备。",
-            "- 历史 forward-return 只作为后验验证标签。",
+            "- latest signal-only 未包含未来收益标签。",
+            "- 历史 forward-return 只作为历史后验验证标签。",
+            "- R69 期货-期权背离研究只引用历史后验标签，期权 PCR/IV/skew 仍为研究 proxy。",
+            "- R71/R72 当前结构映射不改变主模型方向，不反转信号，不进入最新日胜负统计。",
+            "- 当前输出用于研究复盘、发布素材准备和人工复核。",
             "- 本文不构成交易指令。",
             "",
         ]
@@ -489,6 +794,9 @@ def _render_wechat_summary(
     decay: pd.DataFrame,
     event_summary: pd.DataFrame,
     validated_event_context: dict[str, object],
+    futures_option_context: dict[str, object],
+    futures_option_playbook_context: dict[str, object],
+    current_watch_window_context: dict[str, object],
 ) -> str:
     data_asof = str(latest["data_asof"])
     best = decay.sort_values("directional_hit_rate", ascending=False).head(1)
@@ -506,10 +814,49 @@ def _render_wechat_summary(
         event_count = validated_event_context.get("r55_event_count")
         context_count = validated_event_context.get("r55_context_available_count")
         event_context_text = f"R56 已覆盖 {context_count}/{event_count} 条 R55 事件上下文"
+    futures_option_text = "R70 期货-期权矛盾节点未接入"
+    if futures_option_context.get("connected"):
+        r69_result = futures_option_context.get("result")
+        result_dict = r69_result if isinstance(r69_result, dict) else {}
+        futures_option_text = (
+            "R70 已接入期货-期权背离样本，"
+            f"明确方向背离 {result_dict.get('directional_divergence_count', 0)} 行，"
+            f"平均最早解决约 {_fmt_number(result_dict.get('average_resolution_horizon'))} 个交易日"
+        )
+    futures_option_playbook_text = "R72 当前结构映射未接入"
+    if futures_option_playbook_context.get("connected"):
+        rows = _r69_rows(futures_option_playbook_context.get("current_mapping_rows"))
+        summary = futures_option_playbook_context.get("summary")
+        summary_dict = summary if isinstance(summary, dict) else {}
+        if rows:
+            first = rows[0]
+            label = first.get("matched_playbook_label_cn") or first.get(
+                "matched_playbook_label",
+                "-",
+            )
+            futures_option_playbook_text = (
+                f"R72 当前映射 {len(rows)} 个周期，首要节点 `{label}`，"
+                f"匹配样本 {first.get('matched_sample_count', '-')}"
+            )
+        else:
+            futures_option_playbook_text = (
+                "R72 已接入当前结构映射，"
+                f"历史节点 {summary_dict.get('node_count', 0)} 个"
+            )
+    watch_window_text = "R77 当前观察窗口未接入"
+    if current_watch_window_context.get("connected"):
+        watch = current_watch_window_context.get("watch_window")
+        watch_dict = watch if isinstance(watch, dict) else {}
+        watch_window_text = (
+            f"R77 阶段 {watch_dict.get('phase_v2', '-')} / "
+            f"{watch_dict.get('phase_quality', '-')}，"
+            f"观察状态 {watch_dict.get('watch_status', '-')}"
+        )
     return (
         f"数据截至 {data_asof}。CF 当前方向 {latest.get('signal_direction')}，"
         f"主力 {latest.get('main_contract')}。历史证据中 {best_text}；"
-        f"历史事件中 {event_text}；{event_context_text}。"
+        f"历史事件中 {event_text}；{event_context_text}；{futures_option_text}；"
+        f"{futures_option_playbook_text}；{watch_window_text}。"
         "本摘要仅供研究发布准备，不构成交易指令。\n"
     )
 
@@ -526,6 +873,415 @@ def _wechat_event_context_lines(context: dict[str, object]) -> list[str]:
         "- R56 基本面事件解释链只用于历史复盘与解释，不生成 `fundamental_signal`。",
         "- 该内容不构成交易指令，仍需要 HUMAN_REVIEW_REQUIRED。",
     ]
+
+
+def _wechat_futures_option_divergence_lines(context: dict[str, object]) -> list[str]:
+    if not context.get("connected"):
+        return [
+            "- 本次发布包未接入 R69 期货-期权背离胜负研究。",
+            "- 当前只展示 latest brief 中的期权过滤状态，不判断结构性矛盾由哪一方被后验验证。",
+        ]
+    result = context.get("result")
+    result_dict = result if isinstance(result, dict) else {}
+    rows = _r69_rows(context.get("directional_divergence_rows"))
+    lines = [
+        f"- R69 来源：`{context.get('source_path', context.get('source'))}`。",
+        (
+            f"- 样本区间：`{result_dict.get('start')}` 至 `{result_dict.get('end')}`；"
+            f"总事件行 `{result_dict.get('event_row_count')}`，"
+            f"明确方向背离 `{result_dict.get('directional_divergence_count')}`。"
+        ),
+        (
+            f"- 主要后验标签：`{result_dict.get('main_winner_label')}`；"
+            "平均最早解决周期约 "
+            f"`{_fmt_number(result_dict.get('average_resolution_horizon'))}` 个交易日。"
+        ),
+        (
+            "- 该节点用于观察期货量价结构与期权 PCR/IV/skew 的矛盾，"
+            "不改变 `composite_score`，不自动反转方向。"
+        ),
+        "",
+        "| 周期 | 样本数 | 期货方胜率 | 期权方胜率 | 期货方向平均后验收益 | 证据等级 |",
+        "| ---: | ---: | ---: | ---: | ---: | --- |",
+    ]
+    if rows:
+        for row in rows[:3]:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        f"{row.get('horizon')}D",
+                        str(row.get("sample_count")),
+                        _fmt_percent(row.get("futures_win_rate")),
+                        _fmt_percent(row.get("options_win_rate")),
+                        _fmt_percent(row.get("avg_futures_directional_forward_return")),
+                        str(row.get("evidence_level")),
+                    ]
+                )
+                + " |"
+            )
+    else:
+        lines.append("| - | 0 | - | - | - | 无明确方向背离样本 |")
+    lines.extend(
+        [
+            "",
+            "- R69 中的 `forward_return` 仅为历史后验验证标签，不参与最新日信号生成。",
+            (
+                "- 期权 IV/Greek、PCR 与 skew 均为研究 proxy；"
+                "本节不构成期权交易策略，也不构成交易指令。"
+            ),
+        ]
+    )
+    return lines
+
+
+def _wechat_futures_option_playbook_lines(context: dict[str, object]) -> list[str]:
+    if not context.get("connected"):
+        return [
+            "- 本次发布包未接入 R71 期货-期权背离 playbook。",
+            "- 当前只能展示 R70 历史胜负统计，不能把最新结构映射到历史节点。",
+        ]
+    summary = context.get("summary")
+    summary_dict = summary if isinstance(summary, dict) else {}
+    rows = _r69_rows(context.get("current_mapping_rows"))
+    lines = [
+        f"- R71 来源：`{context.get('source_path', context.get('source'))}`。",
+        (
+            f"- 历史证据区间：`{summary_dict.get('start', '-')}` 至 "
+            f"`{summary_dict.get('end', '-')}`；节点 `{summary_dict.get('node_count', 0)}` 个，"
+            f"READY 节点 `{summary_dict.get('ready_node_count', 0)}` 个，"
+            f"当前映射 `{summary_dict.get('current_mapping_count', len(rows))}` 行。"
+        ),
+        (
+            "- R72 用来回答“当前期货量价与期权结构像哪个历史矛盾节点”，"
+            "不把最新日写入 R69 胜负统计。"
+        ),
+        "",
+        "| 周期 | 当前类型 | 阶段 | 匹配节点 | 样本数 | 节点标签 | "
+        "期货胜率 | 期权胜率 | 平均解决周期 |",
+        "| ---: | --- | --- | --- | ---: | --- | ---: | ---: | ---: |",
+    ]
+    if rows:
+        for row in rows[:6]:
+            label = row.get("matched_playbook_label_cn") or row.get(
+                "matched_playbook_label",
+                "-",
+            )
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        f"{row.get('horizon')}D",
+                        str(row.get("divergence_type", "-")),
+                        str(row.get("trend_phase", "-")),
+                        str(row.get("matched_node_id", "-")),
+                        str(row.get("matched_sample_count", "-")),
+                        str(label),
+                        _fmt_percent(row.get("matched_futures_win_rate")),
+                        _fmt_percent(row.get("matched_options_win_rate")),
+                        _fmt_number(row.get("matched_average_resolution_horizon")),
+                    ]
+                )
+                + " |"
+            )
+    else:
+        lines.append("| - | - | - | - | 0 | 暂无可展示当前映射 | - | - | - |")
+    lines.extend(
+        [
+            "",
+            "- R71/R72 当前映射只回答结构相似性，不回答未来必然方向。",
+            "- `forward_return` 只作为历史后验验证标签；期权 IV/Greek 仍为研究 proxy。",
+            "- 本节不改变 `composite_score`，不自动反转方向，不构成交易指令。",
+        ]
+    )
+    return lines
+
+
+def _wechat_watch_window_lines(context: dict[str, object]) -> list[str]:
+    if not context.get("connected"):
+        return ["- 本次发布包未接入 R77 当前观察窗口。"]
+    watch = context.get("watch_window")
+    row = watch if isinstance(watch, dict) else {}
+    if not row:
+        return [
+            "- 验证报告已包含 R77 章节，但未显式接入结构化 JSON；发布前需人工复核。"
+        ]
+    return [
+        f"- v2 阶段：`{row.get('phase_v2')}` {row.get('phase_v2_label')} / "
+        f"`{row.get('phase_quality')}`。",
+        f"- 观察状态：`{row.get('watch_status')}`。",
+        f"- 双价格状态：`{row.get('dual_price_state')}`；全链持仓："
+        f"`{row.get('participation_state')}`。",
+        f"- 期权确认：`{row.get('option_confirmation_state')}` / "
+        f"`{row.get('option_confirmation_strength')}`。",
+        f"- 确认参考位：`{_fmt_number(row.get('confirmation_level'))}`；"
+        f"均线失效参考位：`{_fmt_number(row.get('invalidation_level'))}`。",
+        f"- 确认条件：{row.get('confirmation_conditions_cn')}",
+        f"- 失效条件：{row.get('invalidation_conditions_cn')}",
+        "- 暂定复核日期必须使用官方交易日历确认；本节不构成交易指令。",
+    ]
+
+
+def _wechat_article_title(
+    *,
+    data_asof: str,
+    trend_code: str,
+    trend_label: str,
+    direction: str,
+    stance_text: str,
+) -> str:
+    direction_text = {"long": "原始偏多", "short": "原始偏空", "neutral": "原始中性"}.get(
+        direction,
+        direction,
+    )
+    phase_text = " ".join(part for part in (trend_code, trend_label) if part and part != "-")
+    return f"郑棉 CF 研究观察：{data_asof} {direction_text}，{stance_text}，{phase_text}"
+
+
+def _wechat_quick_takeaway_lines(
+    *,
+    latest: dict[str, object],
+    decay: pd.DataFrame,
+) -> list[str]:
+    context = latest.get("signal_matrix_context")
+    context_dict = context if isinstance(context, dict) else {}
+    primary_horizon = context_dict.get("primary_horizon")
+    primary_direction = context_dict.get("primary_direction")
+    primary_confidence = context_dict.get("primary_confidence")
+    high_horizons = [
+        f"{row.get('horizon')}D"
+        for row in _latest_matrix_rows(latest)
+        if row.get("direction") == primary_direction and row.get("confidence") == "high"
+    ]
+    best_decay = _best_decay_row(decay)
+    best_text = "历史证据不足，需要继续等待样本。"
+    if best_decay is not None:
+        best_text = (
+            f"全样本中相对更强的是 `{int(best_decay['horizon'])}D`，"
+            f"方向命中率 {_fmt_percent(best_decay.get('directional_hit_rate'))}，"
+            f"normal cost 后均值 {_fmt_percent(best_decay.get('mean_net_return_normal_cost'))}。"
+        )
+    high_text = "、".join(high_horizons) if high_horizons else "暂无"
+    return [
+        "- **方向**："
+        f"主观察周期 `{primary_horizon}D` 为 `{primary_direction}/{primary_confidence}`，"
+        f"这里的 confidence 仅代表当前信号强度；同向高强度周期为 `{high_text}`。",
+        "- **阶段**：当前属于起点观察，不是趋势中确认；需要后续交易日继续验证。",
+        f"- **历史约束**：{best_text}",
+    ]
+
+
+def _wechat_signal_matrix_table(latest: dict[str, object]) -> list[str]:
+    rows = _latest_matrix_rows(latest)
+    if not rows:
+        return ["- latest brief 未提供多周期信号矩阵。"]
+    lines = [
+        "| 周期 | 方向 | 置信度 | 趋势阶段 | 期权过滤 |",
+        "| ---: | --- | --- | --- | --- |",
+    ]
+    for row in rows:
+        lines.append(
+            "| "
+            f"{row.get('horizon')}D | "
+            f"{_cn_direction(row.get('direction'))} | "
+            f"{row.get('confidence', '-')} | "
+            f"{row.get('trend_phase', '-')} | "
+            f"{row.get('option_signal', 'not_connected')} |"
+        )
+    return lines
+
+
+def _wechat_threshold_lines(latest: dict[str, object]) -> list[str]:
+    context = latest.get("signal_threshold_context")
+    if not isinstance(context, dict):
+        return ["- 暂未接入 R37 阈值候选。"]
+    lines = [
+        f"- 主观察周期：`{context.get('primary_horizon', '-')}`D；"
+        f"对齐状态：`{context.get('horizon_alignment_status', '-')}`。",
+    ]
+    matched = context.get("matched_candidates")
+    alternate = context.get("alternate_candidates")
+    candidates = matched if isinstance(matched, list) and matched else alternate
+    if not isinstance(candidates, list) or not candidates:
+        explanation = context.get("explanation_cn")
+        if explanation:
+            lines.append(f"- {explanation}")
+        lines.append("- 当前没有可直接升级的 READY/WATCH 主周期候选。")
+        return lines
+    lines.append("- 可参考的历史阈值候选如下，仍需人工复核：")
+    for candidate in candidates[:3]:
+        if not isinstance(candidate, dict):
+            continue
+        label = candidate.get("scheme_label_cn") or candidate.get("scheme_id") or "-"
+        lines.append(
+            "- "
+            f"`{label}`：{candidate.get('horizon', '-')}D，"
+            f"发布解释状态 {display_threshold_status(candidate.get('candidate_status', '-'))}，"
+            f"原始状态 {candidate.get('candidate_status', '-')}，"
+            f"样本 {int(candidate.get('observation_count') or 0)}，"
+            f"命中率 {_fmt_percent(candidate.get('directional_hit_rate'))}，"
+            f"平均后验收益 {_fmt_percent(candidate.get('mean_forward_return'))}。"
+        )
+    return lines
+
+
+def _wechat_option_lines(latest: dict[str, object]) -> list[str]:
+    option_row = _first_option_row(latest)
+    if option_row is None:
+        return [
+            "- 期权因子当前未接入或没有可用行。",
+            "- 无期权数据时，系统回退为 `not_connected`，不影响期货信号矩阵生成。",
+        ]
+    return [
+        f"- 期权过滤状态：`{option_row.get('option_signal', 'not_connected')}`。",
+        f"- 期权方向：`{option_row.get('option_signal_direction', '-')}`；"
+        f"因子状态：`{option_row.get('option_factor_status', '-')}`。",
+        f"- PCR volume：`{_fmt_decimal(option_row.get('option_pcr_volume'))}`；"
+        f"PCR OI：`{_fmt_decimal(option_row.get('option_pcr_oi'))}`；"
+        f"ATM IV rank：`{_fmt_percent(option_row.get('option_atm_iv_rank'))}`；"
+        f"skew proxy：`{_fmt_decimal(option_row.get('option_skew_proxy'))}`。",
+        "- 期权只作为期货信号过滤器和波动风险观察，不进入 composite_score。",
+    ]
+
+
+def _wechat_decay_table(decay: pd.DataFrame) -> list[str]:
+    if decay.empty:
+        return ["- 历史证据表为空。"]
+    working = decay.copy()
+    working["horizon"] = pd.to_numeric(working["horizon"], errors="coerce")
+    working = working.dropna(subset=["horizon"]).sort_values("horizon")
+    lines = [
+        "| Horizon | 样本 | normal cost 后均值 | 命中率 | 稳定性 |",
+        "| ---: | ---: | ---: | ---: | --- |",
+    ]
+    for row in working.itertuples(index=False):
+        row_dict = row._asdict()
+        lines.append(
+            "| "
+            f"{int(row_dict['horizon'])}D | "
+            f"{int(row_dict.get('observation_count') or 0)} | "
+            f"{_fmt_percent(row_dict.get('mean_net_return_normal_cost'))} | "
+            f"{_fmt_percent(row_dict.get('directional_hit_rate'))} | "
+            f"{row_dict.get('stability_status', '-')} |"
+        )
+    return lines
+
+
+def _wechat_event_summary_lines(event_summary: pd.DataFrame) -> list[str]:
+    if event_summary.empty:
+        return ["- 历史事件解释表为空。"]
+    working = event_summary.copy()
+    working["event_count"] = pd.to_numeric(working["event_count"], errors="coerce").fillna(0)
+    if "directional_hit_rate" not in working.columns:
+        working["directional_hit_rate"] = pd.NA
+    if "horizon" in working.columns:
+        preferred = working.loc[pd.to_numeric(working["horizon"], errors="coerce").eq(10)]
+        if not preferred.empty:
+            working = preferred
+    grouped = (
+        working.groupby("event_type", as_index=False)
+        .agg(
+            event_count=("event_count", "max"),
+            directional_hit_rate=("directional_hit_rate", "mean"),
+        )
+        .sort_values("event_count", ascending=False)
+    )
+    total_events = int(grouped["event_count"].sum())
+    lines = [
+        (
+            f"- 全历史可解释事件样本约 `{total_events}` 条，"
+            "覆盖趋势阶段、主力切换、持仓异常和曲线结构突变。"
+        ),
+        "",
+        "| 事件类型 | 样本数 | 10D 方向命中率 |",
+        "| --- | ---: | ---: |",
+    ]
+    for row in grouped.head(6).itertuples(index=False):
+        lines.append(
+            f"| {row.event_type} | {int(row.event_count)} | "
+            f"{_fmt_percent(getattr(row, 'directional_hit_rate', None))} |"
+        )
+    return lines
+
+
+def _wechat_chart_blocks(*, chart_paths: tuple[Path, ...], output_dir: Path) -> list[str]:
+    captions = {
+        "price_oi_main": "看价格修复是否由持仓扩张配合，避免只看到价格而忽略资金参与度。",
+        "term_structure": "看主力、近月、远月的相对位置，辅助判断期限结构是否支持当前方向。",
+        "signal_matrix_heatmap": "看 1D 到 40D 是否同向，重点关注 10D/20D 是否保持高置信。",
+        "factor_hit_rate": "看历史后验命中率是否明显高于 50%，并结合成本后收益判断稳定性。",
+        "trend_phase_timeline": "看阶段是否从 S1 进入 S2，或是否出现 S3/S4 的衰竭与终点信号。",
+        "event_distribution": "看历史事件样本主要集中在哪些类型，避免用少数事件过度解释当前行情。",
+    }
+    titles = {
+        "price_oi_main": "主力价格与持仓",
+        "term_structure": "期限结构",
+        "signal_matrix_heatmap": "多周期信号矩阵",
+        "factor_hit_rate": "历史命中率",
+        "trend_phase_timeline": "趋势阶段时间线",
+        "event_distribution": "历史事件分布",
+    }
+    lines: list[str] = []
+    for path in chart_paths:
+        stem = path.stem
+        lines.extend(
+            [
+                f"### {titles.get(stem, stem)}",
+                "",
+                f"![{stem}]({_relative_path(path=path, root=output_dir)})",
+                "",
+                f"> 读图要点：{captions.get(stem, '用于发布前人工复核。')}",
+                "",
+            ]
+        )
+    return lines
+
+
+def _latest_matrix_rows(latest: dict[str, object]) -> list[dict[str, object]]:
+    context = latest.get("signal_matrix_context")
+    if not isinstance(context, dict):
+        return []
+    rows = context.get("rows")
+    if not isinstance(rows, list):
+        return []
+    return [row for row in rows if isinstance(row, dict)]
+
+
+def _first_option_row(latest: dict[str, object]) -> dict[str, object] | None:
+    for row in _latest_matrix_rows(latest):
+        if row.get("option_signal") or row.get("option_factor_status"):
+            return row
+    return None
+
+
+def _best_decay_row(decay: pd.DataFrame) -> dict[str, object] | None:
+    if decay.empty or "directional_hit_rate" not in decay.columns:
+        return None
+    working = decay.copy()
+    working["directional_hit_rate"] = pd.to_numeric(
+        working["directional_hit_rate"],
+        errors="coerce",
+    )
+    working = working.dropna(subset=["directional_hit_rate"])
+    if working.empty:
+        return None
+    return working.sort_values("directional_hit_rate", ascending=False).iloc[0].to_dict()
+
+
+def _cn_direction(value: object) -> str:
+    return {"long": "偏多", "short": "偏空", "neutral": "中性"}.get(str(value), str(value))
+
+
+def _fmt_decimal(value: object) -> str:
+    if value is None or pd.isna(value):
+        return "-"
+    return f"{float(value):.6f}"
+
+
+def _fmt_number(value: object) -> str:
+    if value is None or pd.isna(value):
+        return "-"
+    return f"{float(value):.6f}"
 
 
 def _write_data_asof_json(*, path: Path, result_context: dict[str, object]) -> None:
@@ -560,6 +1316,7 @@ def _write_manifest(
     signal_matrix_path: Path,
     decay_path: Path,
     event_path: Path,
+    research_framework_context: dict[str, object],
 ) -> None:
     payload = {
         "run_id": result.run_id,
@@ -575,7 +1332,36 @@ def _write_manifest(
         "historical_evidence_decay_path": str(decay_path),
         "event_summary_path": str(event_path),
         "validated_event_context": result.validated_event_context,
+        "futures_option_divergence_json_path": (
+            None
+            if result.futures_option_divergence_json_path is None
+            else str(result.futures_option_divergence_json_path)
+        ),
+        "futures_option_divergence_context": result.futures_option_divergence_context,
+        "futures_option_playbook_json_path": (
+            None
+            if result.futures_option_playbook_json_path is None
+            else str(result.futures_option_playbook_json_path)
+        ),
+        "futures_option_playbook_context": result.futures_option_playbook_context,
+        "current_watch_window_json_path": (
+            None
+            if result.current_watch_window_json_path is None
+            else str(result.current_watch_window_json_path)
+        ),
+        "current_watch_window_context": result.current_watch_window_context,
+        "research_framework_context": research_framework_context,
+        "research_framework_rule_version": RESEARCH_FRAMEWORK_VERSION,
         "publish_pack_event_context_rule_version": PUBLISH_PACK_EVENT_CONTEXT_VERSION,
+        "publish_pack_futures_option_context_rule_version": (
+            PUBLISH_PACK_FUTURES_OPTION_CONTEXT_VERSION
+        ),
+        "publish_pack_futures_option_playbook_context_rule_version": (
+            PUBLISH_PACK_FUTURES_OPTION_PLAYBOOK_CONTEXT_VERSION
+        ),
+        "publish_pack_watch_window_context_rule_version": (
+            PUBLISH_PACK_WATCH_WINDOW_CONTEXT_VERSION
+        ),
         "chart_paths": [str(path) for path in result.chart_paths],
         "wechat_article_path": str(result.wechat_article_path),
         "wechat_summary_path": str(result.wechat_summary_path),

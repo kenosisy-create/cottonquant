@@ -14,17 +14,39 @@ import pandas as pd
 from cotton_factor.common.exceptions import ResearchWorkbenchError
 from cotton_factor.common.paths import data_dir, project_root, reports_dir
 from cotton_factor.common.time import utc_now
+from cotton_factor.research_workbench.research_framework import (
+    RESEARCH_FRAMEWORK_VERSION,
+    build_research_framework_context,
+    display_threshold_status,
+    research_framework_markdown_lines,
+)
 
 PRODUCT_CODE = "CF"
 VALIDATED_BRIEF_VERSION = "R43_validated_research_brief_v1"
 VALIDATED_BRIEF_EVENT_CONTEXT_VERSION = "R56_validated_brief_event_context_v1"
 VALIDATED_BRIEF_THRESHOLD_CONTEXT_VERSION = "R61_validated_brief_threshold_context_v1"
+VALIDATED_BRIEF_FUTURES_OPTION_CONTEXT_VERSION = "R70_validated_brief_futures_option_context_v1"
+VALIDATED_BRIEF_FUTURES_OPTION_PLAYBOOK_CONTEXT_VERSION = (
+    "R72_validated_brief_futures_option_playbook_context_v1"
+)
+VALIDATED_BRIEF_WATCH_WINDOW_CONTEXT_VERSION = "R77_validated_brief_watch_window_v1"
+VALIDATED_BRIEF_STATE_TRANSITION_CONTEXT_VERSION = (
+    "R82_validated_brief_state_transition_context_v1"
+)
+VALIDATED_BRIEF_OPTION_VOLATILITY_CONTEXT_VERSION = (
+    "R82_validated_brief_option_volatility_context_v1"
+)
 OUTPUT_DIR = "validated_brief"
 HUMAN_REVIEW_REQUIRED = (
     "validated_research_interpretation",
     "historical_evidence_interpretation",
     "historical_event_interpretation",
     "event_threshold_sensitivity_review",
+    "futures_option_divergence_interpretation",
+    "futures_option_playbook_interpretation",
+    "current_watch_window_interpretation",
+    "state_transition_competing_risk_interpretation",
+    "option_volatility_term_structure_interpretation",
     "factor_thresholds",
     "cost_model_parameters",
     "trend_phase_rules",
@@ -49,6 +71,11 @@ class ResearchValidatedBriefResult:
     event_summary_path: Path
     event_detail_path: Path | None
     event_threshold_summary_path: Path | None
+    futures_option_divergence_json_path: Path | None
+    futures_option_playbook_json_path: Path | None
+    current_watch_window_json_path: Path | None
+    state_transition_json_path: Path | None
+    option_volatility_json_path: Path | None
     fundamental_observation_json_path: Path | None
     human_review_required: tuple[str, ...]
 
@@ -76,6 +103,31 @@ class ResearchValidatedBriefResult:
                 if self.event_threshold_summary_path is None
                 else str(self.event_threshold_summary_path)
             ),
+            "futures_option_divergence_json_path": (
+                None
+                if self.futures_option_divergence_json_path is None
+                else str(self.futures_option_divergence_json_path)
+            ),
+            "futures_option_playbook_json_path": (
+                None
+                if self.futures_option_playbook_json_path is None
+                else str(self.futures_option_playbook_json_path)
+            ),
+            "current_watch_window_json_path": (
+                None
+                if self.current_watch_window_json_path is None
+                else str(self.current_watch_window_json_path)
+            ),
+            "state_transition_json_path": (
+                None
+                if self.state_transition_json_path is None
+                else str(self.state_transition_json_path)
+            ),
+            "option_volatility_json_path": (
+                None
+                if self.option_volatility_json_path is None
+                else str(self.option_volatility_json_path)
+            ),
             "fundamental_observation_json_path": (
                 None
                 if self.fundamental_observation_json_path is None
@@ -93,6 +145,11 @@ def build_cf_validated_research_brief(
     event_summary_path: Path | None = None,
     event_detail_path: Path | None = None,
     event_threshold_summary_path: Path | None = None,
+    futures_option_divergence_json_path: Path | None = None,
+    futures_option_playbook_json_path: Path | None = None,
+    current_watch_window_json_path: Path | None = None,
+    state_transition_json_path: Path | None = None,
+    option_volatility_json_path: Path | None = None,
     fundamental_observation_json_path: Path | None = None,
     output_dir: Path | None = None,
     daily_output_root: Path | None = None,
@@ -122,13 +179,53 @@ def build_cf_validated_research_brief(
         if event_threshold_summary_path is None
         else _load_event_threshold_summary(event_threshold_summary_path)
     )
+    futures_option_divergence = (
+        None
+        if futures_option_divergence_json_path is None
+        else _load_futures_option_divergence_context(futures_option_divergence_json_path)
+    )
+    futures_option_playbook = (
+        None
+        if futures_option_playbook_json_path is None
+        else _load_futures_option_playbook_context(futures_option_playbook_json_path)
+    )
+    current_watch_window = (
+        None
+        if current_watch_window_json_path is None
+        else _load_current_watch_window_context(current_watch_window_json_path)
+    )
+    state_transition = (
+        None
+        if state_transition_json_path is None
+        else _load_state_transition_context(state_transition_json_path)
+    )
+    option_volatility = (
+        None
+        if option_volatility_json_path is None
+        else _load_option_volatility_context(option_volatility_json_path)
+    )
     fundamental = (
         None
         if fundamental_observation_json_path is None
         else _load_fundamental_observation(fundamental_observation_json_path)
     )
     data_asof = _parse_date(str(latest["data_asof"]))
+    _validate_context_asof(
+        data_asof=data_asof,
+        label="R79 state transition",
+        context=state_transition,
+    )
+    _validate_context_asof(
+        data_asof=data_asof,
+        label="R80/R81 option volatility",
+        context=option_volatility,
+    )
     brief_run_id = run_id or _default_run_id(data_asof=data_asof)
+    research_framework_context = build_research_framework_context(
+        latest=latest,
+        decay=decay,
+        stability=stability,
+    )
     markdown_path = _markdown_path(data_asof=data_asof, output_dir=output_dir)
     json_path = _json_path(data_asof=data_asof, output_dir=output_dir)
     manifest_path = _manifest_path(data_asof=data_asof, output_dir=output_dir)
@@ -156,6 +253,11 @@ def build_cf_validated_research_brief(
         event_summary_path=event_path,
         event_detail_path=event_detail_path,
         event_threshold_summary_path=event_threshold_summary_path,
+        futures_option_divergence_json_path=futures_option_divergence_json_path,
+        futures_option_playbook_json_path=futures_option_playbook_json_path,
+        current_watch_window_json_path=current_watch_window_json_path,
+        state_transition_json_path=state_transition_json_path,
+        option_volatility_json_path=option_volatility_json_path,
         fundamental_observation_json_path=fundamental_observation_json_path,
         human_review_required=HUMAN_REVIEW_REQUIRED,
     )
@@ -167,7 +269,13 @@ def build_cf_validated_research_brief(
         event_summary=event_summary,
         event_detail=event_detail,
         event_threshold_summary=event_threshold_summary,
+        futures_option_divergence=futures_option_divergence,
+        futures_option_playbook=futures_option_playbook,
+        current_watch_window=current_watch_window,
+        state_transition=state_transition,
+        option_volatility=option_volatility,
         fundamental=fundamental,
+        research_framework_context=research_framework_context,
     )
     _write_markdown(result=result, markdown=markdown)
     _write_json(
@@ -177,7 +285,13 @@ def build_cf_validated_research_brief(
         event_summary=event_summary,
         event_detail=event_detail,
         event_threshold_summary=event_threshold_summary,
+        futures_option_divergence=futures_option_divergence,
+        futures_option_playbook=futures_option_playbook,
+        current_watch_window=current_watch_window,
+        state_transition=state_transition,
+        option_volatility=option_volatility,
         fundamental=fundamental,
+        research_framework_context=research_framework_context,
     )
     _write_manifest(result=result)
     return result
@@ -309,6 +423,188 @@ def _load_event_threshold_summary(path: Path) -> pd.DataFrame:
     return working.reset_index(drop=True)
 
 
+def _load_futures_option_divergence_context(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise ResearchWorkbenchError(f"R69 futures-option divergence JSON not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("report_type") != "futures_option_divergence_research":
+        raise ResearchWorkbenchError("R69 JSON must be futures_option_divergence_research")
+    result = payload.get("result")
+    if not isinstance(result, dict):
+        raise ResearchWorkbenchError("R69 JSON missing result summary")
+    boundary = payload.get("research_boundary")
+    if isinstance(boundary, dict):
+        if boundary.get("forward_returns_are_validation_labels") is not True:
+            raise ResearchWorkbenchError("R69 forward returns must be validation labels")
+        if boundary.get("trading_instruction") != "not_a_trading_instruction":
+            raise ResearchWorkbenchError("R69 must not contain trading instructions")
+    horizon_rows = _r69_rows(payload.get("horizon_summary"))
+    node_rows = _r69_rows(payload.get("node_summary"))
+    return {
+        "connected": True,
+        "source_path": str(path),
+        "rule_version": VALIDATED_BRIEF_FUTURES_OPTION_CONTEXT_VERSION,
+        "result": result,
+        "directional_divergence_rows": _r69_directional_horizon_rows(horizon_rows),
+        "ready_nodes": _r69_ready_nodes(node_rows),
+        "forward_returns_are_validation_labels": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _load_futures_option_playbook_context(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise ResearchWorkbenchError(f"R71 futures-option playbook JSON not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("report_type") != "futures_option_divergence_playbook":
+        raise ResearchWorkbenchError("R71 JSON must be futures_option_divergence_playbook")
+    summary = payload.get("summary")
+    if not isinstance(summary, dict):
+        raise ResearchWorkbenchError("R71 JSON missing summary")
+    boundary = payload.get("research_boundary")
+    if isinstance(boundary, dict):
+        if boundary.get("forward_returns_are_validation_labels") is not True:
+            raise ResearchWorkbenchError("R71 forward returns must be validation labels")
+        if boundary.get("trading_instruction") != "not_a_trading_instruction":
+            raise ResearchWorkbenchError("R71 must not contain trading instructions")
+        if boundary.get("auto_reverse_allowed") is not False:
+            raise ResearchWorkbenchError("R71 must not allow auto reverse")
+    return {
+        "connected": True,
+        "source_path": str(path),
+        "rule_version": VALIDATED_BRIEF_FUTURES_OPTION_PLAYBOOK_CONTEXT_VERSION,
+        "summary": summary,
+        "current_mapping_rows": _r69_rows(payload.get("current_mapping_rows"))[:12],
+        "node_rows": _r69_rows(payload.get("node_rows"))[:12],
+        "forward_returns_are_validation_labels": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _load_current_watch_window_context(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise ResearchWorkbenchError(f"R77 current watch window JSON not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("report_type") != "current_watch_window":
+        raise ResearchWorkbenchError("R77 JSON must be current_watch_window")
+    watch = payload.get("watch_window")
+    if not isinstance(watch, dict):
+        raise ResearchWorkbenchError("R77 JSON missing watch_window")
+    boundary = payload.get("research_boundary")
+    if not isinstance(boundary, dict):
+        raise ResearchWorkbenchError("R77 JSON missing research_boundary")
+    if boundary.get("latest_state_uses_future_data") is not False:
+        raise ResearchWorkbenchError("R77 latest state must not use future data")
+    if boundary.get("trading_instruction") != "not_a_trading_instruction":
+        raise ResearchWorkbenchError("R77 must not contain trading instructions")
+    return {
+        "connected": True,
+        "source_path": str(path),
+        "rule_version": VALIDATED_BRIEF_WATCH_WINDOW_CONTEXT_VERSION,
+        "watch_window": watch,
+        "research_boundary": boundary,
+    }
+
+
+def _load_state_transition_context(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise ResearchWorkbenchError(f"R79 state transition JSON not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    current_mapping = payload.get("current_mapping")
+    overall_summary = payload.get("overall_summary")
+    if not isinstance(current_mapping, dict):
+        raise ResearchWorkbenchError("R79 JSON missing current_mapping")
+    if not isinstance(overall_summary, list):
+        raise ResearchWorkbenchError("R79 JSON missing overall_summary")
+    if not str(current_mapping.get("rule_version", "")).startswith("R79"):
+        raise ResearchWorkbenchError("R79 JSON has an unsupported rule_version")
+    end = payload.get("end")
+    if end is None:
+        raise ResearchWorkbenchError("R79 JSON missing end")
+    return {
+        "connected": True,
+        "source_path": str(path),
+        "rule_version": VALIDATED_BRIEF_STATE_TRANSITION_CONTEXT_VERSION,
+        "end": str(end),
+        "current_mapping": current_mapping,
+        "overall_summary": [
+            row for row in overall_summary if isinstance(row, dict)
+        ],
+        "closed_event_count": payload.get("closed_event_count"),
+        "censored_event_count": payload.get("censored_event_count"),
+        "human_review_required": payload.get("human_review_required", []),
+        "historical_probabilities_are_posterior_evidence": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _load_option_volatility_context(path: Path) -> dict[str, object]:
+    if not path.exists():
+        raise ResearchWorkbenchError(f"R80/R81 option volatility JSON not found: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    latest_curve = payload.get("latest_curve")
+    boundary = payload.get("research_boundary")
+    if not isinstance(latest_curve, dict):
+        raise ResearchWorkbenchError("R80/R81 JSON missing latest_curve")
+    if not isinstance(boundary, dict):
+        raise ResearchWorkbenchError("R80/R81 JSON missing research_boundary")
+    if boundary.get("latest_state_uses_future_data") is not False:
+        raise ResearchWorkbenchError("R80/R81 latest state must not use future data")
+    if boundary.get("enters_composite_score") is not False:
+        raise ResearchWorkbenchError("R80/R81 must not enter composite_score")
+    if boundary.get("trading_instruction") != "not_a_trading_instruction":
+        raise ResearchWorkbenchError("R80/R81 must not contain trading instructions")
+    if not str(latest_curve.get("rule_version", "")).startswith("R81"):
+        raise ResearchWorkbenchError("R80/R81 JSON must use the R81 expiry registry")
+    end = payload.get("end")
+    if end is None:
+        raise ResearchWorkbenchError("R80/R81 JSON missing end")
+    return {
+        "connected": True,
+        "source_path": str(path),
+        "rule_version": VALIDATED_BRIEF_OPTION_VOLATILITY_CONTEXT_VERSION,
+        "end": str(end),
+        "latest_curve": latest_curve,
+        "expiry_registry_row_count": payload.get("expiry_registry_row_count"),
+        "expiry_fallback_row_count": payload.get("expiry_fallback_row_count"),
+        "warning_count": payload.get("warning_count"),
+        "research_boundary": boundary,
+        "human_review_required": payload.get("human_review_required", []),
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _validate_context_asof(
+    *, data_asof: date, label: str, context: dict[str, object] | None
+) -> None:
+    if context is None:
+        return
+    context_end = _parse_date(str(context.get("end")))
+    if context_end != data_asof:
+        raise ResearchWorkbenchError(
+            f"{label} end {context_end.isoformat()} does not match latest data_asof "
+            f"{data_asof.isoformat()}"
+        )
+
+
+def _r69_rows(value: object) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        return []
+    return [row for row in value if isinstance(row, dict)]
+
+
+def _r69_directional_horizon_rows(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    filtered = [
+        row for row in rows if row.get("divergence_type") == "directional_divergence"
+    ]
+    return sorted(filtered, key=lambda row: int(row.get("horizon") or 0))[:12]
+
+
+def _r69_ready_nodes(rows: list[dict[str, object]]) -> list[dict[str, object]]:
+    ready = [row for row in rows if row.get("evidence_level") == "READY"]
+    return sorted(ready, key=lambda row: int(row.get("sample_count") or 0), reverse=True)[:12]
+
+
 def _bool_series(series: pd.Series) -> pd.Series:
     if series.dtype == bool:
         return series.fillna(False)
@@ -337,7 +633,13 @@ def _render_markdown(
     event_summary: pd.DataFrame,
     event_detail: pd.DataFrame | None,
     event_threshold_summary: pd.DataFrame | None,
+    futures_option_divergence: dict[str, object] | None,
+    futures_option_playbook: dict[str, object] | None,
+    current_watch_window: dict[str, object] | None,
+    state_transition: dict[str, object] | None,
+    option_volatility: dict[str, object] | None,
     fundamental: dict[str, object] | None,
+    research_framework_context: dict[str, object],
 ) -> str:
     trend = latest.get("trend_phase") if isinstance(latest.get("trend_phase"), dict) else {}
     matrix = (
@@ -373,6 +675,10 @@ def _render_markdown(
         f"`{result.event_threshold_summary_path or '未接入 R60'}`",
         "- 基本面观察输入："
         f"`{result.fundamental_observation_json_path or '未接入 R53'}`",
+        "- 状态转移竞争风险输入："
+        f"`{result.state_transition_json_path or '未接入 R79'}`",
+        "- 期权波动期限结构输入："
+        f"`{result.option_volatility_json_path or '未接入 R80/R81'}`",
         "",
         "## 二、当前市场事实",
         "",
@@ -380,6 +686,8 @@ def _render_markdown(
         f"- 最新信号方向：`{latest.get('signal_direction')}`",
         f"- 趋势阶段：`{trend.get('phase_code')}` {trend.get('phase_label')}",
         f"- 阶段原因：{trend.get('reason')}",
+        "",
+        *research_framework_markdown_lines(research_framework_context),
         "",
         "## 三、多周期信号矩阵",
         "",
@@ -398,6 +706,16 @@ def _render_markdown(
         f"- PCR OI：`{_fmt_number(primary_option.get('option_pcr_oi'))}`",
         f"- skew proxy：`{_fmt_number(primary_option.get('option_skew_proxy'))}`",
         "- R49 期权信号只作为期货信号过滤器和风险提示，不进入 composite_score。",
+        "",
+        *_futures_option_divergence_section(futures_option_divergence),
+        "",
+        *_futures_option_playbook_section(futures_option_playbook),
+        "",
+        *_current_watch_window_section(current_watch_window),
+        "",
+        *_state_transition_section(state_transition),
+        "",
+        *_option_volatility_section(option_volatility),
         "",
         "## 五、历史窗口证据",
         "",
@@ -423,12 +741,13 @@ def _render_markdown(
             "",
             "## 六、多因子回测摘要",
             "",
-            "- 若 10D 或 40D 显示 WATCH/READY，只能说明历史证据更值得继续研究。",
+            "- 若 10D 或 40D 显示较好候选，只能说明历史证据更值得继续研究。",
+            "- 所有阈值候选在样本外验证前统一按 `WATCH_ONLY_OOS_REQUIRED` 解释。",
             "- 若 1D/3D/5D/20D 为 WEAK_OR_UNSTABLE，不应被包装成稳定交易规则。",
             "",
             "## 七、成本后稳定性",
             "",
-            "| Horizon | 方案 | 样本 | 平均后验收益 | 方向命中率 | 候选状态 | 稳定性 |",
+            "| Horizon | 方案 | 样本 | 平均后验收益 | 方向命中率 | 发布解释状态 | 稳定性 |",
             "| ---: | --- | ---: | ---: | ---: | --- | --- |",
         ]
     )
@@ -443,7 +762,7 @@ def _render_markdown(
                     str(row["observation_count"]),
                     _fmt_percent(row.get("mean_forward_return")),
                     _fmt_percent(row.get("directional_hit_rate")),
-                    str(row["candidate_status"]),
+                    display_threshold_status(row["candidate_status"]),
                     str(row["stability_status"]),
                 ]
             )
@@ -499,11 +818,258 @@ def _render_markdown(
             "- R55/R56 基本面事件解释不生成 `fundamental_signal`，不进入 `composite_score`。",
             "- R60 KEEP/WATCH/REVISE/REJECT 只作为阈值复核候选，不是交易规则。",
             "- R49 期权联动来自研究 proxy，不构成期权定价或交易指令。",
+            "- R79 状态转移概率是历史后验竞争风险证据，不是当前行情的未来标签。",
+            "- R80/R81 期权 IV 使用 Black-76 欧式近似，未覆盖到期日必须人工复核。",
             "- R53 基本面观察不生成 `fundamental_signal`，不进入 `composite_score`。",
             "- 本报告不构成交易指令。",
         ]
     )
     return "\n".join(lines) + "\n"
+
+
+def _futures_option_divergence_section(context: dict[str, object] | None) -> list[str]:
+    lines = ["## 期货-期权矛盾节点（R70）", ""]
+    if context is None:
+        return lines + [
+            "- 未接入 R69 期货-期权背离胜负研究；本报告仅展示当日期权过滤状态。",
+            "- R69 接入后，该章节用于观察期货量价结构与期权结构背离后由哪一方被后验价格验证。",
+        ]
+    result = context.get("result") if isinstance(context.get("result"), dict) else {}
+    directional_rows = context.get("directional_divergence_rows")
+    ready_nodes = context.get("ready_nodes")
+    directional = directional_rows if isinstance(directional_rows, list) else []
+    ready = ready_nodes if isinstance(ready_nodes, list) else []
+    lines.extend(
+        [
+            f"- R69 输入：`{context.get('source_path')}`",
+            f"- R69 样本区间：`{result.get('start')}` 至 `{result.get('end')}`",
+            f"- 背离/确认/非确认事件行数：`{result.get('event_row_count')}`",
+            f"- 有后验标签事件行数：`{result.get('labelled_event_row_count')}`",
+            f"- 明确方向背离行数：`{result.get('directional_divergence_count')}`",
+            f"- 主要胜方标签：`{result.get('main_winner_label')}`",
+            (
+                "- 平均最早解决周期："
+                f"`{_fmt_number(result.get('average_resolution_horizon'))}` 个交易日"
+            ),
+            "- R70 只引用 R69 的历史后验证据，不修改 `composite_score`，不自动反转方向。",
+            "",
+            "| 周期 | 样本数 | 期货胜率 | 期权胜率 | 平均期货方向收益 | 证据等级 |",
+            "| ---: | ---: | ---: | ---: | ---: | --- |",
+        ]
+    )
+    if directional:
+        for row in directional:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        f"{row.get('horizon')}D",
+                        str(row.get("sample_count")),
+                        _fmt_percent(row.get("futures_win_rate")),
+                        _fmt_percent(row.get("options_win_rate")),
+                        _fmt_percent(row.get("avg_futures_directional_forward_return")),
+                        str(row.get("evidence_level")),
+                    ]
+                )
+                + " |"
+            )
+    else:
+        lines.append("| - | 0 | - | - | - | 未发现明确方向背离 |")
+    lines.extend(
+        [
+            "",
+            "### R69 READY 结构节点",
+            "",
+            "| 趋势阶段 | 期权信号 | IV 桶 | PCR 桶 | 样本数 | 主导标签 |",
+            "| --- | --- | --- | --- | ---: | --- |",
+        ]
+    )
+    if ready:
+        for row in ready[:8]:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        str(row.get("trend_phase")),
+                        str(row.get("option_signal")),
+                        str(row.get("iv_rank_bucket")),
+                        str(row.get("pcr_bucket")),
+                        str(row.get("sample_count")),
+                        str(row.get("dominant_winner_label")),
+                    ]
+                )
+                + " |"
+            )
+    else:
+        lines.append("| - | - | - | - | 0 | 暂无 READY 节点 |")
+    lines.extend(
+        [
+            "",
+            "- R69 中的 `forward_return` 仅为历史后验验证标签，不参与最新日信号生成。",
+            "- 期权 PCR、ATM IV rank、skew 均为研究 proxy；本节不构成期权交易策略。",
+        ]
+    )
+    return lines
+
+
+def _futures_option_playbook_section(context: dict[str, object] | None) -> list[str]:
+    lines = ["## 期货-期权当前结构映射（R72）", ""]
+    if context is None:
+        return lines + [
+            "- 未接入 R71 期货-期权背离节点解释表；本报告暂不展示当前结构映射。",
+            "- R71 接入后，该章节用于把最新期货-期权结构映射到历史矛盾节点。",
+        ]
+    summary = context.get("summary") if isinstance(context.get("summary"), dict) else {}
+    current_rows = context.get("current_mapping_rows")
+    rows = current_rows if isinstance(current_rows, list) else []
+    lines.extend(
+        [
+            f"- R71 输入：`{context.get('source_path')}`",
+            f"- R71 证据区间：`{summary.get('start')}` 至 `{summary.get('end')}`",
+            f"- 节点总数：`{summary.get('node_count')}`",
+            f"- READY 节点数：`{summary.get('ready_node_count')}`",
+            f"- 当前映射行数：`{summary.get('current_mapping_count')}`",
+            "- R72 只做当前结构映射，不把最新日写入 R69 胜负统计。",
+            "",
+            "| 周期 | 当前结构 | 阶段 | 匹配节点 | 样本 | 解释标签 | "
+            "期货胜率 | 期权胜率 | 平均解决 |",
+            "| ---: | --- | --- | --- | ---: | --- | ---: | ---: | ---: |",
+        ]
+    )
+    if rows:
+        for row in rows:
+            lines.append(
+                "| "
+                + " | ".join(
+                    [
+                        f"{row.get('horizon')}D",
+                        str(row.get("divergence_type")),
+                        str(row.get("trend_phase")),
+                        str(row.get("matched_node_id")),
+                        str(row.get("matched_sample_count")),
+                        str(row.get("matched_playbook_label_cn")),
+                        _fmt_percent(row.get("matched_futures_win_rate")),
+                        _fmt_percent(row.get("matched_options_win_rate")),
+                        _fmt_number(row.get("matched_average_resolution_horizon")),
+                    ]
+                )
+                + " |"
+            )
+    else:
+        lines.append("| - | - | - | - | 0 | 未匹配 | - | - | - |")
+    lines.extend(
+        [
+            "",
+            "- R71/R72 中的当前映射只回答“当前像哪个历史节点”，不回答“未来必然怎么走”。",
+            "- `forward_return` 仍只作为历史后验验证标签；最新日未形成后验收益前不能进入胜负统计。",
+            "- 期权 PCR、ATM IV rank、skew 仍为研究 proxy，本节不构成期权策略或交易指令。",
+        ]
+    )
+    return lines
+
+
+def _current_watch_window_section(context: dict[str, object] | None) -> list[str]:
+    lines = ["## 当前确认与失效窗口（R77）", ""]
+    if context is None:
+        return lines + [
+            "- 未接入 R77 当前观察窗口；本报告暂不展示双价格、全链持仓和 v2 阶段。",
+        ]
+    watch = context.get("watch_window")
+    row = watch if isinstance(watch, dict) else {}
+    return lines + [
+        f"- R77 输入：`{context.get('source_path')}`",
+        f"- v2 阶段：`{row.get('phase_v2')}` {row.get('phase_v2_label')} / "
+        f"`{row.get('phase_quality')}`",
+        f"- 观察状态：`{row.get('watch_status')}`",
+        f"- 双价格状态：`{row.get('dual_price_state')}` / "
+        f"`{row.get('close_settle_gap_state')}`",
+        f"- 全链持仓状态：`{row.get('participation_state')}`，变化 "
+        f"`{_fmt_number(row.get('chain_oi_change_adjusted', row.get('chain_oi_change')))}`",
+        f"- 多日移仓上下文：`{row.get('roll_context')}`，承接比例 "
+        f"`{_fmt_number(row.get('roll_transfer_ratio_window'))}`",
+        f"- 期权确认：`{row.get('option_confirmation_state')}` / "
+        f"`{row.get('option_confirmation_strength')}`",
+        f"- 确认参考位：`{_fmt_number(row.get('confirmation_level'))}`",
+        f"- 均线失效参考位：`{_fmt_number(row.get('invalidation_level'))}`",
+        f"- 历史平均解决周期：`{_fmt_number(row.get('expected_resolution_days'))}` 个交易日",
+        f"- 确认条件：{row.get('confirmation_conditions_cn')}",
+        f"- 失效条件：{row.get('invalidation_conditions_cn')}",
+        "- R77 最新状态不读取未来收益，暂定复核日需用官方交易日历人工确认。",
+        "- 本节不自动反转方向，不构成交易指令。",
+    ]
+
+
+def _state_transition_section(context: dict[str, object] | None) -> list[str]:
+    lines = ["## 状态转移竞争风险（R82 接入 R79）", ""]
+    if context is None:
+        return lines + [
+            "- 未接入 R79 状态转移竞争风险；当前阶段仍只作静态 S0-S4 描述。",
+        ]
+    current = context.get("current_mapping")
+    current_row = current if isinstance(current, dict) else {}
+    summary = context.get("overall_summary")
+    rows = summary if isinstance(summary, list) else []
+    lines.extend(
+        [
+            f"- R79 输入：`{context.get('source_path')}`",
+            f"- 当前阶段：`{current_row.get('phase_code')}` / "
+            f"`{current_row.get('phase_direction')}`",
+            f"- 当前映射状态：`{current_row.get('mapping_status')}`",
+            f"- 当前主要去向：`{current_row.get('primary_outcome')}`，后验概率 "
+            f"`{_fmt_percent(current_row.get('primary_outcome_probability'))}`",
+            f"- 当前阶段边界：{current_row.get('research_boundary')}",
+            f"- 已关闭事件：`{context.get('closed_event_count')}`；右删失事件："
+            f"`{context.get('censored_event_count')}`",
+            "",
+            "| 起始阶段 | 后续去向 | 样本 | 后验概率 | 平均解决天数 | 证据 |",
+            "| --- | --- | ---: | ---: | ---: | --- |",
+        ]
+    )
+    for row in rows:
+        if not isinstance(row, dict) or row.get("outcome_count") == 0:
+            continue
+        lines.append(
+            f"| {row.get('phase_code')} | {row.get('outcome_label_cn')} | "
+            f"{row.get('outcome_count')} | "
+            f"{_fmt_percent(row.get('outcome_probability_closed'))} | "
+            f"{_fmt_number(row.get('avg_resolution_days'), decimals=2)} | "
+            f"{row.get('evidence_level')} |"
+        )
+    lines.extend(
+        [
+            "",
+            "- 上表是历史已关闭事件的竞争风险后验分布，不是当前行情的未来标签。",
+            "- 当前不在 S1/S3 时不得强行映射概率；本节不改变当前方向信号。",
+        ]
+    )
+    return lines
+
+
+def _option_volatility_section(context: dict[str, object] | None) -> list[str]:
+    lines = ["## 期权波动率与期限结构（R82 接入 R80/R81）", ""]
+    if context is None:
+        return lines + [
+            "- 未接入 R80/R81 期权波动率研究；当前报告只保留 PCR、skew 等 proxy。",
+        ]
+    latest = context.get("latest_curve")
+    row = latest if isinstance(latest, dict) else {}
+    return lines + [
+        f"- R80/R81 输入：`{context.get('source_path')}`",
+        f"- 主力合约：`{row.get('main_contract')}`；期权到期日："
+        f"`{row.get('main_option_expiry_date')}`",
+        f"- 到期日来源：`{row.get('main_expiry_date_source')}`；质量："
+        f"`{row.get('main_expiry_quality_flag')}`",
+        f"- Black-76 ATM IV 近似：`{_fmt_percent(row.get('main_atm_iv_approx'))}`",
+        f"- 20日实现波动率：`{_fmt_percent(row.get('main_rv'))}`",
+        f"- IV-RV：`{_fmt_percent(row.get('main_iv_rv_spread'))}`；IV/RV："
+        f"`{_fmt_number(row.get('main_iv_rv_ratio'), decimals=3)}`",
+        f"- 波动状态：`{row.get('volatility_state')}`；期限结构："
+        f"`{row.get('term_structure_state')}`",
+        f"- 登记表覆盖行：`{context.get('expiry_registry_row_count')}`；"
+        f"月初代理回退行：`{context.get('expiry_fallback_row_count')}`",
+        "- 棉花期权为美式，本研究使用 Black-76 欧式近似；IV/Greek 不是精确风险暴露。",
+        "- 本节不进入 `composite_score`，不自动生成期权交易策略或方向反转。",
+    ]
 
 
 def _fundamental_section(fundamental: dict[str, object] | None) -> list[str]:
@@ -784,7 +1350,13 @@ def _write_json(
     event_summary: pd.DataFrame,
     event_detail: pd.DataFrame | None,
     event_threshold_summary: pd.DataFrame | None,
+    futures_option_divergence: dict[str, object] | None,
+    futures_option_playbook: dict[str, object] | None,
+    current_watch_window: dict[str, object] | None,
+    state_transition: dict[str, object] | None,
+    option_volatility: dict[str, object] | None,
     fundamental: dict[str, object] | None,
+    research_framework_context: dict[str, object],
 ) -> None:
     result.json_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
@@ -796,9 +1368,25 @@ def _write_json(
         "historical_forward_returns_are_validation_labels": True,
         "latest_context": latest,
         "fundamental_observation_context": fundamental,
+        "research_framework_context": research_framework_context,
         "event_fundamental_context": _event_fundamental_context_payload(event_detail),
         "event_threshold_sensitivity_context": _event_threshold_context_payload(
             event_threshold_summary
+        ),
+        "futures_option_divergence_context": _futures_option_context_payload(
+            futures_option_divergence
+        ),
+        "futures_option_playbook_context": _futures_option_playbook_context_payload(
+            futures_option_playbook
+        ),
+        "current_watch_window_context": _current_watch_window_context_payload(
+            current_watch_window
+        ),
+        "state_transition_context": _state_transition_context_payload(
+            state_transition
+        ),
+        "option_volatility_context": _option_volatility_context_payload(
+            option_volatility
         ),
         "decay_rows": decay.to_dict(orient="records"),
         "event_summary_rows": event_summary.to_dict(orient="records"),
@@ -874,6 +1462,111 @@ def _event_threshold_context_payload(
     }
 
 
+def _futures_option_context_payload(
+    context: dict[str, object] | None,
+) -> dict[str, object]:
+    if context is None:
+        return {
+            "connected": False,
+            "rule_version": VALIDATED_BRIEF_FUTURES_OPTION_CONTEXT_VERSION,
+            "forward_returns_are_validation_labels": True,
+            "trading_instruction": "not_a_trading_instruction",
+        }
+    return {
+        "connected": True,
+        "rule_version": VALIDATED_BRIEF_FUTURES_OPTION_CONTEXT_VERSION,
+        "source_path": context.get("source_path"),
+        "result": context.get("result"),
+        "directional_divergence_rows": context.get("directional_divergence_rows", []),
+        "ready_nodes": context.get("ready_nodes", []),
+        "forward_returns_are_validation_labels": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _futures_option_playbook_context_payload(
+    context: dict[str, object] | None,
+) -> dict[str, object]:
+    if context is None:
+        return {
+            "connected": False,
+            "rule_version": VALIDATED_BRIEF_FUTURES_OPTION_PLAYBOOK_CONTEXT_VERSION,
+            "forward_returns_are_validation_labels": True,
+            "trading_instruction": "not_a_trading_instruction",
+        }
+    return {
+        "connected": True,
+        "rule_version": VALIDATED_BRIEF_FUTURES_OPTION_PLAYBOOK_CONTEXT_VERSION,
+        "source_path": context.get("source_path"),
+        "summary": context.get("summary"),
+        "current_mapping_rows": context.get("current_mapping_rows", []),
+        "node_rows": context.get("node_rows", []),
+        "forward_returns_are_validation_labels": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _current_watch_window_context_payload(
+    context: dict[str, object] | None,
+) -> dict[str, object]:
+    if context is None:
+        return {
+            "connected": False,
+            "rule_version": VALIDATED_BRIEF_WATCH_WINDOW_CONTEXT_VERSION,
+            "latest_state_uses_future_data": False,
+            "trading_instruction": "not_a_trading_instruction",
+        }
+    return {
+        "connected": True,
+        "rule_version": VALIDATED_BRIEF_WATCH_WINDOW_CONTEXT_VERSION,
+        "source_path": context.get("source_path"),
+        "watch_window": context.get("watch_window"),
+        "research_boundary": context.get("research_boundary"),
+        "latest_state_uses_future_data": False,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _state_transition_context_payload(
+    context: dict[str, object] | None,
+) -> dict[str, object]:
+    if context is None:
+        return {
+            "connected": False,
+            "rule_version": VALIDATED_BRIEF_STATE_TRANSITION_CONTEXT_VERSION,
+            "historical_probabilities_are_posterior_evidence": True,
+            "trading_instruction": "not_a_trading_instruction",
+        }
+    return {
+        **context,
+        "connected": True,
+        "rule_version": VALIDATED_BRIEF_STATE_TRANSITION_CONTEXT_VERSION,
+        "historical_probabilities_are_posterior_evidence": True,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
+def _option_volatility_context_payload(
+    context: dict[str, object] | None,
+) -> dict[str, object]:
+    if context is None:
+        return {
+            "connected": False,
+            "rule_version": VALIDATED_BRIEF_OPTION_VOLATILITY_CONTEXT_VERSION,
+            "latest_state_uses_future_data": False,
+            "enters_composite_score": False,
+            "trading_instruction": "not_a_trading_instruction",
+        }
+    return {
+        **context,
+        "connected": True,
+        "rule_version": VALIDATED_BRIEF_OPTION_VOLATILITY_CONTEXT_VERSION,
+        "latest_state_uses_future_data": False,
+        "enters_composite_score": False,
+        "trading_instruction": "not_a_trading_instruction",
+    }
+
+
 def _write_manifest(*, result: ResearchValidatedBriefResult) -> None:
     result.manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest = {
@@ -897,6 +1590,31 @@ def _write_manifest(*, result: ResearchValidatedBriefResult) -> None:
             if result.event_threshold_summary_path is None
             else str(result.event_threshold_summary_path)
         ),
+        "futures_option_divergence_json_path": (
+            None
+            if result.futures_option_divergence_json_path is None
+            else str(result.futures_option_divergence_json_path)
+        ),
+        "futures_option_playbook_json_path": (
+            None
+            if result.futures_option_playbook_json_path is None
+            else str(result.futures_option_playbook_json_path)
+        ),
+        "current_watch_window_json_path": (
+            None
+            if result.current_watch_window_json_path is None
+            else str(result.current_watch_window_json_path)
+        ),
+        "state_transition_json_path": (
+            None
+            if result.state_transition_json_path is None
+            else str(result.state_transition_json_path)
+        ),
+        "option_volatility_json_path": (
+            None
+            if result.option_volatility_json_path is None
+            else str(result.option_volatility_json_path)
+        ),
         "fundamental_observation_json_path": (
             None
             if result.fundamental_observation_json_path is None
@@ -912,6 +1630,22 @@ def _write_manifest(*, result: ResearchValidatedBriefResult) -> None:
         "validated_brief_threshold_context_rule_version": (
             VALIDATED_BRIEF_THRESHOLD_CONTEXT_VERSION
         ),
+        "validated_brief_futures_option_context_rule_version": (
+            VALIDATED_BRIEF_FUTURES_OPTION_CONTEXT_VERSION
+        ),
+        "validated_brief_futures_option_playbook_context_rule_version": (
+            VALIDATED_BRIEF_FUTURES_OPTION_PLAYBOOK_CONTEXT_VERSION
+        ),
+        "validated_brief_watch_window_context_rule_version": (
+            VALIDATED_BRIEF_WATCH_WINDOW_CONTEXT_VERSION
+        ),
+        "validated_brief_state_transition_context_rule_version": (
+            VALIDATED_BRIEF_STATE_TRANSITION_CONTEXT_VERSION
+        ),
+        "validated_brief_option_volatility_context_rule_version": (
+            VALIDATED_BRIEF_OPTION_VOLATILITY_CONTEXT_VERSION
+        ),
+        "research_framework_rule_version": RESEARCH_FRAMEWORK_VERSION,
     }
     result.manifest_path.write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -986,10 +1720,10 @@ def _fmt_quantile(value: object) -> str:
     return f"{float(value):.3f}"
 
 
-def _fmt_number(value: object) -> str:
+def _fmt_number(value: object, *, decimals: int = 6) -> str:
     if value is None or pd.isna(value):
         return "-"
-    return f"{float(value):.6f}"
+    return f"{float(value):.{decimals}f}"
 
 
 def _int_or_dash(value: object) -> int | str:

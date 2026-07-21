@@ -1677,6 +1677,82 @@ if typer is not None:
 
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @research_app.command("build-cf-data-continuity-audit")
+    def research_build_cf_data_continuity_audit(
+        trade_date: Annotated[
+            str | None,
+            typer.Option("--date", help="Target trade date in YYYY-MM-DD format."),
+        ] = None,
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="CF futures core quote parquet path."),
+        ] = None,
+        option_core_path: Annotated[
+            Path | None,
+            typer.Option("--option-core-path", help="CF option core quote parquet path."),
+        ] = None,
+        calendar_path: Annotated[
+            Path | None,
+            typer.Option("--calendar-path", help="Official CZCE calendar CSV path."),
+        ] = None,
+        official_daily_fetch_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--official-daily-fetch-json-path",
+                help="Official daily downloader JSON summary path.",
+            ),
+        ] = None,
+        raw_root: Annotated[
+            Path | None,
+            typer.Option("--raw-root", help="Raw snapshot root. Defaults to data/raw."),
+        ] = None,
+        output_root: Annotated[
+            Path | None,
+            typer.Option("--output-root", help="Daily output root. Defaults to runs/daily."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R63 run id."),
+        ] = None,
+        require_options: Annotated[
+            bool,
+            typer.Option(
+                "--require-options/--no-require-options",
+                help="Require option core continuity for this audit.",
+            ),
+        ] = True,
+        require_raw_retention: Annotated[
+            bool,
+            typer.Option(
+                "--require-raw-retention/--skip-raw-retention",
+                help="Require raw snapshot retention before cleanup is allowed.",
+            ),
+        ] = True,
+    ) -> None:
+        """Build R63 CF data continuity and retained-source audit."""
+        from cotton_factor.research_workbench import build_cf_data_continuity_audit
+
+        try:
+            result = build_cf_data_continuity_audit(
+                trade_date=_parse_iso_date(trade_date) if trade_date else None,
+                core_quote_path=core_quote_path,
+                option_core_path=option_core_path,
+                calendar_path=calendar_path,
+                official_daily_fetch_json_path=official_daily_fetch_json_path,
+                raw_root=raw_root,
+                output_root=output_root,
+                run_id=run_id,
+                require_options=require_options,
+                require_raw_retention=require_raw_retention,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+        if not result.passed:
+            raise typer.Exit(1)
+
     @research_app.command("build-cf-signal-matrix")
     def research_build_cf_signal_matrix(
         start: Annotated[
@@ -2003,6 +2079,62 @@ if typer is not None:
 
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @research_app.command("build-cf-event-threshold-review-ledger")
+    def research_build_cf_event_threshold_review_ledger(
+        threshold_summary_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--threshold-summary-path",
+                help="Optional R60 threshold summary path.",
+            ),
+        ] = None,
+        threshold_detail_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--threshold-detail-path",
+                help="Optional R60 threshold detail path.",
+            ),
+        ] = None,
+        event_detail_path: Annotated[
+            Path | None,
+            typer.Option("--event-detail-path", help="Optional R55 event detail path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R62 ledger output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R62 Markdown/JSON report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R62 run id."),
+        ] = None,
+        example_event_count: Annotated[
+            int,
+            typer.Option("--example-event-count", help="Example event rows per candidate."),
+        ] = 3,
+    ) -> None:
+        """Build R62 CF event threshold review ledger."""
+        from cotton_factor.research_workbench import build_cf_event_threshold_review_ledger
+
+        try:
+            result = build_cf_event_threshold_review_ledger(
+                threshold_summary_path=threshold_summary_path,
+                threshold_detail_path=threshold_detail_path,
+                event_detail_path=event_detail_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                example_event_count=example_event_count,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     @research_app.command("build-cf-validated-research-brief")
     def research_build_cf_validated_research_brief(
         latest_signal_json_path: Annotated[
@@ -2042,6 +2174,41 @@ if typer is not None:
                 help="Optional R53 fundamental observation JSON path.",
             ),
         ] = None,
+        futures_option_divergence_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--futures-option-divergence-json-path",
+                help="Optional R69 futures-option divergence JSON path.",
+            ),
+        ] = None,
+        futures_option_playbook_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--futures-option-playbook-json-path",
+                help="Optional R71 futures-option playbook JSON path.",
+            ),
+        ] = None,
+        current_watch_window_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--current-watch-window-json-path",
+                help="Optional R77 current watch window JSON path.",
+            ),
+        ] = None,
+        state_transition_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--state-transition-json-path",
+                help="Optional R79 competing-risk JSON path.",
+            ),
+        ] = None,
+        option_volatility_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--option-volatility-json-path",
+                help="Optional R80/R81 option volatility JSON path.",
+            ),
+        ] = None,
         output_dir: Annotated[
             Path | None,
             typer.Option("--output-dir", help="R43 report output directory."),
@@ -2067,6 +2234,11 @@ if typer is not None:
                 event_detail_path=event_detail_path,
                 event_threshold_summary_path=event_threshold_summary_path,
                 fundamental_observation_json_path=fundamental_observation_json_path,
+                futures_option_divergence_json_path=futures_option_divergence_json_path,
+                futures_option_playbook_json_path=futures_option_playbook_json_path,
+                current_watch_window_json_path=current_watch_window_json_path,
+                state_transition_json_path=state_transition_json_path,
+                option_volatility_json_path=option_volatility_json_path,
                 output_dir=output_dir,
                 daily_output_root=daily_output_root,
                 run_id=run_id,
@@ -2103,6 +2275,27 @@ if typer is not None:
             Path | None,
             typer.Option("--event-summary-path", help="Optional R42 event summary path."),
         ] = None,
+        futures_option_divergence_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--futures-option-divergence-json-path",
+                help="Optional R69 futures-option divergence JSON path.",
+            ),
+        ] = None,
+        futures_option_playbook_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--futures-option-playbook-json-path",
+                help="Optional R71 futures-option playbook JSON path.",
+            ),
+        ] = None,
+        current_watch_window_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--current-watch-window-json-path",
+                help="Optional R77 current watch window JSON path.",
+            ),
+        ] = None,
         output_root: Annotated[
             Path | None,
             typer.Option("--output-root", help="Optional runs/daily output root."),
@@ -2127,6 +2320,9 @@ if typer is not None:
                 signal_matrix_path=signal_matrix_path,
                 historical_evidence_decay_path=historical_evidence_decay_path,
                 event_summary_path=event_summary_path,
+                futures_option_divergence_json_path=futures_option_divergence_json_path,
+                futures_option_playbook_json_path=futures_option_playbook_json_path,
+                current_watch_window_json_path=current_watch_window_json_path,
                 output_root=output_root,
                 run_id=run_id,
                 price_lookback=price_lookback,
@@ -2165,6 +2361,988 @@ if typer is not None:
             typer.echo(str(exc), err=True)
             raise typer.Exit(1) from exc
 
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-stage-decision-pack")
+    def research_build_cf_stage_decision_pack(
+        weekly_audit_json_path: Annotated[
+            Path,
+            typer.Option("--weekly-audit-json-path", help="R59 weekly audit JSON path."),
+        ],
+        expansion_gate_json_path: Annotated[
+            Path,
+            typer.Option("--expansion-gate-json-path", help="R52 expansion gate JSON path."),
+        ],
+        latest_signal_json_path: Annotated[
+            Path | None,
+            typer.Option("--latest-signal-json-path", help="Optional R23 latest signal JSON."),
+        ] = None,
+        option_factor_json_path: Annotated[
+            Path | None,
+            typer.Option("--option-factor-json-path", help="Optional R48 option factor JSON."),
+        ] = None,
+        event_threshold_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--event-threshold-json-path",
+                help="Optional R60 event threshold sensitivity JSON.",
+            ),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R65 report output directory."),
+        ] = None,
+        daily_output_root: Annotated[
+            Path | None,
+            typer.Option("--daily-output-root", help="Optional runs/daily output root."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R65 run id."),
+        ] = None,
+    ) -> None:
+        """Build R65 CF stage decision pack before expansion review."""
+        from cotton_factor.research_workbench import build_cf_stage_decision_pack
+
+        try:
+            result = build_cf_stage_decision_pack(
+                weekly_audit_json_path=weekly_audit_json_path,
+                expansion_gate_json_path=expansion_gate_json_path,
+                latest_signal_json_path=latest_signal_json_path,
+                option_factor_json_path=option_factor_json_path,
+                event_threshold_json_path=event_threshold_json_path,
+                output_dir=output_dir,
+                daily_output_root=daily_output_root,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-event-lifecycle-research")
+    def research_build_cf_event_lifecycle_research(
+        signal_matrix_path: Annotated[
+            Path | None,
+            typer.Option("--signal-matrix-path", help="Optional R35 signal matrix path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R68 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R68 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R68 run id."),
+        ] = None,
+        horizon: Annotated[
+            int,
+            typer.Option("--horizon", help="Signal matrix horizon used for phase episodes."),
+        ] = 20,
+        max_holding_days: Annotated[
+            int,
+            typer.Option("--max-holding-days", help="Simple TBM max holding window."),
+        ] = 20,
+        profit_barrier: Annotated[
+            float,
+            typer.Option("--profit-barrier", help="Simple TBM profit barrier."),
+        ] = 0.03,
+        stop_loss_barrier: Annotated[
+            float,
+            typer.Option("--stop-loss-barrier", help="Simple TBM stop loss barrier."),
+        ] = 0.015,
+    ) -> None:
+        """Build R68 CF event lifecycle and simple TBM labels."""
+        from cotton_factor.research_workbench import build_cf_event_lifecycle_research
+
+        try:
+            result = build_cf_event_lifecycle_research(
+                signal_matrix_path=signal_matrix_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                horizon=horizon,
+                max_holding_days=max_holding_days,
+                profit_barrier=profit_barrier,
+                stop_loss_barrier=stop_loss_barrier,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-state-transition-competing-risk")
+    def research_build_cf_state_transition_competing_risk(
+        event_lifecycle_episode_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--event-lifecycle-episode-path",
+                help="Optional R68 episode table path.",
+            ),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R79 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R79 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R79 run id."),
+        ] = None,
+        max_age_days: Annotated[
+            int,
+            typer.Option("--max-age-days", help="Maximum episode age for risk tables."),
+        ] = 20,
+        min_sample_size: Annotated[
+            int,
+            typer.Option("--min-sample-size", help="Minimum READY evidence sample."),
+        ] = 30,
+    ) -> None:
+        """Build R79 CF state-transition competing-risk evidence."""
+        from cotton_factor.research_workbench import (
+            build_cf_state_transition_competing_risk_research,
+        )
+
+        try:
+            result = build_cf_state_transition_competing_risk_research(
+                event_lifecycle_episode_path=event_lifecycle_episode_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                max_age_days=max_age_days,
+                min_sample_size=min_sample_size,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-futures-option-divergence-research")
+    def research_build_cf_futures_option_divergence_research(
+        signal_matrix_validation_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--signal-matrix-validation-path",
+                help="Optional R36 signal matrix validation daily path.",
+            ),
+        ] = None,
+        option_factor_path: Annotated[
+            Path | None,
+            typer.Option("--option-factor-path", help="Optional R48 option factor proxy path."),
+        ] = None,
+        event_lifecycle_episode_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--event-lifecycle-episode-path",
+                help="Optional R68 event lifecycle episode path.",
+            ),
+        ] = None,
+        event_lifecycle_tbm_path: Annotated[
+            Path | None,
+            typer.Option("--event-lifecycle-tbm-path", help="Optional R68 TBM label path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R69 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R69 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R69 run id."),
+        ] = None,
+        horizons: Annotated[
+            str,
+            typer.Option("--horizons", help="Comma-separated validation horizons."),
+        ] = "1,3,5,10,20,40",
+        dead_zone_bps: Annotated[
+            int,
+            typer.Option("--dead-zone-bps", help="Winner dead-zone threshold in bps."),
+        ] = 10,
+        min_sample_size: Annotated[
+            int,
+            typer.Option("--min-sample-size", help="Minimum node sample size for evidence level."),
+        ] = 30,
+    ) -> None:
+        """Build R69 CF futures-option divergence battle research."""
+        from cotton_factor.research_workbench import (
+            build_cf_futures_option_divergence_research,
+        )
+
+        try:
+            result = build_cf_futures_option_divergence_research(
+                signal_matrix_validation_path=signal_matrix_validation_path,
+                option_factor_path=option_factor_path,
+                event_lifecycle_episode_path=event_lifecycle_episode_path,
+                event_lifecycle_tbm_path=event_lifecycle_tbm_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                horizons=_parse_horizons(horizons),
+                dead_zone_bps=dead_zone_bps,
+                min_sample_size=min_sample_size,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-futures-option-divergence-playbook")
+    def research_build_cf_futures_option_divergence_playbook(
+        event_path: Annotated[
+            Path | None,
+            typer.Option("--event-path", help="Optional R69 divergence event table path."),
+        ] = None,
+        node_summary_path: Annotated[
+            Path | None,
+            typer.Option("--node-summary-path", help="Optional R69 node summary table path."),
+        ] = None,
+        latest_signal_json_path: Annotated[
+            Path | None,
+            typer.Option("--latest-signal-json-path", help="Optional latest signal JSON path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R71 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R71 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R71 run id."),
+        ] = None,
+        min_sample_size: Annotated[
+            int,
+            typer.Option("--min-sample-size", help="Minimum sample size for playbook review."),
+        ] = 30,
+        edge_threshold: Annotated[
+            float,
+            typer.Option("--edge-threshold", help="Winner-rate edge threshold."),
+        ] = 0.08,
+    ) -> None:
+        """Build R71 CF futures-option divergence playbook."""
+        from cotton_factor.research_workbench import (
+            build_cf_futures_option_divergence_playbook,
+        )
+
+        try:
+            result = build_cf_futures_option_divergence_playbook(
+                event_path=event_path,
+                node_summary_path=node_summary_path,
+                latest_signal_json_path=latest_signal_json_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                min_sample_size=min_sample_size,
+                edge_threshold=edge_threshold,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-dual-price-state")
+    def research_build_cf_dual_price_state(
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional CF core quote path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R73 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R73 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R73 run id."),
+        ] = None,
+        ma_window: Annotated[
+            int,
+            typer.Option("--ma-window", help="Close/settlement moving-average window."),
+        ] = 20,
+        gap_alert_bps: Annotated[
+            float,
+            typer.Option("--gap-alert-bps", help="Close-settlement gap alert threshold."),
+        ] = 25.0,
+    ) -> None:
+        """Build R73 close/settlement dual-price state research."""
+        from cotton_factor.research_workbench import build_cf_dual_price_state
+
+        try:
+            result = build_cf_dual_price_state(
+                core_quote_path=core_quote_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                ma_window=ma_window,
+                gap_alert_bps=gap_alert_bps,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-chain-oi-structure")
+    def research_build_cf_chain_oi_structure(
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional CF core quote path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R74 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R74 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R74 run id."),
+        ] = None,
+        noise_ratio: Annotated[
+            float,
+            typer.Option("--noise-ratio", help="Chain OI noise ratio."),
+        ] = 0.002,
+        roll_transfer_threshold: Annotated[
+            float,
+            typer.Option("--roll-transfer-threshold", help="Roll-transfer ratio threshold."),
+        ] = 0.50,
+        roll_lookback_days: Annotated[
+            int,
+            typer.Option(
+                "--roll-lookback-days",
+                help="Trading-day window for cross-contract roll observation.",
+            ),
+        ] = 5,
+    ) -> None:
+        """Build R74 chain OI and roll decomposition research."""
+        from cotton_factor.research_workbench import build_cf_chain_oi_structure
+
+        try:
+            result = build_cf_chain_oi_structure(
+                core_quote_path=core_quote_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                noise_ratio=noise_ratio,
+                roll_transfer_threshold=roll_transfer_threshold,
+                roll_lookback_days=roll_lookback_days,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-option-structure-research")
+    def research_build_cf_option_structure_research(
+        option_factor_path: Annotated[
+            Path | None,
+            typer.Option("--option-factor-path", help="Optional R48 option factor path."),
+        ] = None,
+        signal_matrix_path: Annotated[
+            Path | None,
+            typer.Option("--signal-matrix-path", help="Optional R35 signal matrix path."),
+        ] = None,
+        validation_daily_path: Annotated[
+            Path | None,
+            typer.Option("--validation-daily-path", help="Optional R36 validation path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R75 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R75 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R75 run id."),
+        ] = None,
+        primary_horizon: Annotated[
+            int,
+            typer.Option("--primary-horizon", help="Futures direction reference horizon."),
+        ] = 20,
+    ) -> None:
+        """Build R75 dynamic option structure and posterior validation."""
+        from cotton_factor.research_workbench import build_cf_option_structure_research
+
+        try:
+            result = build_cf_option_structure_research(
+                option_factor_path=option_factor_path,
+                signal_matrix_path=signal_matrix_path,
+                validation_daily_path=validation_daily_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                primary_horizon=primary_horizon,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-oi-roll-window-research")
+    def research_build_cf_oi_roll_window_research(
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional CF core quote path."),
+        ] = None,
+        validation_daily_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--validation-daily-path",
+                help="Optional R36 historical validation path.",
+            ),
+        ] = None,
+        exclusion_path: Annotated[
+            Path | None,
+            typer.Option("--exclusion-path", help="Optional resolved/manual date CSV."),
+        ] = None,
+        end: Annotated[
+            str | None,
+            typer.Option("--end", help="Optional research cutoff date."),
+        ] = None,
+        windows: Annotated[
+            str,
+            typer.Option("--windows", help="Comma-separated OI roll windows."),
+        ] = "3,5,10",
+        min_sample_size: Annotated[
+            int,
+            typer.Option("--min-sample-size", help="Minimum evidence sample size."),
+        ] = 30,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R78 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R78 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R78 run id."),
+        ] = None,
+    ) -> None:
+        """Build R78 multi-window OI roll evidence research."""
+        from cotton_factor.research_workbench import build_cf_oi_roll_window_research
+
+        try:
+            parsed_windows = tuple(
+                int(value.strip()) for value in windows.split(",") if value.strip()
+            )
+            parsed_end = None if end is None else date.fromisoformat(end)
+            result = build_cf_oi_roll_window_research(
+                core_quote_path=core_quote_path,
+                validation_daily_path=validation_daily_path,
+                exclusion_path=exclusion_path,
+                end=parsed_end,
+                windows=parsed_windows,
+                min_sample_size=min_sample_size,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except (CottonFactorError, ValueError) as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-trend-phase-v2")
+    def research_build_cf_trend_phase_v2(
+        dual_price_path: Annotated[
+            Path | None,
+            typer.Option("--dual-price-path", help="Optional R73 daily path."),
+        ] = None,
+        chain_oi_path: Annotated[
+            Path | None,
+            typer.Option("--chain-oi-path", help="Optional R74 daily path."),
+        ] = None,
+        option_structure_path: Annotated[
+            Path | None,
+            typer.Option("--option-structure-path", help="Optional R75 daily path."),
+        ] = None,
+        signal_matrix_path: Annotated[
+            Path | None,
+            typer.Option("--signal-matrix-path", help="Optional R35 signal matrix path."),
+        ] = None,
+        validation_daily_path: Annotated[
+            Path | None,
+            typer.Option("--validation-daily-path", help="Optional R36 validation path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R76 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R76 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R76 run id."),
+        ] = None,
+        primary_horizon: Annotated[
+            int,
+            typer.Option("--primary-horizon", help="Primary signal-matrix horizon."),
+        ] = 20,
+    ) -> None:
+        """Build R76 evidence-aware trend phase v2."""
+        from cotton_factor.research_workbench import build_cf_trend_phase_v2
+
+        try:
+            result = build_cf_trend_phase_v2(
+                dual_price_path=dual_price_path,
+                chain_oi_path=chain_oi_path,
+                option_structure_path=option_structure_path,
+                signal_matrix_path=signal_matrix_path,
+                validation_daily_path=validation_daily_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                primary_horizon=primary_horizon,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("build-cf-current-watch-window")
+    def research_build_cf_current_watch_window(
+        latest_signal_json_path: Annotated[
+            Path | None,
+            typer.Option("--latest-signal-json-path", help="Optional latest signal JSON."),
+        ] = None,
+        dual_price_path: Annotated[
+            Path | None,
+            typer.Option("--dual-price-path", help="Optional R73 daily path."),
+        ] = None,
+        chain_oi_path: Annotated[
+            Path | None,
+            typer.Option("--chain-oi-path", help="Optional R74 daily path."),
+        ] = None,
+        option_structure_path: Annotated[
+            Path | None,
+            typer.Option("--option-structure-path", help="Optional R75 daily path."),
+        ] = None,
+        trend_phase_v2_path: Annotated[
+            Path | None,
+            typer.Option("--trend-phase-v2-path", help="Optional R76 daily path."),
+        ] = None,
+        playbook_json_path: Annotated[
+            Path | None,
+            typer.Option("--playbook-json-path", help="Optional R71 playbook JSON."),
+        ] = None,
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional CF core quote path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R77 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R77 report output directory."),
+        ] = None,
+        daily_output_root: Annotated[
+            Path | None,
+            typer.Option("--daily-output-root", help="Optional runs/daily sync root."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R77 run id."),
+        ] = None,
+    ) -> None:
+        """Build R77 current confirmation/invalidation watch window."""
+        from cotton_factor.research_workbench import build_cf_current_watch_window
+
+        try:
+            result = build_cf_current_watch_window(
+                latest_signal_json_path=latest_signal_json_path,
+                dual_price_path=dual_price_path,
+                chain_oi_path=chain_oi_path,
+                option_structure_path=option_structure_path,
+                trend_phase_v2_path=trend_phase_v2_path,
+                playbook_json_path=playbook_json_path,
+                core_quote_path=core_quote_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                daily_output_root=daily_output_root,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("fetch-cf-official-daily-files")
+    def research_fetch_cf_official_daily_files(
+        trade_date: Annotated[
+            str | None,
+            typer.Option("--date", help="Official daily file date in YYYY-MM-DD format."),
+        ] = None,
+        futures_source_dir: Annotated[
+            Path | None,
+            typer.Option("--futures-source-dir", help="CF futures incoming history root."),
+        ] = None,
+        options_source_dir: Annotated[
+            Path | None,
+            typer.Option("--options-source-dir", help="CF option incoming history root."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Daily fetch report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable daily fetch run id."),
+        ] = None,
+        include_options: Annotated[
+            bool,
+            typer.Option(
+                "--include-options/--skip-options",
+                help="Fetch the official all-product option daily file.",
+            ),
+        ] = True,
+        overwrite: Annotated[
+            bool,
+            typer.Option("--overwrite/--no-overwrite", help="Overwrite existing incoming files."),
+        ] = False,
+        futures_url: Annotated[
+            str | None,
+            typer.Option("--futures-url", help="Override the official futures daily URL."),
+        ] = None,
+        options_url: Annotated[
+            str | None,
+            typer.Option("--options-url", help="Override the official options daily URL."),
+        ] = None,
+    ) -> None:
+        """Fetch CF official futures/options daily files into incoming storage."""
+        from cotton_factor.research_workbench import fetch_cf_official_daily_files
+
+        try:
+            result = fetch_cf_official_daily_files(
+                trade_date=_parse_iso_date(trade_date) if trade_date else None,
+                futures_source_dir=futures_source_dir,
+                options_source_dir=options_source_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                include_options=include_options,
+                overwrite=overwrite,
+                futures_url=futures_url,
+                options_url=options_url,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+        if not result.passed:
+            raise typer.Exit(1)
+
+    @research_app.command("build-cf-option-strike-position-research")
+    def research_build_cf_option_strike_position_research(
+        option_core_path: Annotated[
+            Path | None,
+            typer.Option("--option-core-path", help="Optional CF option core parquet."),
+        ] = None,
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional CF futures core parquet."),
+        ] = None,
+        option_expiry_path: Annotated[
+            Path | None,
+            typer.Option("--option-expiry-path", help="Optional R81 expiry registry."),
+        ] = None,
+        end: Annotated[
+            str | None,
+            typer.Option("--end", help="Optional inclusive end date."),
+        ] = None,
+        horizons: Annotated[
+            str,
+            typer.Option("--horizons", help="Historical path horizons."),
+        ] = "1,3,5,10",
+        near_level_ratio: Annotated[
+            float,
+            typer.Option("--near-level-ratio", help="Distance defining near-key-level."),
+        ] = 0.01,
+        min_sample_size: Annotated[
+            int,
+            typer.Option("--min-sample-size", help="Minimum WATCH sample size."),
+        ] = 30,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="Optional R84 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional R84 report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R84 run id."),
+        ] = None,
+    ) -> None:
+        """Build CF option strike OI key levels, migration and posterior paths."""
+        from cotton_factor.research_workbench import (
+            build_cf_option_strike_position_research,
+        )
+
+        try:
+            result = build_cf_option_strike_position_research(
+                option_core_path=option_core_path,
+                core_quote_path=core_quote_path,
+                option_expiry_path=option_expiry_path,
+                end=_parse_iso_date(end) if end else None,
+                horizons=_parse_horizons(horizons),
+                near_level_ratio=near_level_ratio,
+                min_sample_size=min_sample_size,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @research_app.command("fetch-cf-official-member-position")
+    def research_fetch_cf_official_member_position(
+        trade_date: Annotated[
+            str,
+            typer.Option("--date", help="Official trade date in YYYY-MM-DD format."),
+        ],
+        source_dir: Annotated[
+            Path | None,
+            typer.Option("--source-dir", help="Optional member-position incoming root."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional R83 fetch report directory."),
+        ] = None,
+        overwrite: Annotated[
+            bool,
+            typer.Option("--overwrite", help="Replace an existing daily holding file."),
+        ] = False,
+        official_url: Annotated[
+            str | None,
+            typer.Option("--official-url", help="Optional reviewed official URL override."),
+        ] = None,
+    ) -> None:
+        """Download one official CF member-position ranking workbook."""
+        from cotton_factor.research_workbench import fetch_cf_official_member_position
+
+        try:
+            result = fetch_cf_official_member_position(
+                trade_date=_parse_iso_date(trade_date),
+                source_dir=source_dir,
+                report_output_dir=report_output_dir,
+                overwrite=overwrite,
+                official_url=official_url,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+        if not result.passed:
+            raise typer.Exit(1)
+
+    @research_app.command("fetch-cf-official-member-position-history")
+    def research_fetch_cf_official_member_position_history(
+        start: Annotated[
+            str,
+            typer.Option("--start", help="Inclusive backfill start date."),
+        ],
+        end: Annotated[
+            str,
+            typer.Option("--end", help="Inclusive backfill end date."),
+        ],
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional CF core quote parquet."),
+        ] = None,
+        source_dir: Annotated[
+            Path | None,
+            typer.Option("--source-dir", help="Optional member-position incoming root."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional R85 backfill report directory."),
+        ] = None,
+        overwrite: Annotated[
+            bool,
+            typer.Option("--overwrite", help="Replace existing daily holding files."),
+        ] = False,
+        max_workers: Annotated[
+            int,
+            typer.Option("--max-workers", help="Concurrent trade-date downloads, 1 to 8."),
+        ] = 4,
+    ) -> None:
+        """Incrementally backfill official CF member-position history."""
+        from cotton_factor.research_workbench import (
+            fetch_cf_official_member_position_history,
+        )
+
+        try:
+            result = fetch_cf_official_member_position_history(
+                start=_parse_iso_date(start),
+                end=_parse_iso_date(end),
+                core_quote_path=core_quote_path,
+                source_dir=source_dir,
+                report_output_dir=report_output_dir,
+                overwrite=overwrite,
+                max_workers=max_workers,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+        if not result.passed:
+            raise typer.Exit(1)
+
+    @research_app.command("connect-cf-member-position-history")
+    def research_connect_cf_member_position_history(
+        source_dir: Annotated[
+            Path | None,
+            typer.Option("--source-dir", help="Optional member-position incoming root."),
+        ] = None,
+        raw_root: Annotated[
+            Path | None,
+            typer.Option("--raw-root", help="Optional raw snapshot root."),
+        ] = None,
+        core_output_dir: Annotated[
+            Path | None,
+            typer.Option("--core-output-dir", help="Optional core output directory."),
+        ] = None,
+        output_path: Annotated[
+            Path | None,
+            typer.Option("--output-path", help="Optional member-position core parquet."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional R83 ingest report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R83 ingest run id."),
+        ] = None,
+    ) -> None:
+        """Preserve official member-position files and normalize CF rows into core."""
+        from cotton_factor.research_workbench import connect_cf_member_position_history
+
+        try:
+            result = connect_cf_member_position_history(
+                source_dir=source_dir,
+                raw_root=raw_root,
+                core_output_dir=core_output_dir,
+                output_path=output_path,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+        if not result.passed:
+            raise typer.Exit(1)
+
+    @research_app.command("build-cf-member-position-research")
+    def research_build_cf_member_position_research(
+        member_position_path: Annotated[
+            Path | None,
+            typer.Option("--member-position-path", help="Optional R83 member core parquet."),
+        ] = None,
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional CF core quote parquet."),
+        ] = None,
+        validation_daily_path: Annotated[
+            Path | None,
+            typer.Option("--validation-daily-path", help="Optional R36 validation parquet."),
+        ] = None,
+        end: Annotated[
+            str | None,
+            typer.Option("--end", help="Optional inclusive research end date."),
+        ] = None,
+        top_ns: Annotated[
+            str,
+            typer.Option("--top-ns", help="Ranking cutoffs, for example 5,10,20."),
+        ] = "5,10,20",
+        horizons: Annotated[
+            str,
+            typer.Option("--horizons", help="Posterior validation horizons."),
+        ] = "1,3,5,10,20",
+        position_change_dead_zone: Annotated[
+            float,
+            typer.Option("--position-change-dead-zone", help="OI-scaled flow dead zone."),
+        ] = 0.002,
+        price_dead_zone: Annotated[
+            float,
+            typer.Option("--price-dead-zone", help="Settlement-return dead zone."),
+        ] = 0.001,
+        min_sample_size: Annotated[
+            int,
+            typer.Option("--min-sample-size", help="Minimum WATCH sample size."),
+        ] = 30,
+        min_history_days: Annotated[
+            int,
+            typer.Option("--min-history-days", help="Minimum historical coverage warning gate."),
+        ] = 60,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="Optional R83 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional R83 report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R83 research run id."),
+        ] = None,
+    ) -> None:
+        """Build CF member concentration, flow, divergence and roll evidence."""
+        from cotton_factor.research_workbench import build_cf_member_position_research
+
+        try:
+            result = build_cf_member_position_research(
+                member_position_path=member_position_path,
+                core_quote_path=core_quote_path,
+                validation_daily_path=validation_daily_path,
+                end=_parse_iso_date(end) if end else None,
+                top_ns=_parse_horizons(top_ns),
+                horizons=_parse_horizons(horizons),
+                position_change_dead_zone=position_change_dead_zone,
+                price_dead_zone=price_dead_zone,
+                min_sample_size=min_sample_size,
+                min_history_days=min_history_days,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
     @research_app.command("build-cf-option-data-contract")
@@ -2315,6 +3493,10 @@ if typer is not None:
             float,
             typer.Option("--otm-moneyness-max", help="OTM skew proxy upper moneyness."),
         ] = 0.98,
+        incremental: Annotated[
+            bool,
+            typer.Option("--incremental", help="Recompute only the latest option date."),
+        ] = False,
     ) -> None:
         """Build R48 CF option factor proxy research artifacts."""
         from cotton_factor.research_workbench import build_cf_option_factor_proxy
@@ -2330,6 +3512,7 @@ if typer is not None:
                 atm_moneyness_band=atm_moneyness_band,
                 otm_moneyness_min=otm_moneyness_min,
                 otm_moneyness_max=otm_moneyness_max,
+                incremental=incremental,
             )
         except CottonFactorError as exc:
             typer.echo(str(exc), err=True)
@@ -2338,6 +3521,81 @@ if typer is not None:
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
         if not result.passed:
             raise typer.Exit(1)
+
+    @research_app.command("build-cf-option-volatility-term-structure")
+    def research_build_cf_option_volatility_term_structure(
+        option_factor_path: Annotated[
+            Path | None,
+            typer.Option("--option-factor-path", help="Optional R48 factor path."),
+        ] = None,
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional CF core quote path."),
+        ] = None,
+        option_expiry_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--option-expiry-path",
+                help="Optional R81 reviewed CF option expiry registry.",
+            ),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R80 data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R80 report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R80 run id."),
+        ] = None,
+        risk_free_rate: Annotated[
+            float,
+            typer.Option("--risk-free-rate", help="Black-76 annual risk-free rate."),
+        ] = 0.02,
+        rv_window: Annotated[
+            int,
+            typer.Option("--rv-window", help="Realized-volatility lookback."),
+        ] = 20,
+        iv_rank_window: Annotated[
+            int,
+            typer.Option("--iv-rank-window", help="Approximate IV rank lookback."),
+        ] = 252,
+        horizons: Annotated[
+            str,
+            typer.Option("--horizons", help="Posterior validation horizons."),
+        ] = "5,10,20",
+        min_sample_size: Annotated[
+            int,
+            typer.Option("--min-sample-size", help="Minimum READY evidence sample."),
+        ] = 30,
+    ) -> None:
+        """Build R80 CF expiry-aware IV/RV and term-structure evidence."""
+        from cotton_factor.research_workbench import (
+            build_cf_option_volatility_term_structure_research,
+        )
+
+        try:
+            result = build_cf_option_volatility_term_structure_research(
+                option_factor_path=option_factor_path,
+                core_quote_path=core_quote_path,
+                option_expiry_path=option_expiry_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                risk_free_rate=risk_free_rate,
+                rv_window=rv_window,
+                iv_rank_window=iv_rank_window,
+                horizons=_parse_horizons(horizons),
+                min_sample_size=min_sample_size,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
     @research_app.command("build-cf-product-research-registry")
     def research_build_cf_product_research_registry(
@@ -3493,6 +4751,20 @@ else:
         daily_audit_parser.add_argument("--core-quote-path", type=Path)
         daily_audit_parser.add_argument("--output-root", type=Path)
         daily_audit_parser.add_argument("--run-id")
+        data_continuity_parser = research_subparsers.add_parser(
+            "build-cf-data-continuity-audit",
+            help="Build R63 CF data continuity and retained-source audit.",
+        )
+        data_continuity_parser.add_argument("--date")
+        data_continuity_parser.add_argument("--core-quote-path", type=Path)
+        data_continuity_parser.add_argument("--option-core-path", type=Path)
+        data_continuity_parser.add_argument("--calendar-path", type=Path)
+        data_continuity_parser.add_argument("--official-daily-fetch-json-path", type=Path)
+        data_continuity_parser.add_argument("--raw-root", type=Path)
+        data_continuity_parser.add_argument("--output-root", type=Path)
+        data_continuity_parser.add_argument("--run-id")
+        data_continuity_parser.add_argument("--no-require-options", action="store_true")
+        data_continuity_parser.add_argument("--skip-raw-retention", action="store_true")
         signal_matrix_parser = research_subparsers.add_parser(
             "build-cf-signal-matrix",
             help="Build R35 CF multi-horizon signal matrix.",
@@ -3572,6 +4844,17 @@ else:
             default="0.90,0.95,0.975",
         )
         event_threshold_parser.add_argument("--min-observation-count", type=int, default=20)
+        event_threshold_review_parser = research_subparsers.add_parser(
+            "build-cf-event-threshold-review-ledger",
+            help="Build R62 CF event threshold review ledger.",
+        )
+        event_threshold_review_parser.add_argument("--threshold-summary-path", type=Path)
+        event_threshold_review_parser.add_argument("--threshold-detail-path", type=Path)
+        event_threshold_review_parser.add_argument("--event-detail-path", type=Path)
+        event_threshold_review_parser.add_argument("--output-dir", type=Path)
+        event_threshold_review_parser.add_argument("--report-output-dir", type=Path)
+        event_threshold_review_parser.add_argument("--run-id")
+        event_threshold_review_parser.add_argument("--example-event-count", type=int, default=3)
         validated_brief_parser = research_subparsers.add_parser(
             "build-cf-validated-research-brief",
             help="Build R43 CF validated Chinese research brief.",
@@ -3583,6 +4866,11 @@ else:
         validated_brief_parser.add_argument("--event-detail-path", type=Path)
         validated_brief_parser.add_argument("--event-threshold-summary-path", type=Path)
         validated_brief_parser.add_argument("--fundamental-observation-json-path", type=Path)
+        validated_brief_parser.add_argument("--futures-option-divergence-json-path", type=Path)
+        validated_brief_parser.add_argument("--futures-option-playbook-json-path", type=Path)
+        validated_brief_parser.add_argument("--current-watch-window-json-path", type=Path)
+        validated_brief_parser.add_argument("--state-transition-json-path", type=Path)
+        validated_brief_parser.add_argument("--option-volatility-json-path", type=Path)
         validated_brief_parser.add_argument("--output-dir", type=Path)
         validated_brief_parser.add_argument("--daily-output-root", type=Path)
         validated_brief_parser.add_argument("--run-id")
@@ -3596,6 +4884,9 @@ else:
         publish_pack_parser.add_argument("--signal-matrix-path", type=Path)
         publish_pack_parser.add_argument("--historical-evidence-decay-path", type=Path)
         publish_pack_parser.add_argument("--event-summary-path", type=Path)
+        publish_pack_parser.add_argument("--futures-option-divergence-json-path", type=Path)
+        publish_pack_parser.add_argument("--futures-option-playbook-json-path", type=Path)
+        publish_pack_parser.add_argument("--current-watch-window-json-path", type=Path)
         publish_pack_parser.add_argument("--output-root", type=Path)
         publish_pack_parser.add_argument("--run-id")
         publish_pack_parser.add_argument("--price-lookback", type=int, default=120)
@@ -3606,6 +4897,215 @@ else:
         weekly_audit_parser.add_argument("--weekly-manifest-path", type=Path, required=True)
         weekly_audit_parser.add_argument("--output-dir", type=Path)
         weekly_audit_parser.add_argument("--run-id")
+        stage_decision_parser = research_subparsers.add_parser(
+            "build-cf-stage-decision-pack",
+            help="Build R65 CF stage decision pack before expansion review.",
+        )
+        stage_decision_parser.add_argument("--weekly-audit-json-path", type=Path, required=True)
+        stage_decision_parser.add_argument("--expansion-gate-json-path", type=Path, required=True)
+        stage_decision_parser.add_argument("--latest-signal-json-path", type=Path)
+        stage_decision_parser.add_argument("--option-factor-json-path", type=Path)
+        stage_decision_parser.add_argument("--event-threshold-json-path", type=Path)
+        stage_decision_parser.add_argument("--output-dir", type=Path)
+        stage_decision_parser.add_argument("--daily-output-root", type=Path)
+        stage_decision_parser.add_argument("--run-id")
+        event_lifecycle_parser = research_subparsers.add_parser(
+            "build-cf-event-lifecycle-research",
+            help="Build R68 CF event lifecycle and simple TBM labels.",
+        )
+        event_lifecycle_parser.add_argument("--signal-matrix-path", type=Path)
+        event_lifecycle_parser.add_argument("--output-dir", type=Path)
+        event_lifecycle_parser.add_argument("--report-output-dir", type=Path)
+        event_lifecycle_parser.add_argument("--run-id")
+        event_lifecycle_parser.add_argument("--horizon", type=int, default=20)
+        event_lifecycle_parser.add_argument("--max-holding-days", type=int, default=20)
+        event_lifecycle_parser.add_argument("--profit-barrier", type=float, default=0.03)
+        event_lifecycle_parser.add_argument("--stop-loss-barrier", type=float, default=0.015)
+        state_transition_parser = research_subparsers.add_parser(
+            "build-cf-state-transition-competing-risk",
+            help="Build R79 CF state-transition competing-risk evidence.",
+        )
+        state_transition_parser.add_argument("--event-lifecycle-episode-path", type=Path)
+        state_transition_parser.add_argument("--output-dir", type=Path)
+        state_transition_parser.add_argument("--report-output-dir", type=Path)
+        state_transition_parser.add_argument("--run-id")
+        state_transition_parser.add_argument("--max-age-days", type=int, default=20)
+        state_transition_parser.add_argument("--min-sample-size", type=int, default=30)
+        divergence_parser = research_subparsers.add_parser(
+            "build-cf-futures-option-divergence-research",
+            help="Build R69 CF futures-option divergence battle research.",
+        )
+        divergence_parser.add_argument("--signal-matrix-validation-path", type=Path)
+        divergence_parser.add_argument("--option-factor-path", type=Path)
+        divergence_parser.add_argument("--event-lifecycle-episode-path", type=Path)
+        divergence_parser.add_argument("--event-lifecycle-tbm-path", type=Path)
+        divergence_parser.add_argument("--output-dir", type=Path)
+        divergence_parser.add_argument("--report-output-dir", type=Path)
+        divergence_parser.add_argument("--run-id")
+        divergence_parser.add_argument("--horizons", default="1,3,5,10,20,40")
+        divergence_parser.add_argument("--dead-zone-bps", type=int, default=10)
+        divergence_parser.add_argument("--min-sample-size", type=int, default=30)
+        divergence_playbook_parser = research_subparsers.add_parser(
+            "build-cf-futures-option-divergence-playbook",
+            help="Build R71 CF futures-option divergence playbook.",
+        )
+        divergence_playbook_parser.add_argument("--event-path", type=Path)
+        divergence_playbook_parser.add_argument("--node-summary-path", type=Path)
+        divergence_playbook_parser.add_argument("--latest-signal-json-path", type=Path)
+        divergence_playbook_parser.add_argument("--output-dir", type=Path)
+        divergence_playbook_parser.add_argument("--report-output-dir", type=Path)
+        divergence_playbook_parser.add_argument("--run-id")
+        divergence_playbook_parser.add_argument("--min-sample-size", type=int, default=30)
+        divergence_playbook_parser.add_argument("--edge-threshold", type=float, default=0.08)
+        dual_price_parser = research_subparsers.add_parser(
+            "build-cf-dual-price-state",
+            help="Build R73 close/settlement dual-price state research.",
+        )
+        dual_price_parser.add_argument("--core-quote-path", type=Path)
+        dual_price_parser.add_argument("--output-dir", type=Path)
+        dual_price_parser.add_argument("--report-output-dir", type=Path)
+        dual_price_parser.add_argument("--run-id")
+        dual_price_parser.add_argument("--ma-window", type=int, default=20)
+        dual_price_parser.add_argument("--gap-alert-bps", type=float, default=25.0)
+        chain_oi_parser = research_subparsers.add_parser(
+            "build-cf-chain-oi-structure",
+            help="Build R74 chain OI and roll decomposition research.",
+        )
+        chain_oi_parser.add_argument("--core-quote-path", type=Path)
+        chain_oi_parser.add_argument("--output-dir", type=Path)
+        chain_oi_parser.add_argument("--report-output-dir", type=Path)
+        chain_oi_parser.add_argument("--run-id")
+        chain_oi_parser.add_argument("--noise-ratio", type=float, default=0.002)
+        chain_oi_parser.add_argument("--roll-transfer-threshold", type=float, default=0.50)
+        chain_oi_parser.add_argument("--roll-lookback-days", type=int, default=5)
+        oi_roll_parser = research_subparsers.add_parser(
+            "build-cf-oi-roll-window-research",
+            help="Build R78 multi-window OI roll evidence research.",
+        )
+        oi_roll_parser.add_argument("--core-quote-path", type=Path)
+        oi_roll_parser.add_argument("--validation-daily-path", type=Path)
+        oi_roll_parser.add_argument("--exclusion-path", type=Path)
+        oi_roll_parser.add_argument("--end", type=date.fromisoformat)
+        oi_roll_parser.add_argument("--windows", default="3,5,10")
+        oi_roll_parser.add_argument("--min-sample-size", type=int, default=30)
+        oi_roll_parser.add_argument("--output-dir", type=Path)
+        oi_roll_parser.add_argument("--report-output-dir", type=Path)
+        oi_roll_parser.add_argument("--run-id")
+        option_structure_parser = research_subparsers.add_parser(
+            "build-cf-option-structure-research",
+            help="Build R75 dynamic option structure research.",
+        )
+        option_structure_parser.add_argument("--option-factor-path", type=Path)
+        option_structure_parser.add_argument("--signal-matrix-path", type=Path)
+        option_structure_parser.add_argument("--validation-daily-path", type=Path)
+        option_structure_parser.add_argument("--output-dir", type=Path)
+        option_structure_parser.add_argument("--report-output-dir", type=Path)
+        option_structure_parser.add_argument("--run-id")
+        option_structure_parser.add_argument("--primary-horizon", type=int, default=20)
+        phase_v2_parser = research_subparsers.add_parser(
+            "build-cf-trend-phase-v2",
+            help="Build R76 evidence-aware trend phase v2.",
+        )
+        phase_v2_parser.add_argument("--dual-price-path", type=Path)
+        phase_v2_parser.add_argument("--chain-oi-path", type=Path)
+        phase_v2_parser.add_argument("--option-structure-path", type=Path)
+        phase_v2_parser.add_argument("--signal-matrix-path", type=Path)
+        phase_v2_parser.add_argument("--validation-daily-path", type=Path)
+        phase_v2_parser.add_argument("--output-dir", type=Path)
+        phase_v2_parser.add_argument("--report-output-dir", type=Path)
+        phase_v2_parser.add_argument("--run-id")
+        phase_v2_parser.add_argument("--primary-horizon", type=int, default=20)
+        watch_window_parser = research_subparsers.add_parser(
+            "build-cf-current-watch-window",
+            help="Build R77 current confirmation/invalidation watch window.",
+        )
+        watch_window_parser.add_argument("--latest-signal-json-path", type=Path)
+        watch_window_parser.add_argument("--dual-price-path", type=Path)
+        watch_window_parser.add_argument("--chain-oi-path", type=Path)
+        watch_window_parser.add_argument("--option-structure-path", type=Path)
+        watch_window_parser.add_argument("--trend-phase-v2-path", type=Path)
+        watch_window_parser.add_argument("--playbook-json-path", type=Path)
+        watch_window_parser.add_argument("--core-quote-path", type=Path)
+        watch_window_parser.add_argument("--output-dir", type=Path)
+        watch_window_parser.add_argument("--report-output-dir", type=Path)
+        watch_window_parser.add_argument("--daily-output-root", type=Path)
+        watch_window_parser.add_argument("--run-id")
+        official_daily_parser = research_subparsers.add_parser(
+            "fetch-cf-official-daily-files",
+            help="Fetch CF official futures/options daily files into incoming storage.",
+        )
+        official_daily_parser.add_argument("--date")
+        official_daily_parser.add_argument("--futures-source-dir", type=Path)
+        official_daily_parser.add_argument("--options-source-dir", type=Path)
+        official_daily_parser.add_argument("--report-output-dir", type=Path)
+        official_daily_parser.add_argument("--run-id")
+        official_daily_parser.add_argument("--skip-options", action="store_true")
+        official_daily_parser.add_argument("--overwrite", action="store_true")
+        official_daily_parser.add_argument("--futures-url")
+        official_daily_parser.add_argument("--options-url")
+        option_strike_parser = research_subparsers.add_parser(
+            "build-cf-option-strike-position-research",
+            help="Build R84 CF option strike OI key-level research.",
+        )
+        option_strike_parser.add_argument("--option-core-path", type=Path)
+        option_strike_parser.add_argument("--core-quote-path", type=Path)
+        option_strike_parser.add_argument("--option-expiry-path", type=Path)
+        option_strike_parser.add_argument("--end", type=_parse_iso_date)
+        option_strike_parser.add_argument("--horizons", default="1,3,5,10")
+        option_strike_parser.add_argument("--near-level-ratio", type=float, default=0.01)
+        option_strike_parser.add_argument("--min-sample-size", type=int, default=30)
+        option_strike_parser.add_argument("--output-dir", type=Path)
+        option_strike_parser.add_argument("--report-output-dir", type=Path)
+        option_strike_parser.add_argument("--run-id")
+        member_fetch_parser = research_subparsers.add_parser(
+            "fetch-cf-official-member-position",
+            help="Download one official CF member-position workbook.",
+        )
+        member_fetch_parser.add_argument("--date", required=True)
+        member_fetch_parser.add_argument("--source-dir", type=Path)
+        member_fetch_parser.add_argument("--report-output-dir", type=Path)
+        member_fetch_parser.add_argument("--overwrite", action="store_true")
+        member_fetch_parser.add_argument("--official-url")
+        member_history_fetch_parser = research_subparsers.add_parser(
+            "fetch-cf-official-member-position-history",
+            help="Incrementally backfill R85 CF member-position history.",
+        )
+        member_history_fetch_parser.add_argument("--start", required=True)
+        member_history_fetch_parser.add_argument("--end", required=True)
+        member_history_fetch_parser.add_argument("--core-quote-path", type=Path)
+        member_history_fetch_parser.add_argument("--source-dir", type=Path)
+        member_history_fetch_parser.add_argument("--report-output-dir", type=Path)
+        member_history_fetch_parser.add_argument("--overwrite", action="store_true")
+        member_history_fetch_parser.add_argument("--max-workers", type=int, default=4)
+        member_ingest_parser = research_subparsers.add_parser(
+            "connect-cf-member-position-history",
+            help="Preserve and normalize CF member-position history.",
+        )
+        member_ingest_parser.add_argument("--source-dir", type=Path)
+        member_ingest_parser.add_argument("--raw-root", type=Path)
+        member_ingest_parser.add_argument("--core-output-dir", type=Path)
+        member_ingest_parser.add_argument("--output-path", type=Path)
+        member_ingest_parser.add_argument("--report-output-dir", type=Path)
+        member_ingest_parser.add_argument("--run-id")
+        member_research_parser = research_subparsers.add_parser(
+            "build-cf-member-position-research",
+            help="Build R83 CF member concentration and roll evidence.",
+        )
+        member_research_parser.add_argument("--member-position-path", type=Path)
+        member_research_parser.add_argument("--core-quote-path", type=Path)
+        member_research_parser.add_argument("--validation-daily-path", type=Path)
+        member_research_parser.add_argument("--end", type=_parse_iso_date)
+        member_research_parser.add_argument("--top-ns", default="5,10,20")
+        member_research_parser.add_argument("--horizons", default="1,3,5,10,20")
+        member_research_parser.add_argument(
+            "--position-change-dead-zone", type=float, default=0.002
+        )
+        member_research_parser.add_argument("--price-dead-zone", type=float, default=0.001)
+        member_research_parser.add_argument("--min-sample-size", type=int, default=30)
+        member_research_parser.add_argument("--min-history-days", type=int, default=60)
+        member_research_parser.add_argument("--output-dir", type=Path)
+        member_research_parser.add_argument("--report-output-dir", type=Path)
+        member_research_parser.add_argument("--run-id")
         option_contract_parser = research_subparsers.add_parser(
             "build-cf-option-data-contract",
             help="Build R46 CF option data contract and incoming warning artifacts.",
@@ -3643,6 +5143,22 @@ else:
         option_factor_parser.add_argument("--atm-moneyness-band", type=float, default=0.03)
         option_factor_parser.add_argument("--otm-moneyness-min", type=float, default=0.90)
         option_factor_parser.add_argument("--otm-moneyness-max", type=float, default=0.98)
+        option_factor_parser.add_argument("--incremental", action="store_true")
+        option_volatility_parser = research_subparsers.add_parser(
+            "build-cf-option-volatility-term-structure",
+            help="Build R80 CF expiry-aware IV/RV and term-structure evidence.",
+        )
+        option_volatility_parser.add_argument("--option-factor-path", type=Path)
+        option_volatility_parser.add_argument("--core-quote-path", type=Path)
+        option_volatility_parser.add_argument("--option-expiry-path", type=Path)
+        option_volatility_parser.add_argument("--output-dir", type=Path)
+        option_volatility_parser.add_argument("--report-output-dir", type=Path)
+        option_volatility_parser.add_argument("--run-id")
+        option_volatility_parser.add_argument("--risk-free-rate", type=float, default=0.02)
+        option_volatility_parser.add_argument("--rv-window", type=int, default=20)
+        option_volatility_parser.add_argument("--iv-rank-window", type=int, default=252)
+        option_volatility_parser.add_argument("--horizons", default="5,10,20")
+        option_volatility_parser.add_argument("--min-sample-size", type=int, default=30)
         product_registry_parser = research_subparsers.add_parser(
             "build-cf-product-research-registry",
             help="Build R50 CF product config and research factor registry snapshot.",
@@ -4594,6 +6110,31 @@ else:
 
             print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
             return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-data-continuity-audit"
+        ):
+            from cotton_factor.research_workbench import build_cf_data_continuity_audit
+
+            try:
+                result = build_cf_data_continuity_audit(
+                    trade_date=_parse_iso_date(args.date) if args.date else None,
+                    core_quote_path=args.core_quote_path,
+                    option_core_path=args.option_core_path,
+                    calendar_path=args.calendar_path,
+                    official_daily_fetch_json_path=args.official_daily_fetch_json_path,
+                    raw_root=args.raw_root,
+                    output_root=args.output_root,
+                    run_id=args.run_id,
+                    require_options=not args.no_require_options,
+                    require_raw_retention=not args.skip_raw_retention,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0 if result.passed else 1
         if args.command == "research" and args.research_command == "build-cf-signal-matrix":
             from cotton_factor.research_workbench import build_cf_signal_matrix
 
@@ -4728,6 +6269,28 @@ else:
             return 0
         if (
             args.command == "research"
+            and args.research_command == "build-cf-event-threshold-review-ledger"
+        ):
+            from cotton_factor.research_workbench import build_cf_event_threshold_review_ledger
+
+            try:
+                result = build_cf_event_threshold_review_ledger(
+                    threshold_summary_path=args.threshold_summary_path,
+                    threshold_detail_path=args.threshold_detail_path,
+                    event_detail_path=args.event_detail_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    example_event_count=args.example_event_count,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
             and args.research_command == "build-cf-validated-research-brief"
         ):
             from cotton_factor.research_workbench import build_cf_validated_research_brief
@@ -4741,6 +6304,13 @@ else:
                     event_detail_path=args.event_detail_path,
                     event_threshold_summary_path=args.event_threshold_summary_path,
                     fundamental_observation_json_path=args.fundamental_observation_json_path,
+                    futures_option_divergence_json_path=(
+                        args.futures_option_divergence_json_path
+                    ),
+                    futures_option_playbook_json_path=args.futures_option_playbook_json_path,
+                    current_watch_window_json_path=args.current_watch_window_json_path,
+                    state_transition_json_path=args.state_transition_json_path,
+                    option_volatility_json_path=args.option_volatility_json_path,
                     output_dir=args.output_dir,
                     daily_output_root=args.daily_output_root,
                     run_id=args.run_id,
@@ -4762,6 +6332,11 @@ else:
                     signal_matrix_path=args.signal_matrix_path,
                     historical_evidence_decay_path=args.historical_evidence_decay_path,
                     event_summary_path=args.event_summary_path,
+                    futures_option_divergence_json_path=(
+                        args.futures_option_divergence_json_path
+                    ),
+                    futures_option_playbook_json_path=args.futures_option_playbook_json_path,
+                    current_watch_window_json_path=args.current_watch_window_json_path,
                     output_root=args.output_root,
                     run_id=args.run_id,
                     price_lookback=args.price_lookback,
@@ -4788,6 +6363,398 @@ else:
                 print(str(exc))
                 return 1
 
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-stage-decision-pack"
+        ):
+            from cotton_factor.research_workbench import build_cf_stage_decision_pack
+
+            try:
+                result = build_cf_stage_decision_pack(
+                    weekly_audit_json_path=args.weekly_audit_json_path,
+                    expansion_gate_json_path=args.expansion_gate_json_path,
+                    latest_signal_json_path=args.latest_signal_json_path,
+                    option_factor_json_path=args.option_factor_json_path,
+                    event_threshold_json_path=args.event_threshold_json_path,
+                    output_dir=args.output_dir,
+                    daily_output_root=args.daily_output_root,
+                    run_id=args.run_id,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-event-lifecycle-research"
+        ):
+            from cotton_factor.research_workbench import build_cf_event_lifecycle_research
+
+            try:
+                result = build_cf_event_lifecycle_research(
+                    signal_matrix_path=args.signal_matrix_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    horizon=args.horizon,
+                    max_holding_days=args.max_holding_days,
+                    profit_barrier=args.profit_barrier,
+                    stop_loss_barrier=args.stop_loss_barrier,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-state-transition-competing-risk"
+        ):
+            from cotton_factor.research_workbench import (
+                build_cf_state_transition_competing_risk_research,
+            )
+
+            try:
+                result = build_cf_state_transition_competing_risk_research(
+                    event_lifecycle_episode_path=args.event_lifecycle_episode_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    max_age_days=args.max_age_days,
+                    min_sample_size=args.min_sample_size,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-futures-option-divergence-research"
+        ):
+            from cotton_factor.research_workbench import (
+                build_cf_futures_option_divergence_research,
+            )
+
+            try:
+                result = build_cf_futures_option_divergence_research(
+                    signal_matrix_validation_path=args.signal_matrix_validation_path,
+                    option_factor_path=args.option_factor_path,
+                    event_lifecycle_episode_path=args.event_lifecycle_episode_path,
+                    event_lifecycle_tbm_path=args.event_lifecycle_tbm_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    horizons=_parse_horizons(args.horizons),
+                    dead_zone_bps=args.dead_zone_bps,
+                    min_sample_size=args.min_sample_size,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-futures-option-divergence-playbook"
+        ):
+            from cotton_factor.research_workbench import (
+                build_cf_futures_option_divergence_playbook,
+            )
+
+            try:
+                result = build_cf_futures_option_divergence_playbook(
+                    event_path=args.event_path,
+                    node_summary_path=args.node_summary_path,
+                    latest_signal_json_path=args.latest_signal_json_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    min_sample_size=args.min_sample_size,
+                    edge_threshold=args.edge_threshold,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if args.command == "research" and args.research_command == "build-cf-dual-price-state":
+            from cotton_factor.research_workbench import build_cf_dual_price_state
+
+            try:
+                result = build_cf_dual_price_state(
+                    core_quote_path=args.core_quote_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    ma_window=args.ma_window,
+                    gap_alert_bps=args.gap_alert_bps,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-chain-oi-structure"
+        ):
+            from cotton_factor.research_workbench import build_cf_chain_oi_structure
+
+            try:
+                result = build_cf_chain_oi_structure(
+                    core_quote_path=args.core_quote_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    noise_ratio=args.noise_ratio,
+                    roll_transfer_threshold=args.roll_transfer_threshold,
+                    roll_lookback_days=args.roll_lookback_days,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-oi-roll-window-research"
+        ):
+            from cotton_factor.research_workbench import build_cf_oi_roll_window_research
+
+            try:
+                parsed_windows = tuple(
+                    int(value.strip())
+                    for value in args.windows.split(",")
+                    if value.strip()
+                )
+                result = build_cf_oi_roll_window_research(
+                    core_quote_path=args.core_quote_path,
+                    validation_daily_path=args.validation_daily_path,
+                    exclusion_path=args.exclusion_path,
+                    end=args.end,
+                    windows=parsed_windows,
+                    min_sample_size=args.min_sample_size,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                )
+            except (CottonFactorError, ValueError) as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-option-structure-research"
+        ):
+            from cotton_factor.research_workbench import build_cf_option_structure_research
+
+            try:
+                result = build_cf_option_structure_research(
+                    option_factor_path=args.option_factor_path,
+                    signal_matrix_path=args.signal_matrix_path,
+                    validation_daily_path=args.validation_daily_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    primary_horizon=args.primary_horizon,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if args.command == "research" and args.research_command == "build-cf-trend-phase-v2":
+            from cotton_factor.research_workbench import build_cf_trend_phase_v2
+
+            try:
+                result = build_cf_trend_phase_v2(
+                    dual_price_path=args.dual_price_path,
+                    chain_oi_path=args.chain_oi_path,
+                    option_structure_path=args.option_structure_path,
+                    signal_matrix_path=args.signal_matrix_path,
+                    validation_daily_path=args.validation_daily_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    primary_horizon=args.primary_horizon,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-current-watch-window"
+        ):
+            from cotton_factor.research_workbench import build_cf_current_watch_window
+
+            try:
+                result = build_cf_current_watch_window(
+                    latest_signal_json_path=args.latest_signal_json_path,
+                    dual_price_path=args.dual_price_path,
+                    chain_oi_path=args.chain_oi_path,
+                    option_structure_path=args.option_structure_path,
+                    trend_phase_v2_path=args.trend_phase_v2_path,
+                    playbook_json_path=args.playbook_json_path,
+                    core_quote_path=args.core_quote_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    daily_output_root=args.daily_output_root,
+                    run_id=args.run_id,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "fetch-cf-official-daily-files"
+        ):
+            from cotton_factor.research_workbench import fetch_cf_official_daily_files
+
+            try:
+                result = fetch_cf_official_daily_files(
+                    trade_date=_parse_iso_date(args.date) if args.date else None,
+                    futures_source_dir=args.futures_source_dir,
+                    options_source_dir=args.options_source_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    include_options=not args.skip_options,
+                    overwrite=args.overwrite,
+                    futures_url=args.futures_url,
+                    options_url=args.options_url,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0 if result.passed else 1
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-option-strike-position-research"
+        ):
+            from cotton_factor.research_workbench import (
+                build_cf_option_strike_position_research,
+            )
+
+            try:
+                result = build_cf_option_strike_position_research(
+                    option_core_path=args.option_core_path,
+                    core_quote_path=args.core_quote_path,
+                    option_expiry_path=args.option_expiry_path,
+                    end=args.end,
+                    horizons=_parse_horizons(args.horizons),
+                    near_level_ratio=args.near_level_ratio,
+                    min_sample_size=args.min_sample_size,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "fetch-cf-official-member-position"
+        ):
+            from cotton_factor.research_workbench import fetch_cf_official_member_position
+
+            try:
+                result = fetch_cf_official_member_position(
+                    trade_date=_parse_iso_date(args.date),
+                    source_dir=args.source_dir,
+                    report_output_dir=args.report_output_dir,
+                    overwrite=args.overwrite,
+                    official_url=args.official_url,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0 if result.passed else 1
+        if (
+            args.command == "research"
+            and args.research_command == "fetch-cf-official-member-position-history"
+        ):
+            from cotton_factor.research_workbench import (
+                fetch_cf_official_member_position_history,
+            )
+
+            try:
+                result = fetch_cf_official_member_position_history(
+                    start=_parse_iso_date(args.start),
+                    end=_parse_iso_date(args.end),
+                    core_quote_path=args.core_quote_path,
+                    source_dir=args.source_dir,
+                    report_output_dir=args.report_output_dir,
+                    overwrite=args.overwrite,
+                    max_workers=args.max_workers,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0 if result.passed else 1
+        if (
+            args.command == "research"
+            and args.research_command == "connect-cf-member-position-history"
+        ):
+            from cotton_factor.research_workbench import connect_cf_member_position_history
+
+            try:
+                result = connect_cf_member_position_history(
+                    source_dir=args.source_dir,
+                    raw_root=args.raw_root,
+                    core_output_dir=args.core_output_dir,
+                    output_path=args.output_path,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0 if result.passed else 1
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-member-position-research"
+        ):
+            from cotton_factor.research_workbench import build_cf_member_position_research
+
+            try:
+                result = build_cf_member_position_research(
+                    member_position_path=args.member_position_path,
+                    core_quote_path=args.core_quote_path,
+                    validation_daily_path=args.validation_daily_path,
+                    end=args.end,
+                    top_ns=_parse_horizons(args.top_ns),
+                    horizons=_parse_horizons(args.horizons),
+                    position_change_dead_zone=args.position_change_dead_zone,
+                    price_dead_zone=args.price_dead_zone,
+                    min_sample_size=args.min_sample_size,
+                    min_history_days=args.min_history_days,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
             print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
             return 0
         if (
@@ -4850,6 +6817,7 @@ else:
                     atm_moneyness_band=args.atm_moneyness_band,
                     otm_moneyness_min=args.otm_moneyness_min,
                     otm_moneyness_max=args.otm_moneyness_max,
+                    incremental=args.incremental,
                 )
             except CottonFactorError as exc:
                 print(str(exc))
@@ -4857,6 +6825,34 @@ else:
 
             print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
             return 0 if result.passed else 1
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-option-volatility-term-structure"
+        ):
+            from cotton_factor.research_workbench import (
+                build_cf_option_volatility_term_structure_research,
+            )
+
+            try:
+                result = build_cf_option_volatility_term_structure_research(
+                    option_factor_path=args.option_factor_path,
+                    core_quote_path=args.core_quote_path,
+                    option_expiry_path=args.option_expiry_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    risk_free_rate=args.risk_free_rate,
+                    rv_window=args.rv_window,
+                    iv_rank_window=args.iv_rank_window,
+                    horizons=_parse_horizons(args.horizons),
+                    min_sample_size=args.min_sample_size,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
         if (
             args.command == "research"
             and args.research_command == "build-cf-product-research-registry"

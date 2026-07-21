@@ -81,9 +81,16 @@ artifact completeness, event-threshold review, fundamental interpretation review
 event-fundamental coverage, and research boundaries. R60 adds a dedicated event
 threshold sensitivity review pack for baseline R55 events plus OI anomaly and
 curve-shock quantile thresholds, producing KEEP/WATCH/REVISE/REJECT review
-candidates without turning them into trading rules.
-Future work should stay on the CF-first research route until the latest brief and
-trend phase outputs are stable on real daily data.
+candidates without turning them into trading rules. R62 turns those R60
+candidates into a traceable manual-review ledger with event examples, factor
+context, fundamental context when available, and explicit research boundaries.
+R63 adds a data continuity and retention audit for daily official files, core
+tables, official calendar continuity, checksums, and raw snapshot traceability.
+R65 adds a CF stage decision pack that combines R59 weekly audit, R52 expansion
+gate, latest signal state, R48 option factors, and R60 threshold review into a
+Chinese go/no-go review artifact before any non-CF pilot. Future work should
+stay on the CF-first research route until human review clears the R65/R52
+expansion boundary.
 
 ## Current Direction
 
@@ -198,16 +205,33 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-sign
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-historical-evidence-pack --core-quote-path data/core/CF/core_quote_daily.parquet --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-01_signal_matrix_daily.parquet --validation-daily-path data/research/CF/signal_matrix_validation/CF_2021-01-04_2026-07-01_signal_matrix_validation_daily.parquet --validation-window-summary-path data/research/CF/signal_matrix_validation/CF_2021-01-04_2026-07-01_signal_matrix_validation_window_summary.parquet --threshold-weighting-path data/research/CF/signal_threshold_research/CF_2021-01-04_2026-07-01_signal_threshold_research_weighting.parquet
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-historical-event-explanation --validation-daily-path data/research/CF/signal_matrix_validation/CF_2021-01-04_2026-07-03_signal_matrix_validation_daily.parquet --output-dir data/research/CF/event_explanation --report-output-dir reports/research/event_explanation --primary-horizon 20 --horizons 1,3,5,10,20 --fundamental-context-path data/research/CF/fundamental_context/CF_fundamental_context_daily.parquet
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-event-threshold-sensitivity --validation-daily-path data/research/CF/signal_matrix_validation/CF_2021-01-04_2026-07-03_signal_matrix_validation_daily.parquet --event-path data/research/CF/event_explanation/CF_2021-01-04_2026-07-03_event_explanation_events.parquet --output-dir data/research/CF/event_threshold_sensitivity --report-output-dir reports/research/event_threshold_sensitivity --primary-horizon 20 --horizons 1,3,5,10,20 --threshold-quantiles 0.90,0.95,0.975
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-event-threshold-review-ledger --threshold-summary-path data/research/CF/event_threshold_sensitivity/CF_2021-01-04_2026-07-03_event_threshold_sensitivity_summary.parquet --threshold-detail-path data/research/CF/event_threshold_sensitivity/CF_2021-01-04_2026-07-03_event_threshold_sensitivity_detail.parquet --event-detail-path data/research/CF/event_explanation/CF_2021-01-04_2026-07-03_event_explanation_events.parquet --output-dir data/research/CF/event_threshold_review --report-output-dir reports/research/event_threshold_review
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-validated-research-brief --latest-signal-json-path runs/daily/CF/2026-07-03/latest_signal_brief.json --historical-evidence-decay-path data/research/CF/historical_evidence/CF_2021-01-04_2026-07-03_historical_evidence_decay.parquet --historical-evidence-stability-path data/research/CF/historical_evidence/CF_2021-01-04_2026-07-03_historical_evidence_stability.parquet --event-summary-path data/research/CF/event_explanation/CF_2021-01-04_2026-07-03_event_explanation_summary.parquet --event-detail-path data/research/CF/event_explanation/CF_2021-01-04_2026-07-03_event_explanation_events.parquet --event-threshold-summary-path data/research/CF/event_threshold_sensitivity/CF_2021-01-04_2026-07-03_event_threshold_sensitivity_summary.parquet --fundamental-observation-json-path data/research/CF/fundamentals/CF_fundamental_observation.json --output-dir reports/research/validated_brief --daily-output-root runs/daily
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-publish-pack --latest-signal-json-path runs/daily/CF/2026-07-03/latest_signal_brief.json --validated-brief-path runs/daily/CF/2026-07-03/validated_research_brief.md --core-quote-path data/core/CF/core_quote_daily.parquet --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-03_signal_matrix_daily.parquet --historical-evidence-decay-path data/research/CF/historical_evidence/CF_2021-01-04_2026-07-03_historical_evidence_decay.parquet --event-summary-path data/research/CF/event_explanation/CF_2021-01-04_2026-07-03_event_explanation_summary.parquet --output-root runs/daily
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-weekly-research-audit --weekly-manifest-path runs/weekly/CF/2026-07-03/weekly_research_run_manifest.json --output-dir reports/research/weekly_audit
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-stage-decision-pack --weekly-audit-json-path reports/research/weekly_audit/CF_2026-07-06_weekly_research_audit.json --expansion-gate-json-path reports/research/expansion_gate/CF_SR_AP_OR_EXTERNAL_DATA_r64_latest_evidence_20260706_with_r20_r21_expansion_gate.json --latest-signal-json-path runs/daily/CF/2026-07-06/latest_signal_brief.json --option-factor-json-path reports/research/option_factors/CF_2021-01-04_2026-07-06_option_factor_proxy.json --event-threshold-json-path reports/research/event_threshold_sensitivity/CF_2021-01-04_2026-07-06_event_threshold_sensitivity.json --output-dir reports/research/stage_decision --daily-output-root runs/daily
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-event-lifecycle-research --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-17_signal_matrix_daily.parquet --output-dir data/research/CF/event_lifecycle --report-output-dir reports/research/event_lifecycle --horizon 20
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-state-transition-competing-risk --event-lifecycle-episode-path data/research/CF/event_lifecycle/CF_2021-01-04_2026-07-17_event_lifecycle_episodes.parquet --output-dir data/research/CF/state_transition --report-output-dir reports/research/state_transition --max-age-days 20 --min-sample-size 30
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-divergence-research --signal-matrix-validation-path data/research/CF/signal_matrix_validation/CF_2021-01-04_2026-07-06_signal_matrix_validation_daily.parquet --event-lifecycle-tbm-path data/research/CF/event_lifecycle/CF_2021-01-04_2026-07-06_event_lifecycle_tbm_labels.parquet --output-dir data/research/CF/futures_option_divergence --report-output-dir reports/research/futures_option_divergence --horizons 1,3,5,10,20,40
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-divergence-playbook --event-path data/research/CF/futures_option_divergence/CF_2021-01-04_2026-07-06_futures_option_divergence_divergence_event_daily.parquet --node-summary-path data/research/CF/futures_option_divergence/CF_2021-01-04_2026-07-06_futures_option_divergence_summary_by_node.parquet --latest-signal-json-path runs/daily/CF/2026-07-07/latest_signal_brief.json --output-dir data/research/CF/futures_option_divergence_playbook --report-output-dir reports/research/futures_option_divergence_playbook
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-dual-price-state --core-quote-path data/core/CF/core_quote_daily.parquet --output-dir data/research/CF/dual_price_state --report-output-dir reports/research/dual_price_state
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-chain-oi-structure --core-quote-path data/core/CF/core_quote_daily.parquet --output-dir data/research/CF/chain_oi_structure --report-output-dir reports/research/chain_oi_structure --roll-lookback-days 5
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-oi-roll-window-research --core-quote-path data/core/CF/core_quote_daily.parquet --windows 3,5,10 --output-dir data/research/CF/oi_roll_window --report-output-dir reports/research/oi_roll_window
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-option-structure-research --option-factor-path data/research/CF/option_factors/CF_2021-01-04_2026-07-13_option_factor_proxy_daily.parquet --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-13_signal_matrix_daily.parquet --output-dir data/research/CF/option_structure --report-output-dir reports/research/option_structure
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-phase-v2 --dual-price-path data/research/CF/dual_price_state/CF_2021-01-04_2026-07-13_dual_price_state_daily.parquet --chain-oi-path data/research/CF/chain_oi_structure/CF_2021-01-04_2026-07-13_chain_oi_structure_daily.parquet --option-structure-path data/research/CF/option_structure/CF_2021-01-04_2026-07-13_option_structure_daily.parquet --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-13_signal_matrix_daily.parquet --output-dir data/research/CF/trend_phase_v2 --report-output-dir reports/research/trend_phase_v2
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-current-watch-window --latest-signal-json-path runs/daily/CF/2026-07-13/latest_signal_brief.json --dual-price-path data/research/CF/dual_price_state/CF_2021-01-04_2026-07-13_dual_price_state_daily.parquet --chain-oi-path data/research/CF/chain_oi_structure/CF_2021-01-04_2026-07-13_chain_oi_structure_daily.parquet --option-structure-path data/research/CF/option_structure/CF_2021-01-04_2026-07-13_option_structure_daily.parquet --trend-phase-v2-path data/research/CF/trend_phase_v2/CF_2021-01-04_2026-07-13_trend_phase_v2_daily.parquet --output-dir data/research/CF/current_watch_window --report-output-dir reports/research/current_watch_window --daily-output-root runs/daily
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-validated-research-brief --futures-option-divergence-json-path reports/research/futures_option_divergence/CF_2021-01-04_2026-07-06_futures_option_divergence.json --futures-option-playbook-json-path reports/research/futures_option_divergence_playbook/CF_2021-01-04_2026-07-06_futures_option_playbook.json --state-transition-json-path reports/research/state_transition/CF_2021-02-03_2026-07-17_state_transition_competing_risk.json --option-volatility-json-path reports/research/option_volatility/CF_2021-01-04_2026-07-17_option_volatility.json
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-publish-pack --futures-option-divergence-json-path reports/research/futures_option_divergence/CF_2021-01-04_2026-07-06_futures_option_divergence.json --futures-option-playbook-json-path reports/research/futures_option_divergence_playbook/CF_2021-01-04_2026-07-06_futures_option_playbook.json
+.\scripts\update_cf_latest_research.ps1 -RunFuturesOptionDivergence -RunValidatedBrief -RunPublishPack
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-option-data-contract --source-dir data/incoming/CF/options/history --core-output-dir data/core --report-output-dir reports/research/option_data_contract
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research connect-cf-option-history --source-dir data/incoming/CF/options/history --raw-root data/raw --core-output-dir data/core --core-quote-path data/core/CF/core_quote_daily.parquet --report-output-dir reports/research/option_core_ingest
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-option-factor-proxy --option-core-path data/core/CF/core_option_quote_daily.parquet --core-quote-path data/core/CF/core_quote_daily.parquet --output-dir data/research/CF/option_factors --report-output-dir reports/research/option_factors
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-option-volatility-term-structure --option-factor-path data/research/CF/option_factors/CF_2021-01-04_2026-07-17_option_factor_proxy_daily.parquet --core-quote-path data/core/CF/core_quote_daily.parquet --option-expiry-path configs/products/CF_OPTION_EXPIRY_OFFICIAL.csv --output-dir data/research/CF/option_volatility --report-output-dir reports/research/option_volatility --risk-free-rate 0.02 --rv-window 20 --iv-rank-window 252 --horizons 5,10,20
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-product-research-registry --output-dir data/research/CF/product_registry --report-output-dir reports/research/product_registry
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-fundamental-data-contract --source-dir data/incoming/CF/fundamentals/manual --output-dir data/research/CF/fundamentals --report-output-dir reports/research/fundamentals
 $env:PYTHONPATH="src"; $env:PYTHONIOENCODING="utf-8"; py -3.12 -m cotton_factor.cli.main research build-cf-fundamental-observation --source-dir data/incoming/CF/fundamentals/manual --output-dir data/research/CF/fundamentals --report-output-dir reports/research/fundamentals
 $env:PYTHONPATH="src"; $env:PYTHONIOENCODING="utf-8"; py -3.12 -m cotton_factor.cli.main research build-cf-fundamental-context --fundamental-observation-json-path data/research/CF/fundamentals/CF_fundamental_observation.json --core-quote-path data/core/CF/core_quote_daily.parquet --output-dir data/research/CF/fundamental_context --report-output-dir reports/research/fundamental_context --change-windows 1,4,12
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research fetch-cf-official-daily-files --date 2026-07-06 --futures-source-dir data/incoming/CF/history --options-source-dir data/incoming/CF/options/history --report-output-dir reports/research/official_daily_files
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-latest-signal-brief --core-quote-path data/core/CF/core_quote_daily.parquet --output-root runs/daily --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-01_signal_matrix_latest_snapshot.json --signal-threshold-research-path data/research/CF/signal_threshold_research/CF_2021-01-04_2026-07-01_signal_threshold_research_weighting.parquet
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-continuity-board --core-quote-path data/core/CF/core_quote_daily.parquet --output-root runs/daily --lookback-trading-days 20 --trend-rule-candidate-path data/research/CF/trend_rule_candidates/CF_2026-02-26_2026-06-24_trend_rule_candidates.parquet --trend-quality-calibration-manifest-path data/research/CF/trend_quality_calibration/CF_2026-02-26_2026-07-01_trend_quality_calibration_manifest.json
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-daily-operation-audit --latest-signal-json-path runs/daily/CF/2026-07-01/latest_signal_brief.json --trend-board-json-path runs/daily/CF/2026-07-01/trend_continuity_board.json --core-quote-path data/core/CF/core_quote_daily.parquet --output-root runs/daily
@@ -243,6 +267,87 @@ Pass `-SignalThresholdResearchPath` to connect R37 aggregated threshold/weight
 candidates into the R39/R40 latest-brief explanation section. When the current
 primary horizon has no READY/WATCH match, the brief can display other-horizon
 reference candidates, but they remain research context only.
+To fetch official daily futures and options directly, use:
+
+```powershell
+.\scripts\update_cf_latest_research.ps1 -DownloadOfficialDaily -DownloadDate 2026-07-06
+```
+
+CZCE daily URLs use `YYYY` for the year directory and `YYYYMMDD` for the date
+directory:
+
+```text
+https://www.czce.com.cn/cn/DFSStaticFiles/Future/YYYY/YYYYMMDD/FutureDataDailyCF.xlsx
+https://www.czce.com.cn/cn/DFSStaticFiles/Option/YYYY/YYYYMMDD/OptionDataDaily.xlsx
+https://www.czce.com.cn/cn/DFSStaticFiles/Future/YYYY/YYYYMMDD/FutureDataHolding.xlsx
+```
+
+The daily downloader saves futures under
+`data/incoming/CF/history/daily/YYYY/YYYYMMDD/` and options under
+`data/incoming/CF/options/history/daily/YYYY/YYYYMMDD/`. The script then connects futures into
+`core_quote_daily.parquet` and option history into
+`core_option_quote_daily.parquet`. Use `-SkipOptionDailyDownload` for futures
+only and `-OverwriteOfficialDaily` to refresh an existing incoming file.
+After core refresh, the script runs the R63 data continuity audit by default.
+It verifies futures/option core freshness, official calendar continuity,
+downloaded-file checksums, and raw snapshot retention before the research
+brief chain continues. Downloaded Excel files are retained by default. Use
+`-RemoveDownloadedDailyAfterIngest` only when the R63 audit has passed and you
+want to remove the specific newly downloaded incoming files:
+
+Official daily option updates now rebuild R48 automatically. The daily path uses
+an incremental latest-date build and merges it into the existing historical
+factor/surface artifacts; `-RunWeeklyResearchPack` keeps the full-history rebuild
+for periodic verification. The script prints the option-factor and total elapsed
+seconds so daily performance regressions remain visible.
+
+R83 keeps member-position research in the weekly lane. Download and normalize
+the official ranking workbook, then build Top5/10/20 concentration, member long/
+short change, price/OI divergence, and roll-migration evidence with:
+
+```powershell
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research fetch-cf-official-member-position-history --start 2021-01-04 --end 2026-07-20 --core-quote-path data/core/CF/core_quote_daily.parquet --source-dir data/incoming/CF/member_positions/history --max-workers 6
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research fetch-cf-official-member-position --date 2026-07-17 --source-dir data/incoming/CF/member_positions/history
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research connect-cf-member-position-history --source-dir data/incoming/CF/member_positions/history --output-path data/core/CF/core_member_position_daily.parquet
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-member-position-research --member-position-path data/core/CF/core_member_position_daily.parquet --core-quote-path data/core/CF/core_quote_daily.parquet
+```
+
+R85 makes the historical fetch and connector incremental. The batch downloader
+uses only trade dates confirmed by CF core, prefers the verified `.xls` format
+for 2021-2025 and `.xlsx` from 2026, writes a status CSV and manifest, and reuses
+valid incoming files on rerun. The connector reuses immutable raw snapshots by
+checksum and returns `NO_CHANGES` when all files are already represented in
+core. Historical header aliases and official `-` placeholders are normalized
+without treating missing ranks as zero positions.
+
+The normalized table stores volume, long and short rankings as independent
+rows because the member name at the same rank can differ across all three
+lists. Member rankings may include customer aggregates and are not treated as
+identified customer net exposure. Missing history is reported as
+`MISSING_MEMBER_POSITION_HISTORY`; aggregate futures OI is never substituted.
+Use `-RunMemberPositionResearch` for an ad-hoc run. The weekly pack runs R83 by
+default and downloads the current holding workbook only when
+`-DownloadOfficialDaily` is also explicitly supplied.
+
+R84 adds strike-level option open-interest research. It reports Call/Put OI
+walls, daily build/unwind strikes, OI centers, wall migration, a static max-pain
+proxy and T+1 historical wall-crossing paths:
+
+```powershell
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-option-strike-position-research --option-core-path data/core/CF/core_option_quote_daily.parquet --core-quote-path data/core/CF/core_quote_daily.parquet --option-expiry-path configs/products/CF_OPTION_EXPIRY_OFFICIAL.csv --horizons 1,3,5,10
+```
+
+Use `-RunOptionStrikePositionResearch` for an ad-hoc run. R84 stays in the
+weekly lane because its full-history path validation is intentionally heavier.
+Public OI does not reveal who bought or sold the option, so R84 does not infer
+dealer gamma and does not treat a high-OI strike as an automatic support or
+resistance level.
+
+```powershell
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-data-continuity-audit --date 2026-07-06 --core-quote-path data/core/CF/core_quote_daily.parquet --option-core-path data/core/CF/core_option_quote_daily.parquet --calendar-path configs/calendars/CZCE_2026_OFFICIAL.csv --official-daily-fetch-json-path reports/research/official_daily_files/CF_2026-07-06_official_daily_files.json
+.\scripts\update_cf_latest_research.ps1 -DownloadOfficialDaily -DownloadDate 2026-07-06 -RemoveDownloadedDailyAfterIngest
+```
+
 Pass `-OptionFactorPath` to connect an existing R48 option factor proxy table
 into the R49 signal-matrix option filter. This fills `option_signal` in the
 matrix and latest brief, but it does not change `composite_score`.
@@ -250,14 +355,19 @@ Pass `-RunHistoricalEvidence` for a weekly/manual R41 historical evidence pack;
 pass `-RunEventExplanation` for a weekly/manual R42/R55 historical event
 explanation pack, pass `-RunEventThresholdSensitivity` for the R60 event
 threshold sensitivity review pack, and pass `-RunValidatedBrief` to build the
-R43/R56 validated Chinese research brief. Pass `-RunPublishPack` to build the
-R45/R57 chart and WeChat publish pack after the validated brief exists. When
+R43/R56 validated Chinese research brief. The public-account publishing lane is
+paused by default; `-RunPublishPack` remains an explicit manual command for a
+future publication review and is not included in the weekly pack. When
 R54 fundamental context, R55 event details, R60 threshold summary, or R53
 observation JSON already exist, the weekly script passes them forward
 automatically. Default daily updates do not run these weekly research/publish
 steps.
-Use `-RunWeeklyResearchPack` as the one-switch weekly path for
-R41 -> R55 -> R60 -> R56 -> R57 -> R59, a run manifest, and a weekly audit report:
+Default daily updates also skip the R34 operation audit to keep the research
+refresh fast. Use `-RunDailyOperationAudit` only for an ad-hoc review.
+Use `-RunWeeklyResearchPack` after the final official trading session of each
+week (normally the fifth trading day) as the one-switch weekly path for
+R41 -> R83 -> R84 -> R55 -> R60 -> R69 -> R71 -> R56 -> R59, a run manifest, and a weekly
+audit report:
 
 ```powershell
 .\scripts\update_cf_latest_research.ps1 -Year 2026 -RunWeeklyResearchPack
@@ -267,6 +377,8 @@ The weekly manifest is written to
 `runs\weekly\CF\<data_asof>\weekly_research_run_manifest.json`.
 The weekly audit is written to
 `reports\research\weekly_audit\CF_<data_asof>_weekly_research_audit.md`.
+Holiday-shortened weeks should use the final official trading day rather than
+waiting for a nonexistent fifth session.
 `-RunResearchWindow` additionally runs the latest window with enough future observations for
 1/3/5-day research labels.
 

@@ -179,6 +179,55 @@ class CoreOptionQuoteDailyRow(SchemaRow):
         return self
 
 
+class CoreMemberPositionDailyRow(SchemaRow):
+    """郑商所会员持仓排名的标准化长表行。"""
+
+    table_name: ClassVar[str] = "core_member_position_daily"
+    primary_key: ClassVar[tuple[str, ...]] = (
+        "exchange",
+        "trade_date",
+        "scope_type",
+        "scope_code",
+        "position_side",
+        "rank",
+    )
+    lineage_fields: ClassVar[tuple[str, ...]] = (
+        "source_snapshot_id",
+        "source_sha256",
+    )
+
+    schema_version: Literal["core_member_position_daily.v1"] = (
+        "core_member_position_daily.v1"
+    )
+    source_snapshot_id: SnapshotId
+    source_sha256: NonEmptyStr
+    source_file_name: NonEmptyStr
+    exchange: NonEmptyStr
+    product_code: NonEmptyStr
+    trade_date: date
+    scope_type: Literal["product", "contract"]
+    scope_code: NonEmptyStr
+    contract_code: NonEmptyStr | None = None
+    position_side: Literal["volume", "long", "short"]
+    rank: Annotated[int, Field(ge=1, le=20)]
+    member_name: NonEmptyStr
+    position_value: NonNegativeInt
+    position_change: int
+    data_quality_flag: NonEmptyStr = "normal"
+
+    @model_validator(mode="after")
+    def _scope_matches_contract(self) -> CoreMemberPositionDailyRow:
+        if self.scope_type == "contract" and not self.contract_code:
+            raise ValueError("contract scope requires contract_code")
+        if self.scope_type == "product" and self.contract_code is not None:
+            raise ValueError("product scope cannot include contract_code")
+        if self.scope_type == "contract" and self.scope_code != self.contract_code:
+            raise ValueError("contract scope_code must equal contract_code")
+        if self.scope_type == "product" and self.scope_code != self.product_code:
+            raise ValueError("product scope_code must equal product_code")
+        return self
+
+
 class CoreSettlementParamDailyRow(SchemaRow):
     """core_settlement_param_daily row."""
 
@@ -550,6 +599,7 @@ TABLE_SCHEMAS: dict[str, type[SchemaRow]] = {
         CoreTradingCalendarRow,
         CoreQuoteDailyRow,
         CoreOptionQuoteDailyRow,
+        CoreMemberPositionDailyRow,
         CoreSettlementParamDailyRow,
         CoreChainMapDailyRow,
         CoreTradeMappingDailyRow,

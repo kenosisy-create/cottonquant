@@ -21,6 +21,9 @@ def test_build_cf_publish_pack_writes_charts_and_publish_files(tmp_path: Path) -
         signal_matrix_path=paths["matrix"],
         historical_evidence_decay_path=paths["decay"],
         event_summary_path=paths["events"],
+        futures_option_divergence_json_path=paths["divergence"],
+        futures_option_playbook_json_path=paths["playbook"],
+        current_watch_window_json_path=paths["watch"],
         output_root=tmp_path / "daily",
         run_id="r45_unit",
         price_lookback=5,
@@ -41,26 +44,70 @@ def test_build_cf_publish_pack_writes_charts_and_publish_files(tmp_path: Path) -
 
     article = result.wechat_article_path.read_text(encoding="utf-8")
     assert "数据截至" in article
+    assert "先说结论" in article
+    assert "研究评价框架修正（R67）" in article
+    assert "signal_strength" in article
+    assert "historical_reliability" in article
+    assert "验证后研究立场" in article
+    assert "图表解读" in article
+    assert "读图要点" in article
+    assert "多周期信号矩阵" in article
+    assert "历史证据怎么支持或约束当前判断" in article
+    assert "明日观察清单" in article
     assert "forward-return" in article
+    assert "历史后验验证标签" in article
     assert "基本面事件解释链" in article
     assert "R55 历史事件明细" in article
+    assert "期货-期权矛盾节点（R70）" in article
+    assert "R69 中的 `forward_return` 仅为历史后验验证标签" in article
+    assert "期权 IV/Greek、PCR 与 skew 均为研究 proxy" in article
+    assert "期货-期权当前结构映射（R72）" in article
+    assert "R71/R72 当前映射只回答结构相似性" in article
+    assert "当前确认与失效窗口（R77）" in article
+    assert "EXHAUSTION_OR_FAILURE_WATCH" in article
     assert "不构成交易指令" in article
     assert "人工复核" in article
 
     summary = result.wechat_summary_path.read_text(encoding="utf-8")
     assert "R56 已覆盖 2/2 条 R55 事件上下文" in summary
+    assert "R70 已接入期货-期权背离样本" in summary
+    assert "R72 当前映射" in summary
+    assert "R77 阶段 S3 / weak" in summary
 
     data_asof = json.loads(result.data_asof_json_path.read_text(encoding="utf-8"))
     assert data_asof["data_asof"] == "2026-07-01"
     assert data_asof["contains_historical_forward_return_validation"] is True
     assert data_asof["latest_signal_only_contains_forward_return_validation"] is False
+    assert data_asof["research_framework_context"]["rule_version"].startswith("R67")
     assert data_asof["validated_event_context"]["r56_event_context_connected"] is True
     assert data_asof["validated_event_context"]["r55_event_count"] == 2
+    assert data_asof["futures_option_divergence_context"]["connected"] is True
+    assert (
+        data_asof["futures_option_divergence_context"]["result"][
+            "directional_divergence_count"
+        ]
+        == 12
+    )
+    assert data_asof["futures_option_playbook_context"]["connected"] is True
+    assert data_asof["futures_option_playbook_context"]["current_mapping_rows"][0][
+        "matched_playbook_label_cn"
+    ] == "同向确认观察"
+    assert data_asof["current_watch_window_context"]["connected"] is True
+    assert data_asof["current_watch_window_context"]["watch_window"]["phase_v2"] == "S3"
 
     manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
     assert manifest["report_type"] == "publish_pack"
     assert manifest["chart_pack_zip_path"] == str(result.chart_pack_zip_path)
+    assert manifest["research_framework_rule_version"].startswith("R67")
     assert manifest["validated_event_context"]["r55_context_available_count"] == 2
+    assert manifest["futures_option_divergence_json_path"] == str(paths["divergence"])
+    assert manifest["futures_option_playbook_json_path"] == str(paths["playbook"])
+    assert manifest["current_watch_window_json_path"] == str(paths["watch"])
+    assert manifest["publish_pack_futures_option_context_rule_version"].startswith("R70")
+    assert manifest["publish_pack_futures_option_playbook_context_rule_version"].startswith(
+        "R72"
+    )
+    assert manifest["publish_pack_watch_window_context_rule_version"].startswith("R77")
 
     with zipfile.ZipFile(result.chart_pack_zip_path) as archive:
         names = set(archive.namelist())
@@ -94,6 +141,12 @@ def test_cli_build_cf_publish_pack(tmp_path: Path) -> None:
             str(paths["decay"]),
             "--event-summary-path",
             str(paths["events"]),
+            "--futures-option-divergence-json-path",
+            str(paths["divergence"]),
+            "--futures-option-playbook-json-path",
+            str(paths["playbook"]),
+            "--current-watch-window-json-path",
+            str(paths["watch"]),
             "--output-root",
             str(tmp_path / "daily"),
             "--run-id",
@@ -108,6 +161,9 @@ def test_cli_build_cf_publish_pack(tmp_path: Path) -> None:
     assert output["run_id"] == "r45_cli"
     assert Path(output["wechat_article_path"]).exists()
     assert Path(output["chart_pack_zip_path"]).exists()
+    assert output["futures_option_divergence_json_path"] == str(paths["divergence"])
+    assert output["futures_option_playbook_json_path"] == str(paths["playbook"])
+    assert output["current_watch_window_json_path"] == str(paths["watch"])
 
 
 def _write_r45_inputs(tmp_path: Path) -> dict[str, Path]:
@@ -117,7 +173,20 @@ def _write_r45_inputs(tmp_path: Path) -> dict[str, Path]:
     matrix_path = tmp_path / "matrix" / "signal_matrix.parquet"
     decay_path = tmp_path / "historical" / "decay.parquet"
     events_path = tmp_path / "events" / "summary.parquet"
-    for path in (latest_path, validated_path, core_path, matrix_path, decay_path, events_path):
+    divergence_path = tmp_path / "divergence" / "r69_futures_option_divergence.json"
+    playbook_path = tmp_path / "playbook" / "r71_futures_option_playbook.json"
+    watch_path = tmp_path / "watch" / "r77_current_watch_window.json"
+    for path in (
+        latest_path,
+        validated_path,
+        core_path,
+        matrix_path,
+        decay_path,
+        events_path,
+        divergence_path,
+        playbook_path,
+        watch_path,
+    ):
         path.parent.mkdir(parents=True, exist_ok=True)
 
     latest_path.write_text(
@@ -222,6 +291,110 @@ def _write_r45_inputs(tmp_path: Path) -> dict[str, Path]:
             {"event_type": "主力切换", "event_count": 6},
         ]
     ).to_parquet(events_path, index=False)
+    divergence_path.write_text(
+        json.dumps(
+            {
+                "report_type": "futures_option_divergence_research",
+                "result": {
+                    "start": "2021-01-04",
+                    "end": "2026-07-01",
+                    "event_row_count": 30,
+                    "labelled_event_row_count": 28,
+                    "directional_divergence_count": 12,
+                    "main_winner_label": "FUTURES_WIN",
+                    "average_resolution_horizon": 5.25,
+                },
+                "horizon_summary": [
+                    {
+                        "divergence_type": "directional_divergence",
+                        "horizon": 5,
+                        "sample_count": 12,
+                        "futures_win_rate": 0.58,
+                        "options_win_rate": 0.25,
+                        "avg_futures_directional_forward_return": 0.012,
+                        "evidence_level": "WATCH",
+                    }
+                ],
+                "node_summary": [],
+                "research_boundary": {
+                    "forward_returns_are_validation_labels": True,
+                    "trading_instruction": "not_a_trading_instruction",
+                    "option_iv_greek_is_proxy": True,
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    playbook_path.write_text(
+        json.dumps(
+            {
+                "report_type": "futures_option_divergence_playbook",
+                "summary": {
+                    "start": "2021-01-04",
+                    "end": "2026-07-01",
+                    "node_count": 10,
+                    "ready_node_count": 2,
+                    "current_mapping_count": 1,
+                },
+                "current_mapping_rows": [
+                    {
+                        "horizon": 20,
+                        "divergence_type": "option_confirmation",
+                        "trend_phase": "S2",
+                        "matched_node_id": "R71_NODE_0204",
+                        "matched_sample_count": 93,
+                        "matched_playbook_label_cn": "同向确认观察",
+                        "matched_futures_win_rate": 0.4838709677,
+                        "matched_options_win_rate": 0.0,
+                        "matched_average_resolution_horizon": 12.642857,
+                        "forward_returns_are_validation_labels": True,
+                        "trading_instruction": "not_a_trading_instruction",
+                    }
+                ],
+                "node_rows": [],
+                "research_boundary": {
+                    "forward_returns_are_validation_labels": True,
+                    "auto_reverse_allowed": False,
+                    "trading_instruction": "not_a_trading_instruction",
+                    "option_iv_greek_is_proxy": True,
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    watch_path.write_text(
+        json.dumps(
+            {
+                "report_type": "current_watch_window",
+                "watch_window": {
+                    "phase_v2": "S3",
+                    "phase_v2_label": "衰竭观察",
+                    "phase_quality": "weak",
+                    "watch_status": "EXHAUSTION_OR_FAILURE_WATCH",
+                    "dual_price_state": "BOTH_ABOVE",
+                    "close_settle_gap_state": "SETTLE_STRONGER",
+                    "participation_state": "SHORT_COVER_OR_EXIT",
+                    "chain_oi_change": -1000,
+                    "option_confirmation_state": "CONFIRM_LONG",
+                    "option_confirmation_strength": "low",
+                    "confirmation_level": 16330,
+                    "invalidation_level": 16000,
+                    "confirmation_conditions_cn": "价格突破且持仓改善",
+                    "invalidation_conditions_cn": "双价格跌破均线",
+                },
+                "research_boundary": {
+                    "latest_state_uses_future_data": False,
+                    "forward_returns_are_validation_labels": True,
+                    "auto_reverse_allowed": False,
+                    "trading_instruction": "not_a_trading_instruction",
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
     return {
         "latest": latest_path,
         "validated": validated_path,
@@ -229,4 +402,7 @@ def _write_r45_inputs(tmp_path: Path) -> dict[str, Path]:
         "matrix": matrix_path,
         "decay": decay_path,
         "events": events_path,
+        "divergence": divergence_path,
+        "playbook": playbook_path,
+        "watch": watch_path,
     }
