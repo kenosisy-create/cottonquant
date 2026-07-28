@@ -244,6 +244,11 @@ factor platform.
 - R91 is implemented as a weekly-only shadow audit. It separates the latest
   five-row performance window from cumulative `FORWARD_CAPTURE` evidence,
   checks NAV continuity and reports differences versus the fixed TSMOM baseline.
+- R92 is implemented with three frozen, single-rule overlays on the same T+1
+  real-contract engine and fixed promotion gate. The 2021-2026 results are:
+  option veto `WATCH` (Delta Sharpe +0.061, 4/5 year wins), Top20 member flow
+  `REJECT` (-0.621, 0/5), and same-side strike wall `WATCH` (+0.010, 1/5).
+  No overlay modifies `composite_score` or enters the shadow registry as active.
 
 ## Sprint Order
 

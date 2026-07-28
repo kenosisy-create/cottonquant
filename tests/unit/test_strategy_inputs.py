@@ -46,7 +46,7 @@ def test_strategy_cli_validates_specs_and_prepares_inputs(tmp_path: Path) -> Non
     runner = CliRunner()
     validated = runner.invoke(app, ["strategy", "validate-specs"])
     assert validated.exit_code == 0, validated.output
-    assert json.loads(validated.output)["strategy_count"] == 2
+    assert json.loads(validated.output)["strategy_count"] == 5
 
     core_path, calendar_dir = _fixture_inputs(tmp_path)
     prepared = runner.invoke(

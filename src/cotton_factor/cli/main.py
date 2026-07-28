@@ -4589,6 +4589,103 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @strategy_app.command("test-overlay")
+    def strategy_test_overlay(
+        overlay_ref: Annotated[
+            str,
+            typer.Option("--overlay", help="Overlay id or YAML path."),
+        ],
+        base_ref: Annotated[
+            str,
+            typer.Option("--base", help="Baseline id or YAML path."),
+        ] = "CF_tsmom_v0",
+        start: Annotated[
+            str | None,
+            typer.Option("--start", help="Optional first signal date, YYYY-MM-DD."),
+        ] = None,
+        end: Annotated[
+            str | None,
+            typer.Option("--end", help="Optional final signal date, YYYY-MM-DD."),
+        ] = None,
+        continuous_price_path: Annotated[
+            Path | None,
+            typer.Option("--continuous-price-path", help="Optional R86 continuous path."),
+        ] = None,
+        trade_mapping_path: Annotated[
+            Path | None,
+            typer.Option("--trade-mapping-path", help="Optional R86 T+1 mapping path."),
+        ] = None,
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional normalized core quote path."),
+        ] = None,
+        signal_matrix_path: Annotated[
+            Path | None,
+            typer.Option("--signal-matrix-path", help="Optional historical signal matrix."),
+        ] = None,
+        member_position_path: Annotated[
+            Path | None,
+            typer.Option("--member-position-path", help="Optional member-position core table."),
+        ] = None,
+        strike_position_path: Annotated[
+            Path | None,
+            typer.Option("--strike-position-path", help="Optional R84 strike-position table."),
+        ] = None,
+        trend_phase_path: Annotated[
+            Path | None,
+            typer.Option("--trend-phase-path", help="Optional phase attribution table."),
+        ] = None,
+        input_dir: Annotated[
+            Path | None,
+            typer.Option("--input-dir", help="Optional R86 input bundle directory."),
+        ] = None,
+        output_root: Annotated[
+            Path | None,
+            typer.Option("--output-root", help="Optional strategy data output root."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional Chinese report directory."),
+        ] = None,
+        baseline_evaluation_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--baseline-evaluation-path",
+                help="Optional already aligned baseline evaluation; otherwise rebuild it.",
+            ),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R92 test id."),
+        ] = None,
+    ) -> None:
+        """Run one fixed R92 overlay and emit KEEP/WATCH/REJECT."""
+        from cotton_factor.strategy import resolve_strategy_spec_path, test_cf_overlay
+
+        try:
+            result = test_cf_overlay(
+                overlay_spec_path=resolve_strategy_spec_path(overlay_ref),
+                base_spec_path=resolve_strategy_spec_path(base_ref),
+                start=_parse_iso_date(start) if start else None,
+                end=_parse_iso_date(end) if end else None,
+                continuous_price_path=continuous_price_path,
+                trade_mapping_path=trade_mapping_path,
+                core_quote_path=core_quote_path,
+                signal_matrix_path=signal_matrix_path,
+                member_position_path=member_position_path,
+                strike_position_path=strike_position_path,
+                trend_phase_path=trend_phase_path,
+                input_dir=input_dir,
+                output_root=output_root,
+                report_output_dir=report_output_dir,
+                baseline_evaluation_path=baseline_evaluation_path,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     @strategy_app.command("run-shadow")
     def strategy_run_shadow(
         trade_date: Annotated[

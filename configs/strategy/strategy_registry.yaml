@@ -5,3 +5,9 @@ entries:
     enabled: true
   - spec_path: configs/strategy/CF_phase_gated_v0.yaml
     enabled: true
+  - spec_path: configs/strategy/ovl_option_veto_v0.yaml
+    enabled: true
+  - spec_path: configs/strategy/ovl_member_position_v0.yaml
+    enabled: true
+  - spec_path: configs/strategy/ovl_strike_wall_v0.yaml
+    enabled: true

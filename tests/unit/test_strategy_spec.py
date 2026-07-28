@@ -9,16 +9,20 @@ from cotton_factor.common.exceptions import StrategyError
 from cotton_factor.strategy import load_strategy_registry, load_strategy_spec
 
 
-def test_default_strategy_registry_loads_baseline_and_candidate() -> None:
+def test_default_strategy_registry_loads_baseline_candidate_and_overlays() -> None:
     registry = load_strategy_registry()
 
     assert registry.product_scope == "CF_ONLY"
     assert [spec.strategy_id for spec in registry.specs] == [
         "CF_tsmom",
         "CF_phase_gated",
+        "ovl_option_veto",
+        "ovl_member_position",
+        "ovl_strike_wall",
     ]
     assert registry.find("CF_tsmom/v0").status == "baseline"
     assert registry.find("CF_phase_gated").signal_horizon == 20
+    assert registry.find("ovl_option_veto").status == "frozen"
 
 
 def test_strategy_spec_recursively_rejects_forward_inputs(tmp_path: Path) -> None:

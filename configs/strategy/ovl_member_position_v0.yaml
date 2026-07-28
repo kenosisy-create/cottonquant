@@ -1,0 +1,58 @@
+strategy_id: ovl_member_position
+version: v0
+strategy_type: overlay
+status: frozen
+product: CF
+signal_object: CF.C1
+signal_horizon: 20
+signal_windows:
+  momentum_days: 20
+  volatility_returns: 20
+entry_rule: "复用CF_tsmom_v0；Top20净多变化与基准方向同向乘1.0、反向乘0.5、缺失乘1.0"
+exit_rule: "不新增退出规则；目标变更于下一交易日结算执行"
+base_strategy: CF_tsmom/v0
+gate_rules:
+  - name: member_position
+    source: core_member_position_daily.product_top20_position_change
+    parameters:
+      rank_max: 20
+      agree: 1.0
+      disagree: 0.5
+      missing: 1.0
+sizing:
+  model: vol_target
+  capital_base: 1000000
+  target_vol: 0.12
+  vol_window: 20
+  vol_floor: 0.05
+  max_lots: 20
+  multiplier_source: product_config
+execution:
+  timing: T_PLUS_1_SETTLE
+  price_field: settle
+costs:
+  no_cost:
+    one_way_bps: 0
+  normal_cost:
+    one_way_bps: 5
+  conservative_cost:
+    one_way_bps: 10
+data_dependencies:
+  - data/strategy/CF/inputs/*_continuous_price_daily.parquet
+  - data/strategy/CF/inputs/*_trade_mapping_daily.parquet
+  - data/core/CF/core_member_position_daily.parquet
+  - data/core/CF/core_quote_daily.parquet
+forbidden_inputs: [forward_return, fwd_ret, future_]
+created_at: 2026-07-28
+promotion_rule:
+  required_year_wins: 4
+  evaluation_years: [2021, 2022, 2023, 2024, 2025]
+  min_active_days: 60
+  min_completed_trades: 4
+  min_full_period_delta_sharpe: 0.10
+  require_positive_conservative_return: true
+  max_drawdown_deterioration_pp: 5.0
+changelog:
+  - version: v0
+    date: 2026-07-28
+    note: "R92预登记会员Top20单规则overlay；只检验增量价值，不新增持仓研究"
