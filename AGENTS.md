@@ -6,10 +6,15 @@ This repository is no longer being pushed as a full production-grade factor
 platform.
 
 The current mission is to build a research-grade production data decision
-workbench for China agricultural futures, starting with CZCE cotton futures CF.
+workbench for CZCE cotton futures CF. V5.1 makes that workbench
+strategy-accountable without turning it into an execution platform.
 
 Engineering serves research. Do not turn this repository into a platform
 project.
+
+V5.1 adds reproducible historical strategy evaluation and forward shadow
+accounting. These are research simulations only: no automatic order routing,
+OMS, live execution, or trading recommendation is permitted.
 
 The workbench must help a research analyst answer:
 
@@ -35,6 +40,8 @@ Primary output:
 - Backtest summary.
 - Data quality report.
 - Simple run log.
+- Historical strategy comparison.
+- Forward-only shadow ledger and weekly strategy audit.
 
 Do not prioritize:
 
@@ -48,6 +55,7 @@ Do not prioritize:
 - full metadata catalog
 - production-grade artifact registry
 - SR/AP real production ingest before CF is validated
+- SR/TA/MA expansion before the V5.1 CF shadow gate is explicitly approved
 
 ## Non-Negotiable Research Correctness Rules
 

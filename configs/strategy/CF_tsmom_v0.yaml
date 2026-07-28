@@ -1,0 +1,41 @@
+strategy_id: CF_tsmom
+version: v0
+strategy_type: baseline_tsmom
+status: baseline
+product: CF
+signal_object: CF.C1
+signal_horizon: 20
+signal_windows:
+  momentum_days: 20
+  volatility_returns: 20
+entry_rule: "20日调整后连续结算价动量决定方向，零值沿用前一方向"
+exit_rule: "方向翻转时于下一交易日结算反手；基准不设置独立止损"
+gate_rules: []
+sizing:
+  model: vol_target
+  capital_base: 1000000
+  target_vol: 0.12
+  vol_window: 20
+  vol_floor: 0.05
+  max_lots: 20
+  multiplier_source: product_config
+execution:
+  timing: T_PLUS_1_SETTLE
+  price_field: settle
+costs:
+  no_cost:
+    one_way_bps: 0
+  normal_cost:
+    one_way_bps: 5
+  conservative_cost:
+    one_way_bps: 10
+data_dependencies:
+  - data/strategy/CF/inputs/*_continuous_price_daily.parquet
+  - data/strategy/CF/inputs/*_trade_mapping_daily.parquet
+  - data/core/CF/core_quote_daily.parquet
+forbidden_inputs: [forward_return, fwd_ret, future_]
+created_at: 2026-07-28
+changelog:
+  - version: v0
+    date: 2026-07-28
+    note: "V5.1初始基准；研究参数已经人工确认"

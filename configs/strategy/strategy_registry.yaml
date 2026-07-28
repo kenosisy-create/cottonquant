@@ -1,0 +1,7 @@
+registry_version: V5.1_R86_strategy_registry_v1
+product_scope: CF_ONLY
+entries:
+  - spec_path: configs/strategy/CF_tsmom_v0.yaml
+    enabled: true
+  - spec_path: configs/strategy/CF_phase_gated_v0.yaml
+    enabled: true

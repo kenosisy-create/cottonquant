@@ -590,3 +590,14 @@ py -3.12 -m ruff check src tests
 
 The D0-D23 path is retained as historical foundation, not the current task
 queue.
+V5.1 adds a CF-only strategy-accountable research lane. Validate the fixed
+strategy specifications and prepare the canonical cross-year inputs with:
+
+```powershell
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy validate-specs
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy prepare-inputs --start 2021-01-04
+```
+
+The strategy lane uses adjusted continuous settlement prices only for signals.
+All fills, costs, positions and PnL use real contracts at T+1 settlement. It is
+research simulation and does not create orders or trading instructions.

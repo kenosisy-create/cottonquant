@@ -10,6 +10,7 @@ dist/
 data/raw/**
 data/core/**
 data/research/**
+data/strategy/**
 data/archive/**
 data/incoming/**
 reports/**
@@ -17,6 +18,7 @@ runs/**
 !data/raw/.gitkeep
 !data/core/.gitkeep
 !data/research/.gitkeep
+!data/strategy/.gitkeep
 !data/archive/.gitkeep
 !data/incoming/
 !data/incoming/CF/

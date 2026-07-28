@@ -15,5 +15,6 @@ reviewable.
 | jinja2 | HTML report templates. |
 | plotly | Report charts and interactive diagnostics. |
 | openpyxl | Inspect manual Excel inputs and detect unrefreshed iFinD formula workbooks. |
+| PyYAML | Parse nested, versioned strategy specifications and the strategy registry. |
 | pytest | Test runner. |
 | ruff | Linting and import ordering. |

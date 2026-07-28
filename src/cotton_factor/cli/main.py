@@ -45,6 +45,7 @@ if typer is not None:
     uat_app = typer.Typer(help="UAT replay commands.")
     release_app = typer.Typer(help="Release freeze commands.")
     research_app = typer.Typer(help="Research workbench commands.")
+    strategy_app = typer.Typer(help="CF strategy-accountable research commands.")
 
     def _version_callback(value: bool) -> None:
         if value:
@@ -4337,6 +4338,72 @@ if typer is not None:
         if not result.passed:
             raise typer.Exit(1)
 
+    @strategy_app.command("validate-specs")
+    def strategy_validate_specs(
+        registry_path: Annotated[
+            Path | None,
+            typer.Option("--registry-path", help="Optional strategy registry YAML path."),
+        ] = None,
+    ) -> None:
+        """Validate the V5.1 CF strategy registry and all enabled specs."""
+        from cotton_factor.strategy import load_strategy_registry
+
+        try:
+            registry = load_strategy_registry(registry_path)
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(registry.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @strategy_app.command("prepare-inputs")
+    def strategy_prepare_inputs(
+        start: Annotated[
+            str | None,
+            typer.Option("--start", help="Optional first signal date, YYYY-MM-DD."),
+        ] = None,
+        end: Annotated[
+            str | None,
+            typer.Option("--end", help="Optional final signal date, YYYY-MM-DD."),
+        ] = None,
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional core quote parquet path."),
+        ] = None,
+        calendar_dir: Annotated[
+            Path | None,
+            typer.Option("--calendar-dir", help="Optional official calendar directory."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="Optional strategy input output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional Chinese report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable strategy-input run id."),
+        ] = None,
+    ) -> None:
+        """Build canonical cross-year CF strategy inputs from normalized core facts."""
+        from cotton_factor.strategy.inputs import prepare_cf_strategy_inputs
+
+        try:
+            result = prepare_cf_strategy_inputs(
+                start=_parse_iso_date(start) if start else None,
+                end=_parse_iso_date(end) if end else None,
+                core_quote_path=core_quote_path,
+                calendar_dir=calendar_dir,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     app.add_typer(core_app, name="core")
     app.add_typer(ingest_app, name="ingest")
     app.add_typer(raw_app, name="raw")
@@ -4345,6 +4412,7 @@ if typer is not None:
     app.add_typer(uat_app, name="uat")
     app.add_typer(release_app, name="release")
     app.add_typer(research_app, name="research")
+    app.add_typer(strategy_app, name="strategy")
 
     def cli() -> None:
         """Run the Typer application."""

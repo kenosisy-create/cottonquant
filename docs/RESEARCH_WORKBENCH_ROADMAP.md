@@ -222,6 +222,12 @@ factor platform.
   is R84 incremental refresh optimization and out-of-sample review of the new
   member-position evidence. Product expansion remains blocked until CF
   transition, option and member-position evidence pass that review.
+- R86 starts the V5.1 strategy-accountable CF phase. It introduces validated
+  strategy specs, a CF-only registry and canonical cross-year chain, trade
+  mapping and continuous-price inputs. R87-R90 then establish the naive
+  baseline, strategy evaluation, fixed candidate comparison and forward shadow
+  ledger. R91-R93 add weekly governance, overlay tests and the dashboard card.
+  R94-R99 remain blocked until 40 real forward shadow days and separate approval.
 
 ## Sprint Order
 

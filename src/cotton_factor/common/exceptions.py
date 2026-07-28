@@ -69,6 +69,10 @@ class BacktestError(CottonFactorError):
     """Raised when daily backtest construction cannot proceed."""
 
 
+class StrategyError(CottonFactorError):
+    """Raised when strategy specifications or strategy workflows cannot proceed."""
+
+
 class ArchiveError(CottonFactorError):
     """Raised when archive or audit artifact construction cannot proceed."""
 
