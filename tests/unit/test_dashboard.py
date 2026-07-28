@@ -20,7 +20,9 @@ def test_dashboard_loads_auditable_shadow_ledger(tmp_path: Path) -> None:
     assert shadow["strategies"][0]["target_lots"] == -3
     assert shadow["strategies"][0]["forward_capture_days"] == 1
     assert shadow["strategies"][0]["historical_replay_days"] == 1
-    assert len(shadow["strategies"][0]["nav_series"]) == 2
+    assert shadow["strategies"][0]["nav_series"] == [
+        {"trade_date": "2024-01-03", "nav": 1_000_125.0}
+    ]
     assert shadow["strategies"][0]["ledger_path"].endswith(ledger_path.name)
 
 

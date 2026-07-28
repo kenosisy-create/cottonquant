@@ -40,8 +40,8 @@ from cotton_factor.strategy.registry import load_strategy_registry
 from cotton_factor.strategy.signals import TsmomSignalSnapshot, compute_tsmom_signal_snapshot
 from cotton_factor.strategy.spec import StrategySpec
 
-SHADOW_SCHEMA_VERSION = "V5.1_R90_shadow_event_v1"
-SHADOW_RULE_VERSION = "V5.1_R90_shadow_accounting_v1"
+SHADOW_SCHEMA_VERSION = "V5.1_R90_shadow_event_v2"
+SHADOW_RULE_VERSION = "V5.1_R90_shadow_accounting_v2"
 RESEARCH_BOUNDARY = (
     "影子台账为研究仿真，前向记录、无未来函数，不构成交易指令；"
     "NAV为记账值非真实资金。"
@@ -226,6 +226,11 @@ def _run_one_strategy(
                 f"shadow ledger gap after {latest_existing_date}; "
                 f"expected {expected}, got {trade_date}"
             )
+    _assert_record_mode_transition(
+        existing=existing,
+        trade_date=trade_date,
+        record_mode=record_mode,
+    )
     previous_row = _previous_row(existing, trade_date)
     row = _build_business_row(
         spec=spec,
@@ -319,10 +324,27 @@ def _build_business_row(
     chain = chain_by_date.get(trade_date)
     if chain is None:
         raise StrategyError(f"chain map missing for shadow date {trade_date}")
-    held_contract_before = str(previous_row["held_contract_after"]) if previous_row else ""
-    held_lots_before = int(previous_row["held_lots_after"]) if previous_row else 0
+
+    # 历史回放只用于工程验收，首次真实前向记录必须从独立的零仓账户段开始。
+    accounting_segment_start = record_mode == "FORWARD_CAPTURE" and (
+        previous_row is None
+        or str(previous_row.get("record_mode", "")) != "FORWARD_CAPTURE"
+    )
+    accounting_previous_row = None if accounting_segment_start else previous_row
+    held_contract_before = (
+        str(accounting_previous_row["held_contract_after"])
+        if accounting_previous_row
+        else ""
+    )
+    held_lots_before = (
+        int(accounting_previous_row["held_lots_after"])
+        if accounting_previous_row
+        else 0
+    )
     previous_trade_date = (
-        pd.to_datetime(previous_row["trade_date"]).date() if previous_row else None
+        pd.to_datetime(accounting_previous_row["trade_date"]).date()
+        if accounting_previous_row
+        else None
     )
     gross_pnl = _holding_pnl(
         held_contract=held_contract_before,
@@ -332,9 +354,21 @@ def _build_business_row(
         quote_by_key=quote_by_key,
         multiplier=multiplier,
     )
-    executed_contract = str(previous_row["target_contract"]) if previous_row else ""
-    executed_target_lots = int(previous_row["target_lots"]) if previous_row else 0
-    executed_signal_date = str(previous_row["trade_date"]) if previous_row else ""
+    executed_contract = (
+        str(accounting_previous_row["target_contract"])
+        if accounting_previous_row
+        else ""
+    )
+    executed_target_lots = (
+        int(accounting_previous_row["target_lots"])
+        if accounting_previous_row
+        else 0
+    )
+    executed_signal_date = (
+        str(accounting_previous_row["trade_date"])
+        if accounting_previous_row
+        else ""
+    )
     cost_bps = spec.costs["normal_cost"].one_way_bps
     cost, turnover_lots, turnover_notional, fill_price = _execution_cost(
         held_contract=held_contract_before,
@@ -349,14 +383,20 @@ def _build_business_row(
     held_contract_after = executed_contract if executed_target_lots else ""
     held_lots_after = executed_target_lots
     net_pnl = gross_pnl - cost
-    previous_nav = float(previous_row["nav"]) if previous_row else spec.sizing.capital_base
+    previous_nav = (
+        float(accounting_previous_row["nav"])
+        if accounting_previous_row
+        else spec.sizing.capital_base
+    )
     nav = previous_nav + net_pnl
     previous_high = (
-        float(previous_row["high_watermark"]) if previous_row else spec.sizing.capital_base
+        float(accounting_previous_row["high_watermark"])
+        if accounting_previous_row
+        else spec.sizing.capital_base
     )
     high_watermark = max(previous_high, nav)
     entry_date, holding_days = _entry_state(
-        previous_row=previous_row,
+        previous_row=accounting_previous_row,
         held_contract_after=held_contract_after,
         held_lots_after=held_lots_after,
         trade_date=trade_date,
@@ -366,13 +406,19 @@ def _build_business_row(
         registry_specs=registry_specs,
         trade_date=trade_date,
         target_contract=chain.mapped_contract,
-        previous_target_lots=(int(previous_row["target_lots"]) if previous_row else 0),
+        previous_target_lots=(
+            int(accounting_previous_row["target_lots"])
+            if accounting_previous_row
+            else 0
+        ),
         quotes=quotes,
         continuous=continuous,
         multiplier=multiplier,
     )
     next_date = _next_date(core_dates, trade_date, required=False)
-    execution_status = "NO_PRIOR_TARGET" if previous_row is None else "EXECUTED_AT_SETTLE"
+    execution_status = (
+        "NO_PRIOR_TARGET" if accounting_previous_row is None else "EXECUTED_AT_SETTLE"
+    )
     row = {
         "schema_version": SHADOW_SCHEMA_VERSION,
         "rule_version": SHADOW_RULE_VERSION,
@@ -382,6 +428,7 @@ def _build_business_row(
         "spec_version": spec.version,
         "strategy_key": spec.spec_key,
         "record_mode": record_mode,
+        "accounting_segment_start": accounting_segment_start,
         "cost_scenario": "normal_cost",
         "one_way_bps": cost_bps,
         "executed_signal_date": executed_signal_date,
@@ -600,6 +647,23 @@ def _same_date_row(frame: pd.DataFrame, trade_date: date) -> dict[str, object] |
         return None
     selected = frame.loc[pd.to_datetime(frame["trade_date"]).dt.date.eq(trade_date)]
     return selected.iloc[-1].to_dict() if not selected.empty else None
+
+
+def _assert_record_mode_transition(
+    *,
+    existing: pd.DataFrame,
+    trade_date: date,
+    record_mode: str,
+) -> None:
+    """前向记录启用后，禁止把同日或后续日期重新标记为历史回放。"""
+    if existing.empty or record_mode != "HISTORICAL_REPLAY":
+        return
+    dates = pd.to_datetime(existing["trade_date"]).dt.date
+    prior_or_same = existing.loc[dates <= trade_date]
+    if prior_or_same["record_mode"].eq("FORWARD_CAPTURE").any():
+        raise StrategyError(
+            "shadow ledger cannot return to HISTORICAL_REPLAY after FORWARD_CAPTURE starts"
+        )
 
 
 def _materialized_with_row(frame: pd.DataFrame, row: dict[str, object]) -> pd.DataFrame:

@@ -96,13 +96,50 @@ def test_weekly_audit_fails_visible_nav_break(tmp_path: Path) -> None:
     assert "NAV_ACCOUNTING_MISMATCH" in result.markdown_path.read_text(encoding="utf-8")
 
 
+def test_weekly_audit_accepts_forward_accounting_segment_reset(tmp_path: Path) -> None:
+    ledger_root = tmp_path / "ledgers"
+    _write_ledger(
+        ledger_root / "CF_tsmom_v0_shadow_ledger.parquet",
+        modes=[
+            "HISTORICAL_REPLAY",
+            "HISTORICAL_REPLAY",
+            "FORWARD_CAPTURE",
+            "FORWARD_CAPTURE",
+        ],
+        pnl=[-500.0, 250.0, 0.0, 125.0],
+    )
+
+    result = build_cf_weekly_strategy_audit(
+        ledger_root=ledger_root,
+        report_output_dir=tmp_path / "reports",
+        run_id="weekly_segment_reset",
+    )
+
+    assert result.status == "PASS"
+    payload = json.loads(result.json_path.read_text(encoding="utf-8"))
+    row = payload["strategies"][0]
+    assert row["week_row_count"] == 2
+    assert row["week_forward_capture_days"] == 2
+    assert row["historical_replay_days"] == 2
+    assert row["week_net_pnl"] == 125.0
+    assert row["latest_nav"] == 1_000_125.0
+    assert "NAV_ACCOUNTING_MISMATCH" not in row["anomalies"]
+
+
 def _write_ledger(path: Path, *, modes: list[str], pnl: list[float]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     start = date(2024, 1, 1)
     nav = 1_000_000.0
     high_watermark = nav
     rows: list[dict[str, object]] = []
+    previous_mode: str | None = None
     for index, (record_mode, net_pnl) in enumerate(zip(modes, pnl, strict=True)):
+        segment_start = (
+            record_mode == "FORWARD_CAPTURE" and previous_mode != "FORWARD_CAPTURE"
+        )
+        if segment_start:
+            nav = 1_000_000.0
+            high_watermark = nav
         nav += net_pnl
         high_watermark = max(high_watermark, nav)
         rows.append(
@@ -110,6 +147,7 @@ def _write_ledger(path: Path, *, modes: list[str], pnl: list[float]) -> None:
                 "trade_date": (start + timedelta(days=index)).isoformat(),
                 "strategy_key": "CF_tsmom/v0",
                 "record_mode": record_mode,
+                "accounting_segment_start": segment_start,
                 "event_type": "SHADOW_DAILY",
                 "warnings_json": "[]",
                 "net_pnl": net_pnl,
@@ -118,4 +156,5 @@ def _write_ledger(path: Path, *, modes: list[str], pnl: list[float]) -> None:
                 "turnover_lots": index,
             }
         )
+        previous_mode = record_mode
     pd.DataFrame(rows).to_parquet(path, index=False)

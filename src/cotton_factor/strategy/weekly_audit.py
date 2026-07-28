@@ -15,7 +15,7 @@ import pandas as pd
 from cotton_factor.common.exceptions import StrategyError
 from cotton_factor.common.paths import data_dir, reports_dir
 
-WEEKLY_AUDIT_RULE_VERSION = "V5.1_R91_weekly_strategy_audit_v1"
+WEEKLY_AUDIT_RULE_VERSION = "V5.1_R91_weekly_strategy_audit_v2"
 RESEARCH_BOUNDARY = (
     "研究仿真、前向记录、无未来函数，不构成交易指令；"
     "NAV 为研究记账值，非真实资金。"
@@ -96,8 +96,9 @@ def build_cf_weekly_strategy_audit(
         if selected.empty:
             continue
         selected = selected.sort_values("_trade_date")
-        week = selected.tail(5)
         forward = selected.loc[selected["record_mode"].eq("FORWARD_CAPTURE")]
+        # 一旦已有真实前向样本，周收益只使用最近五个前向交易日，避免混入历史回放。
+        week = forward.tail(5) if not forward.empty else selected.tail(5)
         week_forward = week.loc[week["record_mode"].eq("FORWARD_CAPTURE")]
         total_forward_dates.update(forward["_trade_date"].tolist())
         warning_count = sum(_json_list_length(value) for value in week["warnings_json"])
@@ -286,6 +287,12 @@ def _load_ledger(path: Path) -> pd.DataFrame:
         raise StrategyError(f"shadow ledger contains invalid trade_date: {path}")
     result = frame.copy()
     result["_trade_date"] = parsed
+    if "accounting_segment_start" not in result.columns:
+        result["accounting_segment_start"] = False
+    else:
+        result["accounting_segment_start"] = (
+            result["accounting_segment_start"].fillna(False).astype(bool)
+        )
     return result
 
 
@@ -303,7 +310,12 @@ def _accounting_anomalies(frame: pd.DataFrame) -> list[str]:
         anomalies.append("NON_POSITIVE_NAV")
     if len(frame) > 1:
         expected = nav.shift(1) + pnl
-        mismatched = (nav.iloc[1:] - expected.iloc[1:]).abs() > 1e-6
+        segment_start = frame["accounting_segment_start"].fillna(False).astype(bool)
+        # 新账户段允许 NAV 从资本基数重新起算，段内仍须逐日严格勾稽。
+        mismatched = (
+            ((nav.iloc[1:] - expected.iloc[1:]).abs() > 1e-6)
+            & ~segment_start.iloc[1:]
+        )
         if mismatched.any():
             anomalies.append("NAV_ACCOUNTING_MISMATCH")
     return anomalies

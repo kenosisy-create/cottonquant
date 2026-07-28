@@ -40,7 +40,7 @@ try:
 except ImportError:  # pragma: no cover - 无 pandas 时按可选分区降级
     pd = None
 
-RULE_VERSION = "dashboard_strategy_shadow_v3"
+RULE_VERSION = "dashboard_strategy_shadow_v4"
 FORBIDDEN_DATA_TOKENS = ("forward_return", "fwd_ret")
 
 
@@ -261,9 +261,12 @@ def load_strategy_shadow(run_dir: Path, product: str, root: Path):
         ).all():
             raise ValueError(f"shadow ledger contains invalid NAV or drawdown: {ledger_path}")
         latest = selected.iloc[-1]
+        forward = selected.loc[selected["record_mode"].eq("FORWARD_CAPTURE")]
+        # 前向账户段启用后，NAV 曲线不得再与历史工程回放拼接。
+        nav_source = forward if not forward.empty else selected
         nav_points = [
             {"trade_date": row["_trade_date"].isoformat(), "nav": float(row["nav"])}
-            for row in selected.tail(60).to_dict(orient="records")
+            for row in nav_source.tail(60).to_dict(orient="records")
         ]
         target_lots = int(latest["target_lots"])
         strategies.append(
@@ -284,11 +287,7 @@ def load_strategy_shadow(run_dir: Path, product: str, root: Path):
                 "entry_date": _optional_value(latest["entry_date"]),
                 "holding_days": int(latest["holding_days"]),
                 "warning_count": int(status.get("warning_count") or 0),
-                "forward_capture_days": int(
-                    selected.loc[
-                        selected["record_mode"].eq("FORWARD_CAPTURE"), "_trade_date"
-                    ].nunique()
-                ),
+                "forward_capture_days": int(forward["_trade_date"].nunique()),
                 "historical_replay_days": int(
                     selected.loc[
                         selected["record_mode"].eq("HISTORICAL_REPLAY"), "_trade_date"

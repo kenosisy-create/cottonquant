@@ -137,6 +137,56 @@ def test_forward_capture_requires_latest_core_date(tmp_path: Path) -> None:
     assert row["target_status"] == "PENDING_NEXT_OFFICIAL_SESSION"
 
 
+def test_first_forward_capture_resets_historical_replay_account(tmp_path: Path) -> None:
+    core_path, continuous_path, chain_path, dates = _shadow_fixture(
+        tmp_path,
+        end_date=date.today(),
+    )
+    kwargs = _shadow_kwargs(
+        tmp_path,
+        core_path=core_path,
+        continuous_path=continuous_path,
+        chain_path=chain_path,
+    )
+    replay = run_cf_strategy_shadow(
+        **kwargs,
+        trade_date=dates[-2],
+        record_mode="HISTORICAL_REPLAY",
+        run_id="shadow_replay_before_forward",
+    )
+    replay_row = pd.read_parquet(replay.strategies[0].ledger_path).iloc[-1]
+    assert replay_row["target_lots"] > 0
+
+    forward = run_cf_strategy_shadow(
+        **kwargs,
+        trade_date=dates[-1],
+        record_mode="FORWARD_CAPTURE",
+        run_id="shadow_forward_segment_start",
+    )
+    row = pd.read_parquet(forward.strategies[0].ledger_path).sort_values(
+        "trade_date"
+    ).iloc[-1]
+    assert bool(row["accounting_segment_start"]) is True
+    assert row["execution_status"] == "NO_PRIOR_TARGET"
+    assert row["held_contract_before"] == ""
+    assert row["held_lots_before"] == 0
+    assert row["held_contract_after"] == ""
+    assert row["held_lots_after"] == 0
+    assert row["gross_pnl"] == pytest.approx(0.0)
+    assert row["cost"] == pytest.approx(0.0)
+    assert row["net_pnl"] == pytest.approx(0.0)
+    assert row["nav"] == pytest.approx(1_000_000.0)
+    assert row["target_lots"] > 0
+
+    with pytest.raises(StrategyError, match="cannot return to HISTORICAL_REPLAY"):
+        run_cf_strategy_shadow(
+            **kwargs,
+            trade_date=dates[-1],
+            record_mode="HISTORICAL_REPLAY",
+            overwrite_reason="invalid mode rollback",
+        )
+
+
 def _shadow_kwargs(
     tmp_path: Path,
     *,
