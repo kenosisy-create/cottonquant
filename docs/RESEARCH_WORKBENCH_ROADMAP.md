@@ -241,6 +241,9 @@ factor platform.
   events, and stale dates cannot claim `FORWARD_CAPTURE`. The 2026-07-20
   acceptance row is correctly tagged `HISTORICAL_REPLAY` and does not count
   toward the 40-day expansion gate.
+- R91 is implemented as a weekly-only shadow audit. It separates the latest
+  five-row performance window from cumulative `FORWARD_CAPTURE` evidence,
+  checks NAV continuity and reports differences versus the fixed TSMOM baseline.
 
 ## Sprint Order
 

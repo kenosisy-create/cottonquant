@@ -4666,6 +4666,40 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @strategy_app.command("weekly-audit")
+    def strategy_weekly_audit(
+        asof_date: Annotated[
+            str | None,
+            typer.Option("--date", help="Optional audit date; defaults to latest ledger date."),
+        ] = None,
+        ledger_root: Annotated[
+            Path | None,
+            typer.Option("--ledger-root", help="Optional materialized shadow ledger root."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional weekly audit report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R91 audit run id."),
+        ] = None,
+    ) -> None:
+        """Build the R91 weekly shadow-performance and accounting audit."""
+        from cotton_factor.strategy import build_cf_weekly_strategy_audit
+
+        try:
+            result = build_cf_weekly_strategy_audit(
+                asof_date=_parse_iso_date(asof_date) if asof_date else None,
+                ledger_root=ledger_root,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     app.add_typer(core_app, name="core")
     app.add_typer(ingest_app, name="ingest")
     app.add_typer(raw_app, name="raw")

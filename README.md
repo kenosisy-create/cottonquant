@@ -602,6 +602,7 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy run-backtest 
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy evaluate --spec configs/strategy/CF_phase_gated_v0.yaml
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy compare --spec-a configs/strategy/CF_tsmom_v0.yaml --spec-b configs/strategy/CF_phase_gated_v0.yaml
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy run-shadow --date 2026-07-20 --record-mode HISTORICAL_REPLAY
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy weekly-audit
 ```
 
 The strategy lane uses adjusted continuous settlement prices only for signals.
@@ -609,3 +610,5 @@ All fills, costs, positions and PnL use real contracts at T+1 settlement. It is
 research simulation and does not create orders or trading instructions.
 Only a same-day latest-core run can be marked `FORWARD_CAPTURE`; historical
 replays remain explicitly excluded from the 40-day expansion gate.
+The weekly audit reports the latest five ledger rows, cumulative real forward
+days, accounting anomalies and differences versus the fixed TSMOM baseline.

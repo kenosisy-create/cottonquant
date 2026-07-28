@@ -31,6 +31,10 @@ from cotton_factor.strategy.spec import (
     StrategySpec,
     load_strategy_spec,
 )
+from cotton_factor.strategy.weekly_audit import (
+    WeeklyStrategyAuditResult,
+    build_cf_weekly_strategy_audit,
+)
 
 __all__ = [
     "CostScenarioSpec",
@@ -44,7 +48,9 @@ __all__ = [
     "StrategyRegistryEntry",
     "StrategySpec",
     "ShadowRunResult",
+    "WeeklyStrategyAuditResult",
     "build_phase_gated_targets",
+    "build_cf_weekly_strategy_audit",
     "compare_cf_strategies",
     "evaluate_cf_strategy",
     "load_strategy_registry",

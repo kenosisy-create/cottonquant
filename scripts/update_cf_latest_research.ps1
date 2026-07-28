@@ -1364,6 +1364,23 @@ if ($runWeeklyManifestEffective) {
     $dailyAuditValue = Get-Variable -Name "dailyAudit" -ValueOnly -ErrorAction SilentlyContinue
     $memberPositionResearchValue = Get-Variable -Name "memberPositionResearch" -ValueOnly -ErrorAction SilentlyContinue
     $optionStrikePositionValue = Get-Variable -Name "optionStrikePosition" -ValueOnly -ErrorAction SilentlyContinue
+    $strategyWeeklyAudit = $null
+    $shadowLedgers = Get-ChildItem -Path "data\strategy\CF" -Filter "*_shadow_ledger.parquet" -File -ErrorAction SilentlyContinue
+    if ($null -ne $shadowLedgers -and $shadowLedgers.Count -gt 0) {
+        $strategyWeeklyAuditJson = & py -3.12 -m cotton_factor.cli.main strategy weekly-audit `
+            --date "$($metadata.max_trade_date)" `
+            --ledger-root "data\strategy\CF" `
+            --report-output-dir "reports\strategy" `
+            --run-id "$($RunId)_strategy_weekly"
+        if ($LASTEXITCODE -ne 0) {
+            throw "CF weekly strategy audit failed."
+        }
+        $strategyWeeklyAudit = $strategyWeeklyAuditJson | ConvertFrom-Json
+        Write-Host "Weekly strategy audit: $($strategyWeeklyAudit.markdown_path)"
+    }
+    else {
+        Write-Warning "Weekly strategy audit skipped: no materialized shadow ledger."
+    }
 
     $weeklySteps = [ordered]@{
         signal_matrix = [ordered]@{
@@ -1394,6 +1411,21 @@ if ($runWeeklyManifestEffective) {
     }
     else {
         $weeklySteps["daily_operation_audit"] = [ordered]@{ status = "skipped" }
+    }
+
+    if ($null -ne $strategyWeeklyAudit) {
+        $weeklySteps["strategy_shadow_audit"] = [ordered]@{
+            status = "completed"
+            audit_status = "$($strategyWeeklyAudit.status)"
+            forward_capture_days = $strategyWeeklyAudit.forward_capture_days
+            anomaly_count = $strategyWeeklyAudit.anomaly_count
+            json_path = "$($strategyWeeklyAudit.json_path)"
+            markdown_path = "$($strategyWeeklyAudit.markdown_path)"
+            manifest_path = "$($strategyWeeklyAudit.manifest_path)"
+        }
+    }
+    else {
+        $weeklySteps["strategy_shadow_audit"] = [ordered]@{ status = "missing" }
     }
 
     if ($null -ne $historicalEvidenceValue) {
@@ -1575,6 +1607,7 @@ if ($runWeeklyManifestEffective) {
             validated_brief = $runValidatedBriefEffective
             publish_pack = $runPublishPackEffective
             daily_operation_audit = $runDailyOperationAuditEffective
+            strategy_shadow_audit = $true
         }
         steps = $weeklySteps
         research_boundary = [ordered]@{
