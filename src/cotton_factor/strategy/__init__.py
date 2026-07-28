@@ -22,6 +22,7 @@ from cotton_factor.strategy.registry import (
     StrategyRegistryEntry,
     load_strategy_registry,
 )
+from cotton_factor.strategy.shadow_ledger import ShadowRunResult, run_cf_strategy_shadow
 from cotton_factor.strategy.spec import (
     CostScenarioSpec,
     ExecutionSpec,
@@ -42,6 +43,7 @@ __all__ = [
     "StrategyRegistry",
     "StrategyRegistryEntry",
     "StrategySpec",
+    "ShadowRunResult",
     "build_phase_gated_targets",
     "compare_cf_strategies",
     "evaluate_cf_strategy",
@@ -49,5 +51,6 @@ __all__ = [
     "load_strategy_spec",
     "promotion_decision",
     "run_cf_phase_gated_backtest",
+    "run_cf_strategy_shadow",
     "run_cf_tsmom_backtest",
 ]

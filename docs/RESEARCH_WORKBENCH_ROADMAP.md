@@ -236,6 +236,11 @@ factor platform.
   fixed phase/carry/option candidate without post-hoc tuning. The candidate is
   `FROZEN`: only 3/5 years met sample eligibility, 2/5 beat the baseline, and
   full-period conservative-cost Delta Sharpe was -0.310 with -1.81% net return.
+- R90 is implemented with immutable daily JSON events and an atomically rebuilt
+  Parquet view. The first row starts flat, corrections append checksum-linked
+  events, and stale dates cannot claim `FORWARD_CAPTURE`. The 2026-07-20
+  acceptance row is correctly tagged `HISTORICAL_REPLAY` and does not count
+  toward the 40-day expansion gate.
 
 ## Sprint Order
 

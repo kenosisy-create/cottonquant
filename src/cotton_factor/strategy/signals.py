@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import statistics
 from dataclasses import dataclass
+from datetime import date
 
 from cotton_factor.common.exceptions import StrategyError
 from cotton_factor.core.schemas import (
@@ -25,6 +26,96 @@ class BaselineTargetBuildResult:
     target_rows: tuple[BacktestTargetLotDailyRow, ...]
     diagnostics: tuple[dict[str, object], ...]
     warnings: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TsmomSignalSnapshot:
+    """One latest-day baseline observation without an assumed execution date."""
+
+    trade_date: date
+    target_contract: str
+    adjusted_settle: float
+    momentum: float
+    direction: int
+    annualized_sigma: float | None
+    target_lots: int
+    warning_code: str
+    input_snapshot_ids: tuple[str, ...]
+
+
+def compute_tsmom_signal_snapshot(
+    *,
+    spec: StrategySpec,
+    continuous_rows: list[ResearchContinuousPriceDailyRow],
+    quotes: list[CoreQuoteDailyRow],
+    trade_date: date,
+    target_contract: str,
+    multiplier: float,
+) -> TsmomSignalSnapshot:
+    """Compute one T-day target using only observations at or before T."""
+    selected_date = trade_date
+    prices = sorted(
+        [row for row in continuous_rows if row.trade_date <= selected_date],
+        key=lambda row: row.trade_date,
+    )
+    if not prices or prices[-1].trade_date != selected_date:
+        raise StrategyError(f"continuous price missing for {selected_date}")
+    momentum_days = int(spec.signal_windows["momentum_days"])
+    vol_returns = int(spec.signal_windows["volatility_returns"])
+    index = len(prices) - 1
+    current = prices[index]
+    warning_code = ""
+    momentum = 0.0
+    sigma: float | None = None
+    direction = 0
+    target_lots = 0
+    if index < max(momentum_days, vol_returns):
+        warning_code = "INSUFFICIENT_LOOKBACK"
+    else:
+        # 从历史序列重放零动量沿用规则，避免最新快照依赖未来或外部状态。
+        previous_direction = 0
+        for offset in range(momentum_days, index + 1):
+            value = (
+                prices[offset].adjusted_price
+                / prices[offset - momentum_days].adjusted_price
+                - 1.0
+            )
+            if value > 0:
+                previous_direction = 1
+            elif value < 0:
+                previous_direction = -1
+        momentum = current.adjusted_price / prices[index - momentum_days].adjusted_price - 1.0
+        direction = 1 if momentum > 0 else -1 if momentum < 0 else previous_direction
+        log_returns = [
+            math.log(prices[offset].adjusted_price / prices[offset - 1].adjusted_price)
+            for offset in range(index - vol_returns + 1, index + 1)
+        ]
+        sigma = statistics.stdev(log_returns) * math.sqrt(252)
+        sigma_effective = max(sigma, spec.sizing.vol_floor)
+        quote_by_key = {(row.contract_code, row.trade_date): row for row in quotes}
+        quote = quote_by_key.get((target_contract, selected_date))
+        if quote is None or quote.settle is None:
+            raise StrategyError(
+                f"signal-day settlement missing for {target_contract} on {selected_date}"
+            )
+        unsigned_lots = math.floor(
+            spec.sizing.capital_base
+            * spec.sizing.target_vol
+            / sigma_effective
+            / (float(quote.settle) * multiplier)
+        )
+        target_lots = direction * min(unsigned_lots, spec.sizing.max_lots)
+    return TsmomSignalSnapshot(
+        trade_date=selected_date,
+        target_contract=target_contract,
+        adjusted_settle=current.adjusted_price,
+        momentum=momentum,
+        direction=direction,
+        annualized_sigma=sigma,
+        target_lots=target_lots,
+        warning_code=warning_code,
+        input_snapshot_ids=tuple(current.input_snapshot_ids),
+    )
 
 
 def build_tsmom_targets(

@@ -15,6 +15,7 @@
     [switch]$RunOptionCoreIngest,
     [switch]$RunOptionFactorProxy,
     [switch]$SkipStateUpgradePack,
+    [switch]$SkipStrategyShadow,
     [switch]$RunHistoricalEvidence,
     [switch]$RunEventExplanation,
     [switch]$RunEventThresholdSensitivity,
@@ -624,6 +625,36 @@ $trendBoard = $trendBoardJson | ConvertFrom-Json
 Write-Host "Trend continuity board: $($trendBoard.markdown_path)"
 if ($trendBoard.trend_quality_calibration_context -and $trendBoard.trend_quality_calibration_context.context_status -eq "PROVIDED") {
     Write-Host "Trend quality calibration: $($trendBoard.trend_quality_calibration_context.latest_score_context_label) $($trendBoard.trend_quality_calibration_context.alignment_status)"
+}
+
+$strategyShadow = $null
+if (-not $SkipStrategyShadow.IsPresent) {
+    try {
+        $strategyInputJson = & py -3.12 -m cotton_factor.cli.main strategy prepare-inputs `
+            --end "$($metadata.max_trade_date)" `
+            --core-quote-path "$($metadata.core_path)" `
+            --run-id "$RunId"
+        if ($LASTEXITCODE -ne 0) {
+            throw "CF strategy input preparation failed."
+        }
+        $strategyInput = $strategyInputJson | ConvertFrom-Json
+        $strategyShadowJson = & py -3.12 -m cotton_factor.cli.main strategy run-shadow `
+            --date "$($metadata.max_trade_date)" `
+            --record-mode "FORWARD_CAPTURE" `
+            --run-id "$RunId"
+        if ($LASTEXITCODE -ne 0) {
+            throw "CF strategy shadow failed."
+        }
+        $strategyShadow = $strategyShadowJson | ConvertFrom-Json
+        Write-Host "Strategy inputs: $($strategyInput.manifest_path)"
+        Write-Host "Strategy shadow: $($strategyShadow.markdown_path)"
+    }
+    catch {
+        Write-Warning "Strategy shadow skipped without blocking daily brief: $($_.Exception.Message)"
+    }
+}
+else {
+    Write-Host "Strategy shadow: skipped by -SkipStrategyShadow."
 }
 
 if ($runDailyOperationAuditEffective) {

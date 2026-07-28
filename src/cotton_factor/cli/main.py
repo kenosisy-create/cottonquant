@@ -4589,6 +4589,83 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @strategy_app.command("run-shadow")
+    def strategy_run_shadow(
+        trade_date: Annotated[
+            str | None,
+            typer.Option("--date", help="Optional shadow date; defaults to latest core date."),
+        ] = None,
+        record_mode: Annotated[
+            str,
+            typer.Option(
+                "--record-mode",
+                help="FORWARD_CAPTURE or explicitly tagged HISTORICAL_REPLAY.",
+            ),
+        ] = "FORWARD_CAPTURE",
+        registry_path: Annotated[
+            Path | None,
+            typer.Option("--registry-path", help="Optional strategy registry path."),
+        ] = None,
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional normalized core quote path."),
+        ] = None,
+        continuous_price_path: Annotated[
+            Path | None,
+            typer.Option("--continuous-price-path", help="Optional R86 continuous path."),
+        ] = None,
+        chain_map_path: Annotated[
+            Path | None,
+            typer.Option("--chain-map-path", help="Optional R86 chain map path."),
+        ] = None,
+        input_dir: Annotated[
+            Path | None,
+            typer.Option("--input-dir", help="Optional R86 input bundle directory."),
+        ] = None,
+        event_root: Annotated[
+            Path | None,
+            typer.Option("--event-root", help="Optional immutable event root."),
+        ] = None,
+        ledger_root: Annotated[
+            Path | None,
+            typer.Option("--ledger-root", help="Optional materialized ledger root."),
+        ] = None,
+        daily_output_root: Annotated[
+            Path | None,
+            typer.Option("--daily-output-root", help="Optional runs/daily root."),
+        ] = None,
+        overwrite_reason: Annotated[
+            str | None,
+            typer.Option("--overwrite-reason", help="Required only for a correction event."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R90 run id."),
+        ] = None,
+    ) -> None:
+        """Append R90 immutable events and atomically rebuild shadow ledger views."""
+        from cotton_factor.strategy import run_cf_strategy_shadow
+
+        try:
+            result = run_cf_strategy_shadow(
+                trade_date=_parse_iso_date(trade_date) if trade_date else None,
+                record_mode=record_mode,
+                registry_path=registry_path,
+                core_quote_path=core_quote_path,
+                continuous_price_path=continuous_price_path,
+                chain_map_path=chain_map_path,
+                input_dir=input_dir,
+                event_root=event_root,
+                ledger_root=ledger_root,
+                daily_output_root=daily_output_root,
+                overwrite_reason=overwrite_reason,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     app.add_typer(core_app, name="core")
     app.add_typer(ingest_app, name="ingest")
     app.add_typer(raw_app, name="raw")
