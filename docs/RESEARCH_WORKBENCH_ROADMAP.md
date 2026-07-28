@@ -231,6 +231,11 @@ factor platform.
 - R86 is implemented with validated specs and a canonical 2021-2026 input pack.
   R87 is implemented on the existing D16 engine with 20-day TSMOM targets,
   real-contract T+1 settlement fills and one-way notional bps costs.
+- R88 now evaluates non-overlapping years, diagnostic rolling windows and
+  posterior S0-S4 PnL attribution through one metric contract. R89 tested the
+  fixed phase/carry/option candidate without post-hoc tuning. The candidate is
+  `FROZEN`: only 3/5 years met sample eligibility, 2/5 beat the baseline, and
+  full-period conservative-cost Delta Sharpe was -0.310 with -1.81% net return.
 
 ## Sprint Order
 

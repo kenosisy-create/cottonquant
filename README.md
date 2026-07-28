@@ -597,6 +597,10 @@ strategy specifications and prepare the canonical cross-year inputs with:
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy validate-specs
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy prepare-inputs --start 2021-01-04
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy run-backtest --spec configs/strategy/CF_tsmom_v0.yaml --start 2021-01-04
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy evaluate --spec configs/strategy/CF_tsmom_v0.yaml
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy run-backtest --spec configs/strategy/CF_phase_gated_v0.yaml --start 2021-01-04
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy evaluate --spec configs/strategy/CF_phase_gated_v0.yaml
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy compare --spec-a configs/strategy/CF_tsmom_v0.yaml --spec-b configs/strategy/CF_phase_gated_v0.yaml
 ```
 
 The strategy lane uses adjusted continuous settlement prices only for signals.

@@ -4430,6 +4430,20 @@ if typer is not None:
             Path | None,
             typer.Option("--core-quote-path", help="Optional normalized core quote path."),
         ] = None,
+        signal_matrix_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--signal-matrix-path",
+                help="Optional historical signal_matrix_daily path for candidate specs.",
+            ),
+        ] = None,
+        trend_phase_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--trend-phase-path",
+                help="Optional trend_phase_v2_daily path for candidate specs.",
+            ),
+        ] = None,
         input_dir: Annotated[
             Path | None,
             typer.Option("--input-dir", help="Optional R86 input bundle directory."),
@@ -4448,17 +4462,124 @@ if typer is not None:
         ] = None,
     ) -> None:
         """Run R87 baseline through real-contract T+1 settlement accounting."""
-        from cotton_factor.strategy import run_cf_tsmom_backtest
+        from cotton_factor.strategy import (
+            load_strategy_spec,
+            run_cf_phase_gated_backtest,
+            run_cf_tsmom_backtest,
+        )
 
         try:
-            result = run_cf_tsmom_backtest(
+            spec = load_strategy_spec(spec_path)
+            common = {
+                "spec_path": spec_path,
+                "start": _parse_iso_date(start) if start else None,
+                "end": _parse_iso_date(end) if end else None,
+                "continuous_price_path": continuous_price_path,
+                "trade_mapping_path": trade_mapping_path,
+                "core_quote_path": core_quote_path,
+                "input_dir": input_dir,
+                "output_dir": output_dir,
+                "report_output_dir": report_output_dir,
+                "run_id": run_id,
+            }
+            if spec.strategy_type == "baseline_tsmom":
+                result = run_cf_tsmom_backtest(**common)
+            elif spec.strategy_type == "phase_gated":
+                result = run_cf_phase_gated_backtest(
+                    **common,
+                    signal_matrix_path=signal_matrix_path,
+                    trend_phase_path=trend_phase_path,
+                )
+            else:
+                raise CottonFactorError(
+                    f"run-backtest does not support strategy_type={spec.strategy_type}"
+                )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @strategy_app.command("evaluate")
+    def strategy_evaluate(
+        spec_path: Annotated[Path, typer.Option("--spec", help="Strategy YAML path.")],
+        backtest_daily_path: Annotated[
+            Path | None,
+            typer.Option("--backtest-daily-path", help="Optional strategy daily parquet."),
+        ] = None,
+        trend_phase_path: Annotated[
+            Path | None,
+            typer.Option("--trend-phase-path", help="Optional phase v2 daily parquet."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="Optional evaluation data directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional evaluation report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R88 run id."),
+        ] = None,
+    ) -> None:
+        """Build R88 non-overlapping-year and diagnostic-window evidence."""
+        from cotton_factor.strategy import evaluate_cf_strategy
+
+        try:
+            result = evaluate_cf_strategy(
                 spec_path=spec_path,
-                start=_parse_iso_date(start) if start else None,
-                end=_parse_iso_date(end) if end else None,
-                continuous_price_path=continuous_price_path,
-                trade_mapping_path=trade_mapping_path,
-                core_quote_path=core_quote_path,
-                input_dir=input_dir,
+                backtest_daily_path=backtest_daily_path,
+                trend_phase_path=trend_phase_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
+    @strategy_app.command("compare")
+    def strategy_compare(
+        baseline_spec_path: Annotated[
+            Path,
+            typer.Option("--spec-a", help="Baseline strategy YAML path."),
+        ],
+        candidate_spec_path: Annotated[
+            Path,
+            typer.Option("--spec-b", help="Candidate strategy YAML path."),
+        ],
+        baseline_evaluation_path: Annotated[
+            Path | None,
+            typer.Option("--evaluation-a", help="Optional baseline evaluation parquet."),
+        ] = None,
+        candidate_evaluation_path: Annotated[
+            Path | None,
+            typer.Option("--evaluation-b", help="Optional candidate evaluation parquet."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="Optional comparison data directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional comparison report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R89 comparison id."),
+        ] = None,
+    ) -> None:
+        """Apply the fixed R89 candidate promotion gate."""
+        from cotton_factor.strategy import compare_cf_strategies
+
+        try:
+            result = compare_cf_strategies(
+                baseline_spec_path=baseline_spec_path,
+                candidate_spec_path=candidate_spec_path,
+                baseline_evaluation_path=baseline_evaluation_path,
+                candidate_evaluation_path=candidate_evaluation_path,
                 output_dir=output_dir,
                 report_output_dir=report_output_dir,
                 run_id=run_id,

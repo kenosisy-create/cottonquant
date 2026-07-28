@@ -1,7 +1,7 @@
 strategy_id: CF_phase_gated
 version: v0
 strategy_type: phase_gated
-status: candidate
+status: frozen
 product: CF
 signal_object: CF.C1
 signal_horizon: 20
@@ -73,3 +73,6 @@ changelog:
   - version: v0
     date: 2026-07-28
     note: "V5.1初始候选；所有门控参数在历史比较前固定"
+  - version: v0
+    date: 2026-07-28
+    note: "R89固定检验结论FROZEN：3个合格年度、2个年度胜出、conservative cost后净收益为负；禁止当场调参"
