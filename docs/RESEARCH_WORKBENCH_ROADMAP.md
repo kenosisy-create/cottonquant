@@ -249,6 +249,10 @@ factor platform.
   option veto `WATCH` (Delta Sharpe +0.061, 4/5 year wins), Top20 member flow
   `REJECT` (-0.621, 0/5), and same-side strike wall `WATCH` (+0.010, 1/5).
   No overlay modifies `composite_score` or enters the shadow registry as active.
+- R93 is implemented in the existing single-file dashboard. It shows target
+  lots, direction, NAV, drawdown, entry state and a 60-row NAV sparkline only
+  when the R90 summary resolves to an auditable ledger; otherwise the complete
+  strategy section remains hidden. The adapter rejects forward-return fields.
 
 ## Sprint Order
 

@@ -619,3 +619,13 @@ R92 tests one pre-registered overlay at a time with the same T+1 engine, cost
 scenarios and annual promotion gate. The first real CF run classified option
 veto as `WATCH` (full conservative Delta Sharpe +0.061), Top20 member-position
 flow as `REJECT` (-0.621), and same-side strike walls as `WATCH` (+0.010).
+
+Build the local single-file research dashboard, including the strategy-shadow
+section when an auditable R90 ledger is present, with:
+
+```powershell
+py -3.12 scripts\build_dashboard.py --date 2026-07-20
+```
+
+The strategy section reads no forward-return labels and stays hidden when the
+shadow ledger is absent or invalid.
