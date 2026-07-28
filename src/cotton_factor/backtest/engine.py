@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
 
-from cotton_factor.backtest.cost_model import CostModel
+from cotton_factor.backtest.cost_model import CostModel, NotionalBpsCostModel
 from cotton_factor.backtest.execution import (
     ExecutionPriceMode,
     execution_price_field,
@@ -210,7 +210,7 @@ def run_daily_backtest(
     signal_object_id: str = "CF.C1",
     execution_price_mode: ExecutionPriceMode = "next_settle",
     base_lots: int = 1,
-    cost_model: CostModel | None = None,
+    cost_model: CostModel | NotionalBpsCostModel | None = None,
     backtest_rule_version: str = DEFAULT_BACKTEST_RULE_VERSION,
     use_processed_value: bool = True,
 ) -> DailyBacktestResult:
@@ -305,7 +305,11 @@ def run_daily_backtest(
             fill_price = quote_price(quote=quote, price_field=price_field)
             fill_multiplier = _multiplier(order.target_contract, multiplier_by_contract)
             notional = abs(order.order_lots) * fill_price * fill_multiplier
-            estimate = active_cost_model.estimate(order_lots=order.order_lots)
+            estimate = active_cost_model.estimate(
+                order_lots=order.order_lots,
+                fill_price=fill_price,
+                multiplier=fill_multiplier,
+            )
             cost_row = BacktestCost(
                 run_id=run_id,
                 strategy_id=strategy_id,

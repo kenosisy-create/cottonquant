@@ -1,5 +1,9 @@
 """CF strategy-accountable research package."""
 
+from cotton_factor.strategy.baseline_tsmom import (
+    StrategyBacktestResult,
+    run_cf_tsmom_backtest,
+)
 from cotton_factor.strategy.registry import (
     StrategyRegistry,
     StrategyRegistryEntry,
@@ -19,9 +23,11 @@ __all__ = [
     "ExecutionSpec",
     "GateRuleSpec",
     "SizingSpec",
+    "StrategyBacktestResult",
     "StrategyRegistry",
     "StrategyRegistryEntry",
     "StrategySpec",
     "load_strategy_registry",
     "load_strategy_spec",
+    "run_cf_tsmom_backtest",
 ]

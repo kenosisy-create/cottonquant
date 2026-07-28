@@ -228,6 +228,9 @@ factor platform.
   baseline, strategy evaluation, fixed candidate comparison and forward shadow
   ledger. R91-R93 add weekly governance, overlay tests and the dashboard card.
   R94-R99 remain blocked until 40 real forward shadow days and separate approval.
+- R86 is implemented with validated specs and a canonical 2021-2026 input pack.
+  R87 is implemented on the existing D16 engine with 20-day TSMOM targets,
+  real-contract T+1 settlement fills and one-way notional bps costs.
 
 ## Sprint Order
 

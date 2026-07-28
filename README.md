@@ -596,6 +596,7 @@ strategy specifications and prepare the canonical cross-year inputs with:
 ```powershell
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy validate-specs
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy prepare-inputs --start 2021-01-04
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy run-backtest --spec configs/strategy/CF_tsmom_v0.yaml --start 2021-01-04
 ```
 
 The strategy lane uses adjusted continuous settlement prices only for signals.

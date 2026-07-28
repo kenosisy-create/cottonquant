@@ -4404,6 +4404,70 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @strategy_app.command("run-backtest")
+    def strategy_run_backtest(
+        spec_path: Annotated[
+            Path,
+            typer.Option("--spec", help="Baseline strategy YAML path."),
+        ],
+        start: Annotated[
+            str | None,
+            typer.Option("--start", help="Optional first signal date, YYYY-MM-DD."),
+        ] = None,
+        end: Annotated[
+            str | None,
+            typer.Option("--end", help="Optional final signal date, YYYY-MM-DD."),
+        ] = None,
+        continuous_price_path: Annotated[
+            Path | None,
+            typer.Option("--continuous-price-path", help="Optional R86 continuous price path."),
+        ] = None,
+        trade_mapping_path: Annotated[
+            Path | None,
+            typer.Option("--trade-mapping-path", help="Optional R86 T+1 mapping path."),
+        ] = None,
+        core_quote_path: Annotated[
+            Path | None,
+            typer.Option("--core-quote-path", help="Optional normalized core quote path."),
+        ] = None,
+        input_dir: Annotated[
+            Path | None,
+            typer.Option("--input-dir", help="Optional R86 input bundle directory."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="Optional strategy data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="Optional Chinese report directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R87 run id."),
+        ] = None,
+    ) -> None:
+        """Run R87 baseline through real-contract T+1 settlement accounting."""
+        from cotton_factor.strategy import run_cf_tsmom_backtest
+
+        try:
+            result = run_cf_tsmom_backtest(
+                spec_path=spec_path,
+                start=_parse_iso_date(start) if start else None,
+                end=_parse_iso_date(end) if end else None,
+                continuous_price_path=continuous_price_path,
+                trade_mapping_path=trade_mapping_path,
+                core_quote_path=core_quote_path,
+                input_dir=input_dir,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     app.add_typer(core_app, name="core")
     app.add_typer(ingest_app, name="ingest")
     app.add_typer(raw_app, name="raw")

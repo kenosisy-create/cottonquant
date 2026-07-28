@@ -2,8 +2,10 @@
 
 from cotton_factor.backtest.cost_model import (
     DEFAULT_COST_MODEL_ID,
+    NOTIONAL_BPS_COST_MODEL_ID,
     CostEstimate,
     CostModel,
+    NotionalBpsCostModel,
 )
 from cotton_factor.backtest.engine import (
     DEFAULT_BACKTEST_RULE_VERSION,
@@ -30,6 +32,7 @@ from cotton_factor.backtest.portfolio import (
 __all__ = [
     "DEFAULT_BACKTEST_RULE_VERSION",
     "DEFAULT_COST_MODEL_ID",
+    "NOTIONAL_BPS_COST_MODEL_ID",
     "DEFAULT_STRATEGY_ID",
     "DEFAULT_TARGET_LOT_RULE_VERSION",
     "EXECUTION_PRICE_FIELD_BY_MODE",
@@ -41,6 +44,7 @@ __all__ = [
     "BacktestPosition",
     "CostEstimate",
     "CostModel",
+    "NotionalBpsCostModel",
     "DailyBacktestResult",
     "ExecutionPriceMode",
     "TargetLotBuildResult",
