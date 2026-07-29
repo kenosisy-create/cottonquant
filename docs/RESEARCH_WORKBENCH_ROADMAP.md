@@ -263,6 +263,12 @@ factor platform.
   R93A breakouts. It keeps one first-breakout observation per episode/horizon,
   compares each group with the remaining independent episodes using Fisher
   exact tests plus FDR correction, and remains isolated from strategy sizing.
+- R93C freezes three R93B findings before any new episode is observed. It marks
+  all pre-2026-07-29 analysis as retrospective selection-contaminated evidence,
+  evaluates direction/year/era/leave-one-year stability and bootstrap ranges,
+  and writes post-registration events to a physically separate forward table.
+  Only participation confirmation is ready to accumulate formal forward
+  evidence; no candidate changes the existing shadow strategy.
 
 ## Sprint Order
 

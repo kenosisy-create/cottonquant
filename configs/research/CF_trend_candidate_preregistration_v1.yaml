@@ -1,0 +1,51 @@
+spec_version: V5.1_R93C_trend_candidate_preregistration_v1
+product_code: CF
+status: frozen_for_forward_research
+registered_at: 2026-07-29
+effective_after_date: 2026-07-28
+selection_disclosure: "三项假设来自R93B全历史发现，既有历史结果仅作回顾性稳定性诊断，不属于样本外证据"
+strategy_actions_allowed: false
+
+evaluation_gate:
+  minimum_historical_treated: 30
+  minimum_historical_control: 10
+  minimum_direction_each: 5
+  minimum_year_each: 2
+  minimum_evaluable_years: 3
+  minimum_year_alignment_rate: 0.60
+  practical_hit_delta: 0.05
+  practical_return_delta: 0.001
+  era_split_year: 2023
+  bootstrap_samples: 5000
+  bootstrap_confidence: 0.95
+  bootstrap_seed: 9303
+
+hypotheses:
+  - hypothesis_id: H1_PARTICIPATION_CONFIRM_20D
+    feature_column: participation_alignment
+    feature_value: CONFIRM
+    primary_horizon: 20
+    desired_effect: positive
+    forward_role: trend_confirmation_observation
+    rationale: "检验全链持仓参与确认是否提升趋势20D延续，而不是直接决定方向"
+  - hypothesis_id: H2_WEAK_OPTION_CONTEXT_VETO_5D
+    feature_column: option_alignment
+    feature_value: WEAK_OPTION_CONTEXT
+    primary_horizon: 5
+    desired_effect: negative
+    forward_role: failed_breakout_veto_observation
+    rationale: "检验期权方向存在但确认强度不足时，是否更易出现5D突破失败"
+  - hypothesis_id: H3_DIRECTIONAL_WALL_OI_BUILD_3D
+    feature_column: directional_wall_oi_state
+    feature_value: WALL_OI_BUILDING
+    primary_horizon: 3
+    desired_effect: positive
+    forward_role: strike_wall_timing_observation
+    rationale: "检验方向侧OI墙增仓是否只提供短周期节奏信息，并识别多空不对称"
+
+diagnostic_horizons: [1, 3, 5, 10, 20]
+forbidden_actions:
+  - modify_CF_tsmom_v0
+  - unfreeze_CF_phase_gated_v0
+  - change_shadow_lots
+  - unlock_R94_R99

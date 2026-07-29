@@ -3093,6 +3093,53 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @research_app.command("build-cf-trend-candidate-stability-research")
+    def research_build_cf_trend_candidate_stability_research(
+        event_feature_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--event-feature-path",
+                help="Optional R93B independent event-feature path.",
+            ),
+        ] = None,
+        spec_path: Annotated[
+            Path | None,
+            typer.Option("--spec-path", help="Optional frozen R93C spec path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R93C data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option(
+                "--report-output-dir",
+                help="R93C report output directory.",
+            ),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R93C run id."),
+        ] = None,
+    ) -> None:
+        """Build R93C candidate ablation, stability and forward registration."""
+        from cotton_factor.research_workbench import (
+            build_cf_trend_candidate_stability_research,
+        )
+
+        try:
+            result = build_cf_trend_candidate_stability_research(
+                event_feature_path=event_feature_path,
+                spec_path=spec_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     @research_app.command("build-cf-current-watch-window")
     def research_build_cf_current_watch_window(
         latest_signal_json_path: Annotated[
@@ -5681,6 +5728,19 @@ else:
         trend_option_timing_parser.add_argument(
             "--fdr-level", type=float, default=0.10
         )
+        trend_candidate_stability_parser = research_subparsers.add_parser(
+            "build-cf-trend-candidate-stability-research",
+            help="Build R93C candidate stability and forward registration.",
+        )
+        trend_candidate_stability_parser.add_argument(
+            "--event-feature-path", type=Path
+        )
+        trend_candidate_stability_parser.add_argument("--spec-path", type=Path)
+        trend_candidate_stability_parser.add_argument("--output-dir", type=Path)
+        trend_candidate_stability_parser.add_argument(
+            "--report-output-dir", type=Path
+        )
+        trend_candidate_stability_parser.add_argument("--run-id")
         watch_window_parser = research_subparsers.add_parser(
             "build-cf-current-watch-window",
             help="Build R77 current confirmation/invalidation watch window.",
@@ -6540,6 +6600,28 @@ else:
                     rank_min_periods=args.rank_min_periods,
                     min_sample_size=args.min_sample_size,
                     fdr_level=args.fdr_level,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command
+            == "build-cf-trend-candidate-stability-research"
+        ):
+            from cotton_factor.research_workbench import (
+                build_cf_trend_candidate_stability_research,
+            )
+
+            try:
+                result = build_cf_trend_candidate_stability_research(
+                    event_feature_path=args.event_feature_path,
+                    spec_path=args.spec_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
                 )
             except CottonFactorError as exc:
                 print(str(exc))
