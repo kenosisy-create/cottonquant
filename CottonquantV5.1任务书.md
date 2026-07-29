@@ -115,6 +115,16 @@ Cottonquant V5.1 是 **CF 策略可问责研究工作台**，不是实盘交易�
 - 只有持仓参与确认可进入冻结后的前向登记；弱期权候选只作小样本前向观察，OI 墙候选保留历史观察。
 - R93C 不新建策略、不调整影子手数、不修改 `composite_score`，也不解除 R94-R99 门槛。
 
+### R93D 不可回写的候选前向事件账本
+
+- 只跟踪 R93C 的持仓参与确认和弱期权观察，OI 墙历史观察项不进入前向账本。
+- 新突破发生当日先追加 `CAPTURE` 事件；CAPTURE 只能包含 T 日事实，禁止包含 exit date、outcome 或收益。
+- 5D/20D 标签形成后追加引用 CAPTURE checksum 的 `OUTCOME`；相同重跑必须 no-op。
+- 事件日后才首次看到的记录标为 `LATE_BACKFILL_CAPTURE`，保留审计但不计入严格前向证据。
+- 已捕获的 T 日特征不得回写；结果变化必须提供 correction reason，并追加引用前序 checksum 的修订事件。
+- Parquet 只作为不可变 JSON 事件的原子物化视图；历史 CAPTURE 行在结果追加后仍必须保持不变。
+- R93D 只积累证据，不定义前向晋级门槛，不修改策略、影子手数、NAV 或 `composite_score`。
+
 ## 五、输出边界
 
 所有 Markdown 报告使用中文，核心策略代码使用中文注释。每份策略报告和影子摘要必须包含：

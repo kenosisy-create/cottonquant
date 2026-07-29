@@ -269,6 +269,11 @@ factor platform.
   and writes post-registration events to a physically separate forward table.
   Only participation confirmation is ready to accumulate formal forward
   evidence; no candidate changes the existing shadow strategy.
+- R93D replaces a rewriteable forward table with capture-first immutable JSON
+  events. A breakout is recorded without outcome fields on its event date;
+  fixed-horizon outcomes are appended later with checksum lineage. Late capture
+  and explicit corrections remain visible and cannot count as strict forward
+  proof. The ledger has no strategy or promotion authority.
 
 ## Sprint Order
 

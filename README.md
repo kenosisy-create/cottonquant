@@ -272,6 +272,7 @@ To fetch official daily futures and options directly, use:
 
 ```powershell
 .\scripts\update_cf_latest_research.ps1 -DownloadOfficialDaily -DownloadDate 2026-07-06
+.\scripts\update_cf_latest_research.ps1 -DownloadOfficialDaily -DownloadDate 2026-07-29 -RunTrendForwardLedger
 ```
 
 CZCE daily URLs use `YYYY` for the year directory and `YYYYMMDD` for the date
@@ -610,6 +611,7 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay 
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-symmetric-trend-research
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-option-timing-research
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-candidate-stability-research
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-candidate-forward-ledger
 ```
 
 The strategy lane uses adjusted continuous settlement prices only for signals.
@@ -629,6 +631,10 @@ R93C freezes three R93B candidates in a versioned research specification. It
 separates retrospective stability diagnostics from events after the fixed
 2026-07-28 forward boundary, and reports direction, era, yearly, leave-one-year
 and bootstrap evidence without changing strategy targets or shadow lots.
+R93D writes a capture-only immutable JSON event when a post-registration
+breakout is first observed, then appends a checksum-linked outcome event after
+the fixed 5D/20D label is available. Late captures remain auditable but are
+excluded from strict forward evidence; Parquet is only the materialized view.
 The weekly audit reports the latest five ledger rows, cumulative real forward
 days, accounting anomalies and differences versus the fixed TSMOM baseline.
 R92 tests one pre-registered overlay at a time with the same T+1 engine, cost

@@ -52,6 +52,9 @@ def test_update_cf_latest_research_has_weekly_pack_contract() -> None:
     assert "build-cf-option-structure-research" in script
     assert "build-cf-trend-phase-v2" in script
     assert "build-cf-current-watch-window" in script
+    assert "[switch]$RunTrendForwardLedger" in script
+    assert "build-cf-symmetric-trend-research" in script
+    assert "build-cf-trend-candidate-forward-ledger" in script
     assert "--current-watch-window-json-path" in script
     assert "--state-transition-json-path" in script
     assert "--option-volatility-json-path" in script
@@ -153,3 +156,4 @@ def test_readme_documents_official_daily_download_command() -> None:
     assert "fetch-cf-official-member-position-history" in readme
     assert "build-cf-data-continuity-audit" in readme
     assert "-RemoveDownloadedDailyAfterIngest" in readme
+    assert "-RunTrendForwardLedger" in readme

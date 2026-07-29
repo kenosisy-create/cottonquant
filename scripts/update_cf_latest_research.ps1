@@ -16,6 +16,7 @@
     [switch]$RunOptionFactorProxy,
     [switch]$SkipStateUpgradePack,
     [switch]$SkipStrategyShadow,
+    [switch]$RunTrendForwardLedger,
     [switch]$RunHistoricalEvidence,
     [switch]$RunEventExplanation,
     [switch]$RunEventThresholdSensitivity,
@@ -625,6 +626,26 @@ $trendBoard = $trendBoardJson | ConvertFrom-Json
 Write-Host "Trend continuity board: $($trendBoard.markdown_path)"
 if ($trendBoard.trend_quality_calibration_context -and $trendBoard.trend_quality_calibration_context.context_status -eq "PROVIDED") {
     Write-Host "Trend quality calibration: $($trendBoard.trend_quality_calibration_context.latest_score_context_label) $($trendBoard.trend_quality_calibration_context.alignment_status)"
+}
+
+if ($RunTrendForwardLedger.IsPresent) {
+    $symmetricTrendJson = & py -3.12 -m cotton_factor.cli.main research build-cf-symmetric-trend-research `
+        --run-id "$($RunId)_r93a"
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93A symmetric trend refresh failed."
+    }
+    $symmetricTrend = $symmetricTrendJson | ConvertFrom-Json
+    $trendForwardJson = & py -3.12 -m cotton_factor.cli.main research build-cf-trend-candidate-forward-ledger `
+        --symmetric-trend-daily-path "$($symmetricTrend.daily_path)" `
+        --breakout-event-path "$($symmetricTrend.breakout_event_path)" `
+        --as-of-date "$($metadata.max_trade_date)" `
+        --run-id "$($RunId)_r93d"
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93D trend candidate forward ledger failed."
+    }
+    $trendForwardLedger = $trendForwardJson | ConvertFrom-Json
+    Write-Host "Trend forward ledger: $($trendForwardLedger.markdown_path)"
+    Write-Host "Trend forward status: $($trendForwardLedger.status), captures=$($trendForwardLedger.capture_appended_count), outcomes=$($trendForwardLedger.outcome_appended_count)"
 }
 
 $strategyShadow = $null

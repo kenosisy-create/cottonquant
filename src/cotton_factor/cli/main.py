@@ -3140,6 +3140,84 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @research_app.command("build-cf-trend-candidate-forward-ledger")
+    def research_build_cf_trend_candidate_forward_ledger(
+        symmetric_trend_daily_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--symmetric-trend-daily-path",
+                help="Optional R93A symmetric daily path.",
+            ),
+        ] = None,
+        breakout_event_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--breakout-event-path",
+                help="Optional R93A breakout event path.",
+            ),
+        ] = None,
+        candidate_evaluation_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--candidate-evaluation-path",
+                help="Optional R93C primary evaluation path.",
+            ),
+        ] = None,
+        spec_path: Annotated[
+            Path | None,
+            typer.Option("--spec-path", help="Optional frozen R93C spec path."),
+        ] = None,
+        as_of_date: Annotated[
+            str | None,
+            typer.Option("--as-of-date", help="Optional official session date."),
+        ] = None,
+        ledger_root: Annotated[
+            Path | None,
+            typer.Option("--ledger-root", help="R93D immutable ledger root."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option(
+                "--report-output-dir",
+                help="R93D report output directory.",
+            ),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R93D run id."),
+        ] = None,
+        correction_reason: Annotated[
+            str | None,
+            typer.Option(
+                "--correction-reason",
+                help="Required only when a recorded outcome changes.",
+            ),
+        ] = None,
+    ) -> None:
+        """Build R93D capture-first immutable forward evidence ledger."""
+        from cotton_factor.research_workbench import (
+            build_cf_trend_candidate_forward_ledger,
+        )
+
+        try:
+            result = build_cf_trend_candidate_forward_ledger(
+                symmetric_trend_daily_path=symmetric_trend_daily_path,
+                breakout_event_path=breakout_event_path,
+                candidate_evaluation_path=candidate_evaluation_path,
+                spec_path=spec_path,
+                as_of_date=(
+                    _parse_iso_date(as_of_date) if as_of_date is not None else None
+                ),
+                ledger_root=ledger_root,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                correction_reason=correction_reason,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     @research_app.command("build-cf-current-watch-window")
     def research_build_cf_current_watch_window(
         latest_signal_json_path: Annotated[
@@ -5741,6 +5819,25 @@ else:
             "--report-output-dir", type=Path
         )
         trend_candidate_stability_parser.add_argument("--run-id")
+        trend_candidate_forward_parser = research_subparsers.add_parser(
+            "build-cf-trend-candidate-forward-ledger",
+            help="Build R93D immutable candidate forward ledger.",
+        )
+        trend_candidate_forward_parser.add_argument(
+            "--symmetric-trend-daily-path", type=Path
+        )
+        trend_candidate_forward_parser.add_argument("--breakout-event-path", type=Path)
+        trend_candidate_forward_parser.add_argument(
+            "--candidate-evaluation-path", type=Path
+        )
+        trend_candidate_forward_parser.add_argument("--spec-path", type=Path)
+        trend_candidate_forward_parser.add_argument("--as-of-date")
+        trend_candidate_forward_parser.add_argument("--ledger-root", type=Path)
+        trend_candidate_forward_parser.add_argument(
+            "--report-output-dir", type=Path
+        )
+        trend_candidate_forward_parser.add_argument("--run-id")
+        trend_candidate_forward_parser.add_argument("--correction-reason")
         watch_window_parser = research_subparsers.add_parser(
             "build-cf-current-watch-window",
             help="Build R77 current confirmation/invalidation watch window.",
@@ -6622,6 +6719,36 @@ else:
                     output_dir=args.output_dir,
                     report_output_dir=args.report_output_dir,
                     run_id=args.run_id,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command
+            == "build-cf-trend-candidate-forward-ledger"
+        ):
+            from cotton_factor.research_workbench import (
+                build_cf_trend_candidate_forward_ledger,
+            )
+
+            try:
+                result = build_cf_trend_candidate_forward_ledger(
+                    symmetric_trend_daily_path=args.symmetric_trend_daily_path,
+                    breakout_event_path=args.breakout_event_path,
+                    candidate_evaluation_path=args.candidate_evaluation_path,
+                    spec_path=args.spec_path,
+                    as_of_date=(
+                        _parse_iso_date(args.as_of_date)
+                        if args.as_of_date is not None
+                        else None
+                    ),
+                    ledger_root=args.ledger_root,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    correction_reason=args.correction_reason,
                 )
             except CottonFactorError as exc:
                 print(str(exc))

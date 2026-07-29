@@ -339,6 +339,11 @@ def build_cf_trend_candidate_stability_research(
     return result
 
 
+def load_cf_trend_candidate_spec(path: Path) -> TrendCandidateSpec:
+    """读取并校验版本化 R93C 规格，供 R93D 复用同一前向边界。"""
+    return _load_spec(path)
+
+
 def _load_spec(path: Path) -> TrendCandidateSpec:
     if not path.exists():
         raise ResearchWorkbenchError(f"R93C spec path does not exist: {path}")
