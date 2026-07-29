@@ -253,6 +253,11 @@ factor platform.
   lots, direction, NAV, drawdown, entry state and a 60-row NAV sparkline only
   when the R90 summary resolves to an auditable ledger; otherwise the complete
   strategy section remains hidden. The adapter rejects forward-return fields.
+- R93A adds a CF-only symmetric trend research sidecar after the fixed R89
+  candidate exposed a direction-stage semantic conflict. It separates
+  long/short direction from setup, breakout, trend, deceleration and reversal,
+  then evaluates breakout timing and option alignment with posterior labels in
+  separate artifacts. It does not change shadow targets or unlock R94-R99.
 
 ## Sprint Order
 

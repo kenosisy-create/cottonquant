@@ -2927,6 +2927,80 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @research_app.command("build-cf-symmetric-trend-research")
+    def research_build_cf_symmetric_trend_research(
+        continuous_price_path: Annotated[
+            Path | None,
+            typer.Option("--continuous-price-path", help="Optional R86 continuous price path."),
+        ] = None,
+        trend_context_path: Annotated[
+            Path | None,
+            typer.Option("--trend-context-path", help="Optional R76 trend context path."),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R93A data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R93A report output directory."),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R93A run id."),
+        ] = None,
+        fast_window: Annotated[
+            int,
+            typer.Option("--fast-window", help="Fast trend window."),
+        ] = 20,
+        slow_window: Annotated[
+            int,
+            typer.Option("--slow-window", help="Slow trend window."),
+        ] = 40,
+        breakout_window: Annotated[
+            int,
+            typer.Option("--breakout-window", help="Prior channel breakout window."),
+        ] = 20,
+        breakout_cooldown: Annotated[
+            int,
+            typer.Option("--breakout-cooldown", help="Same-side breakout cooldown."),
+        ] = 5,
+        horizons: Annotated[
+            str,
+            typer.Option("--horizons", help="Comma-separated posterior horizons."),
+        ] = "1,3,5,10,20",
+        dead_zone_bps: Annotated[
+            int,
+            typer.Option("--dead-zone-bps", help="Historical outcome dead zone in bps."),
+        ] = 10,
+        min_sample_size: Annotated[
+            int,
+            typer.Option("--min-sample-size", help="Minimum evidence-group sample size."),
+        ] = 30,
+    ) -> None:
+        """Build R93A symmetric trend, breakout and option-timing evidence."""
+        from cotton_factor.research_workbench import build_cf_symmetric_trend_research
+
+        try:
+            result = build_cf_symmetric_trend_research(
+                continuous_price_path=continuous_price_path,
+                trend_context_path=trend_context_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                fast_window=fast_window,
+                slow_window=slow_window,
+                breakout_window=breakout_window,
+                breakout_cooldown=breakout_cooldown,
+                horizons=_parse_horizons(horizons),
+                dead_zone_bps=dead_zone_bps,
+                min_sample_size=min_sample_size,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     @research_app.command("build-cf-current-watch-window")
     def research_build_cf_current_watch_window(
         latest_signal_json_path: Annotated[
@@ -5476,6 +5550,22 @@ else:
         phase_v2_parser.add_argument("--report-output-dir", type=Path)
         phase_v2_parser.add_argument("--run-id")
         phase_v2_parser.add_argument("--primary-horizon", type=int, default=20)
+        symmetric_trend_parser = research_subparsers.add_parser(
+            "build-cf-symmetric-trend-research",
+            help="Build R93A symmetric trend and breakout timing research.",
+        )
+        symmetric_trend_parser.add_argument("--continuous-price-path", type=Path)
+        symmetric_trend_parser.add_argument("--trend-context-path", type=Path)
+        symmetric_trend_parser.add_argument("--output-dir", type=Path)
+        symmetric_trend_parser.add_argument("--report-output-dir", type=Path)
+        symmetric_trend_parser.add_argument("--run-id")
+        symmetric_trend_parser.add_argument("--fast-window", type=int, default=20)
+        symmetric_trend_parser.add_argument("--slow-window", type=int, default=40)
+        symmetric_trend_parser.add_argument("--breakout-window", type=int, default=20)
+        symmetric_trend_parser.add_argument("--breakout-cooldown", type=int, default=5)
+        symmetric_trend_parser.add_argument("--horizons", default="1,3,5,10,20")
+        symmetric_trend_parser.add_argument("--dead-zone-bps", type=int, default=10)
+        symmetric_trend_parser.add_argument("--min-sample-size", type=int, default=30)
         watch_window_parser = research_subparsers.add_parser(
             "build-cf-current-watch-window",
             help="Build R77 current confirmation/invalidation watch window.",
@@ -6285,6 +6375,32 @@ else:
                 print(str(exc))
                 return 1
 
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-symmetric-trend-research"
+        ):
+            from cotton_factor.research_workbench import build_cf_symmetric_trend_research
+
+            try:
+                result = build_cf_symmetric_trend_research(
+                    continuous_price_path=args.continuous_price_path,
+                    trend_context_path=args.trend_context_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    fast_window=args.fast_window,
+                    slow_window=args.slow_window,
+                    breakout_window=args.breakout_window,
+                    breakout_cooldown=args.breakout_cooldown,
+                    horizons=_parse_horizons(args.horizons),
+                    dead_zone_bps=args.dead_zone_bps,
+                    min_sample_size=args.min_sample_size,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
             print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
             return 0
         if (

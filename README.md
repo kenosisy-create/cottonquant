@@ -219,6 +219,7 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-chai
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-oi-roll-window-research --core-quote-path data/core/CF/core_quote_daily.parquet --windows 3,5,10 --output-dir data/research/CF/oi_roll_window --report-output-dir reports/research/oi_roll_window
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-option-structure-research --option-factor-path data/research/CF/option_factors/CF_2021-01-04_2026-07-13_option_factor_proxy_daily.parquet --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-13_signal_matrix_daily.parquet --output-dir data/research/CF/option_structure --report-output-dir reports/research/option_structure
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-phase-v2 --dual-price-path data/research/CF/dual_price_state/CF_2021-01-04_2026-07-13_dual_price_state_daily.parquet --chain-oi-path data/research/CF/chain_oi_structure/CF_2021-01-04_2026-07-13_chain_oi_structure_daily.parquet --option-structure-path data/research/CF/option_structure/CF_2021-01-04_2026-07-13_option_structure_daily.parquet --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-13_signal_matrix_daily.parquet --output-dir data/research/CF/trend_phase_v2 --report-output-dir reports/research/trend_phase_v2
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-symmetric-trend-research --continuous-price-path data/strategy/CF/inputs/CF_2021-01-04_2026-07-28_continuous_price_daily.parquet --trend-context-path data/research/CF/trend_phase_v2/CF_2021-01-04_2026-07-28_trend_phase_v2_daily.parquet --output-dir data/research/CF/symmetric_trend --report-output-dir reports/research/symmetric_trend --horizons 1,3,5,10,20
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-current-watch-window --latest-signal-json-path runs/daily/CF/2026-07-13/latest_signal_brief.json --dual-price-path data/research/CF/dual_price_state/CF_2021-01-04_2026-07-13_dual_price_state_daily.parquet --chain-oi-path data/research/CF/chain_oi_structure/CF_2021-01-04_2026-07-13_chain_oi_structure_daily.parquet --option-structure-path data/research/CF/option_structure/CF_2021-01-04_2026-07-13_option_structure_daily.parquet --trend-phase-v2-path data/research/CF/trend_phase_v2/CF_2021-01-04_2026-07-13_trend_phase_v2_daily.parquet --output-dir data/research/CF/current_watch_window --report-output-dir reports/research/current_watch_window --daily-output-root runs/daily
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-validated-research-brief --futures-option-divergence-json-path reports/research/futures_option_divergence/CF_2021-01-04_2026-07-06_futures_option_divergence.json --futures-option-playbook-json-path reports/research/futures_option_divergence_playbook/CF_2021-01-04_2026-07-06_futures_option_playbook.json --state-transition-json-path reports/research/state_transition/CF_2021-02-03_2026-07-17_state_transition_competing_risk.json --option-volatility-json-path reports/research/option_volatility/CF_2021-01-04_2026-07-17_option_volatility.json
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-publish-pack --futures-option-divergence-json-path reports/research/futures_option_divergence/CF_2021-01-04_2026-07-06_futures_option_divergence.json --futures-option-playbook-json-path reports/research/futures_option_divergence_playbook/CF_2021-01-04_2026-07-06_futures_option_playbook.json
@@ -606,6 +607,7 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy weekly-audit
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay --overlay ovl_option_veto --start 2021-01-04 --end 2026-07-17
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay --overlay ovl_member_position --start 2021-01-04 --end 2026-07-17
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay --overlay ovl_strike_wall --start 2021-01-04 --end 2026-07-17
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-symmetric-trend-research
 ```
 
 The strategy lane uses adjusted continuous settlement prices only for signals.
@@ -613,6 +615,9 @@ All fills, costs, positions and PnL use real contracts at T+1 settlement. It is
 research simulation and does not create orders or trading instructions.
 Only a same-day latest-core run can be marked `FORWARD_CAPTURE`; historical
 replays remain explicitly excluded from the 40-day expansion gate.
+R93A symmetric-trend research runs beside that ledger: it separates long/short
+direction from lifecycle stage and keeps posterior breakout returns out of the
+daily state. It does not change the frozen phase-gated candidate or shadow lots.
 The weekly audit reports the latest five ledger rows, cumulative real forward
 days, accounting anomalies and differences versus the fixed TSMOM baseline.
 R92 tests one pre-registered overlay at a time with the same T+1 engine, cost

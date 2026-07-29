@@ -277,6 +277,11 @@ from cotton_factor.research_workbench.structure_factors import (
     ResearchStructureFactorsBuildResult,
     build_cf_structure_factors,
 )
+from cotton_factor.research_workbench.symmetric_trend_research import (
+    SymmetricTrendResearchResult,
+    SymmetricTrendWarningRecord,
+    build_cf_symmetric_trend_research,
+)
 from cotton_factor.research_workbench.trend_continuity_board import (
     ResearchTrendContinuityBoardResult,
     TrendContinuityWarningRecord,
@@ -404,6 +409,8 @@ __all__ = [
     "ResearchTrendPhaseEventResult",
     "ResearchTrendPhaseValidationResult",
     "ResearchTrendPhaseV2Result",
+    "SymmetricTrendResearchResult",
+    "SymmetricTrendWarningRecord",
     "ResearchTrendQualityCalibrationResult",
     "ResearchTrendRuleCandidateResult",
     "ResearchValidatedBriefResult",
@@ -501,6 +508,7 @@ __all__ = [
     "build_cf_trend_phase_events",
     "build_cf_trend_phase_validation",
     "build_cf_trend_phase_v2",
+    "build_cf_symmetric_trend_research",
     "build_cf_trend_quality_calibration",
     "build_cf_trend_rule_candidates",
     "build_cf_validated_research_brief",
