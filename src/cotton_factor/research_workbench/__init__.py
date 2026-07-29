@@ -287,6 +287,11 @@ from cotton_factor.research_workbench.trend_continuity_board import (
     TrendContinuityWarningRecord,
     build_cf_trend_continuity_board,
 )
+from cotton_factor.research_workbench.trend_option_timing import (
+    TrendOptionTimingResult,
+    TrendOptionTimingWarningRecord,
+    build_cf_trend_option_timing_research,
+)
 from cotton_factor.research_workbench.trend_phase import (
     TrendPhaseResult,
     classify_cf_trend_phase,
@@ -411,6 +416,8 @@ __all__ = [
     "ResearchTrendPhaseV2Result",
     "SymmetricTrendResearchResult",
     "SymmetricTrendWarningRecord",
+    "TrendOptionTimingResult",
+    "TrendOptionTimingWarningRecord",
     "ResearchTrendQualityCalibrationResult",
     "ResearchTrendRuleCandidateResult",
     "ResearchValidatedBriefResult",
@@ -509,6 +516,7 @@ __all__ = [
     "build_cf_trend_phase_validation",
     "build_cf_trend_phase_v2",
     "build_cf_symmetric_trend_research",
+    "build_cf_trend_option_timing_research",
     "build_cf_trend_quality_calibration",
     "build_cf_trend_rule_candidates",
     "build_cf_validated_research_brief",

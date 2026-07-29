@@ -608,6 +608,7 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay 
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay --overlay ovl_member_position --start 2021-01-04 --end 2026-07-17
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay --overlay ovl_strike_wall --start 2021-01-04 --end 2026-07-17
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-symmetric-trend-research
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-option-timing-research
 ```
 
 The strategy lane uses adjusted continuous settlement prices only for signals.
@@ -618,6 +619,11 @@ replays remain explicitly excluded from the 40-day expansion gate.
 R93A symmetric-trend research runs beside that ledger: it separates long/short
 direction from lifecycle stage and keeps posterior breakout returns out of the
 daily state. It does not change the frozen phase-gated candidate or shadow lots.
+R93B keeps only the first breakout in each independent trend episode, joins
+T-day volatility, IV, skew, PCR OI and strike-wall states, then compares each
+group with the remaining same-horizon episodes using Fisher exact tests and a
+Benjamini-Hochberg correction. It produces research candidates only and does
+not change either registered strategy.
 The weekly audit reports the latest five ledger rows, cumulative real forward
 days, accounting anomalies and differences versus the fixed TSMOM baseline.
 R92 tests one pre-registered overlay at a time with the same T+1 engine, cost

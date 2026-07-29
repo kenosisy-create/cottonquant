@@ -258,6 +258,11 @@ factor platform.
   long/short direction from setup, breakout, trend, deceleration and reversal,
   then evaluates breakout timing and option alignment with posterior labels in
   separate artifacts. It does not change shadow targets or unlock R94-R99.
+- R93B tests whether volatility regime, IV repricing, direction-normalized
+  skew/PCR OI, participation and strike-wall changes add timing information to
+  R93A breakouts. It keeps one first-breakout observation per episode/horizon,
+  compares each group with the remaining independent episodes using Fisher
+  exact tests plus FDR correction, and remains isolated from strategy sizing.
 
 ## Sprint Order
 

@@ -3001,6 +3001,98 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @research_app.command("build-cf-trend-option-timing-research")
+    def research_build_cf_trend_option_timing_research(
+        symmetric_trend_daily_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--symmetric-trend-daily-path",
+                help="Optional R93A symmetric trend daily path.",
+            ),
+        ] = None,
+        breakout_event_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--breakout-event-path",
+                help="Optional R93A breakout event path.",
+            ),
+        ] = None,
+        option_structure_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--option-structure-path",
+                help="Optional R75 option structure path.",
+            ),
+        ] = None,
+        strike_position_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--strike-position-path",
+                help="Optional R84 strike-position path.",
+            ),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R93B data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option(
+                "--report-output-dir",
+                help="R93B report output directory.",
+            ),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R93B run id."),
+        ] = None,
+        rank_window: Annotated[
+            int,
+            typer.Option("--rank-window", help="Rolling percentile-rank window."),
+        ] = 252,
+        rank_min_periods: Annotated[
+            int,
+            typer.Option(
+                "--rank-min-periods",
+                help="Minimum observations for rolling ranks.",
+            ),
+        ] = 60,
+        min_sample_size: Annotated[
+            int,
+            typer.Option(
+                "--min-sample-size",
+                help="Minimum independent episodes for a candidate group.",
+            ),
+        ] = 30,
+        fdr_level: Annotated[
+            float,
+            typer.Option("--fdr-level", help="Benjamini-Hochberg FDR level."),
+        ] = 0.10,
+    ) -> None:
+        """Build R93B trend-environment and option-timing incremental evidence."""
+        from cotton_factor.research_workbench import (
+            build_cf_trend_option_timing_research,
+        )
+
+        try:
+            result = build_cf_trend_option_timing_research(
+                symmetric_trend_daily_path=symmetric_trend_daily_path,
+                breakout_event_path=breakout_event_path,
+                option_structure_path=option_structure_path,
+                strike_position_path=strike_position_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+                rank_window=rank_window,
+                rank_min_periods=rank_min_periods,
+                min_sample_size=min_sample_size,
+                fdr_level=fdr_level,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     @research_app.command("build-cf-current-watch-window")
     def research_build_cf_current_watch_window(
         latest_signal_json_path: Annotated[
@@ -5566,6 +5658,29 @@ else:
         symmetric_trend_parser.add_argument("--horizons", default="1,3,5,10,20")
         symmetric_trend_parser.add_argument("--dead-zone-bps", type=int, default=10)
         symmetric_trend_parser.add_argument("--min-sample-size", type=int, default=30)
+        trend_option_timing_parser = research_subparsers.add_parser(
+            "build-cf-trend-option-timing-research",
+            help="Build R93B trend-environment and option-timing evidence.",
+        )
+        trend_option_timing_parser.add_argument(
+            "--symmetric-trend-daily-path", type=Path
+        )
+        trend_option_timing_parser.add_argument("--breakout-event-path", type=Path)
+        trend_option_timing_parser.add_argument("--option-structure-path", type=Path)
+        trend_option_timing_parser.add_argument("--strike-position-path", type=Path)
+        trend_option_timing_parser.add_argument("--output-dir", type=Path)
+        trend_option_timing_parser.add_argument("--report-output-dir", type=Path)
+        trend_option_timing_parser.add_argument("--run-id")
+        trend_option_timing_parser.add_argument("--rank-window", type=int, default=252)
+        trend_option_timing_parser.add_argument(
+            "--rank-min-periods", type=int, default=60
+        )
+        trend_option_timing_parser.add_argument(
+            "--min-sample-size", type=int, default=30
+        )
+        trend_option_timing_parser.add_argument(
+            "--fdr-level", type=float, default=0.10
+        )
         watch_window_parser = research_subparsers.add_parser(
             "build-cf-current-watch-window",
             help="Build R77 current confirmation/invalidation watch window.",
@@ -6397,6 +6512,34 @@ else:
                     horizons=_parse_horizons(args.horizons),
                     dead_zone_bps=args.dead_zone_bps,
                     min_sample_size=args.min_sample_size,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command
+            == "build-cf-trend-option-timing-research"
+        ):
+            from cotton_factor.research_workbench import (
+                build_cf_trend_option_timing_research,
+            )
+
+            try:
+                result = build_cf_trend_option_timing_research(
+                    symmetric_trend_daily_path=args.symmetric_trend_daily_path,
+                    breakout_event_path=args.breakout_event_path,
+                    option_structure_path=args.option_structure_path,
+                    strike_position_path=args.strike_position_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
+                    rank_window=args.rank_window,
+                    rank_min_periods=args.rank_min_periods,
+                    min_sample_size=args.min_sample_size,
+                    fdr_level=args.fdr_level,
                 )
             except CottonFactorError as exc:
                 print(str(exc))
