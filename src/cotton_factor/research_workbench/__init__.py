@@ -84,6 +84,11 @@ from cotton_factor.research_workbench.factor_diagnostics import (
     ResearchFactorDiagnosticsBuildResult,
     build_cf_factor_diagnostics,
 )
+from cotton_factor.research_workbench.forward_evidence_weekly import (
+    ForwardEvidenceWeeklyResult,
+    ForwardEvidenceWeeklyWarningRecord,
+    build_cf_forward_evidence_weekly,
+)
 from cotton_factor.research_workbench.forward_returns import (
     ForwardReturnWarningRecord,
     ResearchForwardReturnsBuildResult,
@@ -375,6 +380,8 @@ __all__ = [
     "DataContinuityWarningRecord",
     "EventThresholdReviewWarningRecord",
     "EventThresholdSensitivityWarningRecord",
+    "ForwardEvidenceWeeklyResult",
+    "ForwardEvidenceWeeklyWarningRecord",
     "ResearchMappingBuildResult",
     "ResearchMemberPositionIngestResult",
     "ResearchMemberPositionResult",
@@ -514,6 +521,7 @@ __all__ = [
     "build_cf_event_threshold_review_ledger",
     "build_cf_event_threshold_sensitivity",
     "build_cf_expansion_gate",
+    "build_cf_forward_evidence_weekly",
     "build_cf_momentum_factor",
     "build_cf_multifactor_diagnostics",
     "build_cf_research_continuous",

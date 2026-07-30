@@ -3218,6 +3218,77 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @research_app.command("build-cf-forward-evidence-weekly")
+    def research_build_cf_forward_evidence_weekly(
+        as_of_date: Annotated[
+            str | None,
+            typer.Option("--date", help="Optional weekly evidence as-of date."),
+        ] = None,
+        strategy_ledger_root: Annotated[
+            Path | None,
+            typer.Option(
+                "--strategy-ledger-root",
+                help="Optional R90 shadow ledger directory.",
+            ),
+        ] = None,
+        candidate_ledger_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--candidate-ledger-path",
+                help="Optional R93D materialized candidate ledger.",
+            ),
+        ] = None,
+        candidate_event_root: Annotated[
+            Path | None,
+            typer.Option(
+                "--candidate-event-root",
+                help="Optional R93D immutable event directory.",
+            ),
+        ] = None,
+        candidate_run_json_path: Annotated[
+            Path | None,
+            typer.Option(
+                "--candidate-run-json-path",
+                help="Optional current R93D run JSON used for freshness checks.",
+            ),
+        ] = None,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R93E data output directory."),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option(
+                "--report-output-dir",
+                help="R93E report output directory.",
+            ),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable R93E run id."),
+        ] = None,
+    ) -> None:
+        """Build R93E weekly strategy/candidate forward evidence summary."""
+        from cotton_factor.research_workbench import build_cf_forward_evidence_weekly
+
+        try:
+            result = build_cf_forward_evidence_weekly(
+                as_of_date=(
+                    _parse_iso_date(as_of_date) if as_of_date is not None else None
+                ),
+                strategy_ledger_root=strategy_ledger_root,
+                candidate_ledger_path=candidate_ledger_path,
+                candidate_event_root=candidate_event_root,
+                candidate_run_json_path=candidate_run_json_path,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     @research_app.command("build-cf-current-watch-window")
     def research_build_cf_current_watch_window(
         latest_signal_json_path: Annotated[
@@ -5838,6 +5909,28 @@ else:
         )
         trend_candidate_forward_parser.add_argument("--run-id")
         trend_candidate_forward_parser.add_argument("--correction-reason")
+        forward_evidence_weekly_parser = research_subparsers.add_parser(
+            "build-cf-forward-evidence-weekly",
+            help="Build R93E weekly strategy/candidate forward evidence summary.",
+        )
+        forward_evidence_weekly_parser.add_argument("--date")
+        forward_evidence_weekly_parser.add_argument(
+            "--strategy-ledger-root", type=Path
+        )
+        forward_evidence_weekly_parser.add_argument(
+            "--candidate-ledger-path", type=Path
+        )
+        forward_evidence_weekly_parser.add_argument(
+            "--candidate-event-root", type=Path
+        )
+        forward_evidence_weekly_parser.add_argument(
+            "--candidate-run-json-path", type=Path
+        )
+        forward_evidence_weekly_parser.add_argument("--output-dir", type=Path)
+        forward_evidence_weekly_parser.add_argument(
+            "--report-output-dir", type=Path
+        )
+        forward_evidence_weekly_parser.add_argument("--run-id")
         watch_window_parser = research_subparsers.add_parser(
             "build-cf-current-watch-window",
             help="Build R77 current confirmation/invalidation watch window.",
@@ -6749,6 +6842,32 @@ else:
                     report_output_dir=args.report_output_dir,
                     run_id=args.run_id,
                     correction_reason=args.correction_reason,
+                )
+            except CottonFactorError as exc:
+                print(str(exc))
+                return 1
+            print(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+            return 0
+        if (
+            args.command == "research"
+            and args.research_command == "build-cf-forward-evidence-weekly"
+        ):
+            from cotton_factor.research_workbench import (
+                build_cf_forward_evidence_weekly,
+            )
+
+            try:
+                result = build_cf_forward_evidence_weekly(
+                    as_of_date=(
+                        _parse_iso_date(args.date) if args.date is not None else None
+                    ),
+                    strategy_ledger_root=args.strategy_ledger_root,
+                    candidate_ledger_path=args.candidate_ledger_path,
+                    candidate_event_root=args.candidate_event_root,
+                    candidate_run_json_path=args.candidate_run_json_path,
+                    output_dir=args.output_dir,
+                    report_output_dir=args.report_output_dir,
+                    run_id=args.run_id,
                 )
             except CottonFactorError as exc:
                 print(str(exc))

@@ -375,6 +375,10 @@ audit report:
 .\scripts\update_cf_latest_research.ps1 -Year 2026 -RunWeeklyResearchPack
 ```
 
+The weekly switch also refreshes R93A/R93D before building the R93E forward
+evidence summary. Use `-RunForwardEvidenceWeekly` alone for an ad-hoc R93E
+summary without running the full historical weekly pack.
+
 The weekly manifest is written to
 `runs\weekly\CF\<data_asof>\weekly_research_run_manifest.json`.
 The weekly audit is written to
@@ -612,6 +616,7 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-symm
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-option-timing-research
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-candidate-stability-research
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-candidate-forward-ledger
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-forward-evidence-weekly
 ```
 
 The strategy lane uses adjusted continuous settlement prices only for signals.
@@ -635,6 +640,10 @@ R93D writes a capture-only immutable JSON event when a post-registration
 breakout is first observed, then appends a checksum-linked outcome event after
 the fixed 5D/20D label is available. Late captures remain auditable but are
 excluded from strict forward evidence; Parquet is only the materialized view.
+R93E keeps the two forward channels separate in one weekly Chinese report:
+R90 strategy-shadow days track operational/accounting continuity toward the
+40-day governance gate, while R93D captures and outcomes test the preregistered
+5D/20D candidates. Neither count triggers automatic promotion.
 The weekly audit reports the latest five ledger rows, cumulative real forward
 days, accounting anomalies and differences versus the fixed TSMOM baseline.
 R92 tests one pre-registered overlay at a time with the same T+1 engine, cost

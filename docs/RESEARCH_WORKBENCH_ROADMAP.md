@@ -274,6 +274,10 @@ factor platform.
   fixed-horizon outcomes are appended later with checksum lineage. Late capture
   and explicit corrections remain visible and cannot count as strict forward
   proof. The ledger has no strategy or promotion authority.
+- R93E is implemented as a weekly forward-evidence summary. It keeps R90 daily
+  shadow days separate from R93D event/horizon captures, verifies collection
+  freshness and correction visibility, and reports the 40-day governance
+  progress without treating it as statistical proof or automatic promotion.
 
 ## Sprint Order
 

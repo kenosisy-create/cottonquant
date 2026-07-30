@@ -9,6 +9,7 @@ import pandas as pd
 from typer.testing import CliRunner
 
 from cotton_factor.cli.main import app
+from cotton_factor.raw import RawSnapshotStore
 from cotton_factor.research_workbench import (
     connect_cf_official_history,
     default_recent_history_years,
@@ -110,6 +111,42 @@ def test_connect_cf_official_history_from_local_daily_excel_title_date(
     assert list(core["contract_code"]) == ["CF607", "CF609"]
     assert list(core["settle"]) == [16045.0, 16295.0]
     assert list(core["open_interest"]) == [17335, 581306]
+
+
+def test_connect_cf_official_history_reuses_identical_local_snapshot(
+    tmp_path: Path,
+) -> None:
+    source_dir = tmp_path / "incoming" / "CF" / "history" / "daily" / "2026" / "20260706"
+    source_dir.mkdir(parents=True)
+    excel_path = source_dir / "FutureDataDailyCF.xlsx"
+    _official_daily_future_excel(excel_path)
+    raw_root = tmp_path / "raw"
+    core_root = tmp_path / "core"
+
+    first = connect_cf_official_history(
+        years=(2026,),
+        source_dir=source_dir,
+        raw_root=raw_root,
+        core_output_dir=core_root,
+        report_output_dir=tmp_path / "reports",
+        run_id="official_daily_first",
+    )
+    first_core = pd.read_parquet(first.core_output_path)
+    second = connect_cf_official_history(
+        years=(2026,),
+        source_dir=source_dir,
+        raw_root=raw_root,
+        core_output_dir=core_root,
+        report_output_dir=tmp_path / "reports",
+        run_id="official_daily_second",
+    )
+    second_core = pd.read_parquet(second.core_output_path)
+
+    assert first.records[0].snapshot_id == second.records[0].snapshot_id
+    assert len(RawSnapshotStore(raw_root).list_records()) == 1
+    assert first_core["source_snapshot_id"].tolist() == second_core[
+        "source_snapshot_id"
+    ].tolist()
 
 
 def test_connect_cf_official_history_requires_local_or_download(tmp_path: Path) -> None:

@@ -17,6 +17,7 @@
     [switch]$SkipStateUpgradePack,
     [switch]$SkipStrategyShadow,
     [switch]$RunTrendForwardLedger,
+    [switch]$RunForwardEvidenceWeekly,
     [switch]$RunHistoricalEvidence,
     [switch]$RunEventExplanation,
     [switch]$RunEventThresholdSensitivity,
@@ -72,6 +73,8 @@ $runValidatedBriefEffective = $RunValidatedBrief.IsPresent -or $RunWeeklyResearc
 $runPublishPackEffective = $RunPublishPack.IsPresent
 $runDailyOperationAuditEffective = $RunDailyOperationAudit.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runWeeklyManifestEffective = $RunWeeklyResearchPack.IsPresent
+$runTrendForwardLedgerEffective = $RunTrendForwardLedger.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runForwardEvidenceWeeklyEffective = $RunForwardEvidenceWeekly.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runOptionCoreIngestEffective = (
     $RunOptionCoreIngest.IsPresent -or
     ($DownloadOfficialDaily.IsPresent -and -not $SkipOptionDailyDownload.IsPresent)
@@ -628,8 +631,35 @@ if ($trendBoard.trend_quality_calibration_context -and $trendBoard.trend_quality
     Write-Host "Trend quality calibration: $($trendBoard.trend_quality_calibration_context.latest_score_context_label) $($trendBoard.trend_quality_calibration_context.alignment_status)"
 }
 
-if ($RunTrendForwardLedger.IsPresent) {
+$strategyInput = $null
+$strategyInputError = $null
+$strategyInputRequired = $runTrendForwardLedgerEffective -or -not $SkipStrategyShadow.IsPresent
+if ($strategyInputRequired) {
+    try {
+        # R93A 与策略影子复用同一份最新跨年度输入，避免先读到上一交易日文件。
+        $strategyInputJson = & py -3.12 -m cotton_factor.cli.main strategy prepare-inputs `
+            --end "$($metadata.max_trade_date)" `
+            --core-quote-path "$($metadata.core_path)" `
+            --run-id "$RunId"
+        if ($LASTEXITCODE -ne 0) {
+            throw "CF strategy input preparation failed."
+        }
+        $strategyInput = $strategyInputJson | ConvertFrom-Json
+        Write-Host "Strategy inputs: $($strategyInput.manifest_path)"
+    }
+    catch {
+        $strategyInputError = $_.Exception.Message
+        if ($runTrendForwardLedgerEffective) {
+            throw "CF strategy inputs required by R93A/R93D failed: $strategyInputError"
+        }
+        Write-Warning "Strategy inputs unavailable without blocking daily brief: $strategyInputError"
+    }
+}
+
+$trendForwardLedger = $null
+if ($runTrendForwardLedgerEffective) {
     $symmetricTrendJson = & py -3.12 -m cotton_factor.cli.main research build-cf-symmetric-trend-research `
+        --continuous-price-path "$($strategyInput.continuous_price_path)" `
         --run-id "$($RunId)_r93a"
     if ($LASTEXITCODE -ne 0) {
         throw "CF R93A symmetric trend refresh failed."
@@ -651,14 +681,9 @@ if ($RunTrendForwardLedger.IsPresent) {
 $strategyShadow = $null
 if (-not $SkipStrategyShadow.IsPresent) {
     try {
-        $strategyInputJson = & py -3.12 -m cotton_factor.cli.main strategy prepare-inputs `
-            --end "$($metadata.max_trade_date)" `
-            --core-quote-path "$($metadata.core_path)" `
-            --run-id "$RunId"
-        if ($LASTEXITCODE -ne 0) {
-            throw "CF strategy input preparation failed."
+        if ($null -eq $strategyInput) {
+            throw "CF strategy inputs are unavailable: $strategyInputError"
         }
-        $strategyInput = $strategyInputJson | ConvertFrom-Json
         $strategyShadowJson = & py -3.12 -m cotton_factor.cli.main strategy run-shadow `
             --date "$($metadata.max_trade_date)" `
             --record-mode "FORWARD_CAPTURE" `
@@ -667,7 +692,6 @@ if (-not $SkipStrategyShadow.IsPresent) {
             throw "CF strategy shadow failed."
         }
         $strategyShadow = $strategyShadowJson | ConvertFrom-Json
-        Write-Host "Strategy inputs: $($strategyInput.manifest_path)"
         Write-Host "Strategy shadow: $($strategyShadow.markdown_path)"
     }
     catch {
@@ -676,6 +700,33 @@ if (-not $SkipStrategyShadow.IsPresent) {
 }
 else {
     Write-Host "Strategy shadow: skipped by -SkipStrategyShadow."
+}
+
+if ($runForwardEvidenceWeeklyEffective) {
+    $forwardEvidenceArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-forward-evidence-weekly",
+        "--date",
+        "$($metadata.max_trade_date)",
+        "--run-id",
+        "$($RunId)_r93e"
+    )
+    if ($null -ne $trendForwardLedger) {
+        $forwardEvidenceArgs += @(
+            "--candidate-run-json-path",
+            "$($trendForwardLedger.json_path)"
+        )
+    }
+    $forwardEvidenceJson = & py @forwardEvidenceArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93E weekly forward evidence summary failed."
+    }
+    $forwardEvidenceWeekly = $forwardEvidenceJson | ConvertFrom-Json
+    Write-Host "Forward evidence weekly: $($forwardEvidenceWeekly.markdown_path)"
+    Write-Host "Forward evidence status: $($forwardEvidenceWeekly.status), strategy days=$($forwardEvidenceWeekly.strategy_forward_days)/$($forwardEvidenceWeekly.governance_target_days), candidate captures=$($forwardEvidenceWeekly.candidate_capture_count)"
 }
 
 if ($runDailyOperationAuditEffective) {

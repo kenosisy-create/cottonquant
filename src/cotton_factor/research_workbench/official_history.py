@@ -21,7 +21,7 @@ from cotton_factor.common.hashing import sha256_bytes
 from cotton_factor.common.paths import data_dir, reports_dir
 from cotton_factor.common.time import utc_now
 from cotton_factor.core.schemas import CoreQuoteDailyRow
-from cotton_factor.raw import RawSnapshotStore
+from cotton_factor.raw import RawSnapshotRecord, RawSnapshotStore
 
 PRODUCT_CODE = "CF"
 EXCHANGE = "CZCE"
@@ -187,30 +187,40 @@ def connect_cf_official_history(
         if payload is None:
             raise ResearchWorkbenchError(f"internal error: missing payload for {year}")
 
-        snapshot = store.write_snapshot(
+        # 相同本地官方文件重跑时复用已校验快照，避免仅因新 snapshot_id 改写 core lineage。
+        snapshot = _find_reusable_local_snapshot(
+            store=store,
             payload=payload,
-            source_name=SOURCE_NAME,
-            product_code=PRODUCT_CODE,
-            content_type="application/zip",
-            biz_date=None,
-            metadata={
-                "year": year,
-                "history_year": year,
-                "official_url": official_url,
-                "official_page_url": OFFICIAL_HISTORY_PAGE_URL,
-                "source_path": str(source_path) if source_path is not None else None,
-                "fetch_mode": "local_archive" if source_path is not None else "download",
-                "run_id": run_id,
-                "parser_version": PARSER_VERSION,
-                "volume_open_interest_turnover_scope": (
-                    "single_sided_after_2020_per_official_page"
-                ),
-                "normalizes_business_fields": False,
-                "source_layer": "raw_snapshot",
-                "captured_at": utc_now().isoformat(),
-            },
-            parser_version=PARSER_VERSION,
+            year=year,
+            source_path=source_path,
         )
+        if snapshot is None:
+            snapshot = store.write_snapshot(
+                payload=payload,
+                source_name=SOURCE_NAME,
+                product_code=PRODUCT_CODE,
+                content_type="application/zip",
+                biz_date=None,
+                metadata={
+                    "year": year,
+                    "history_year": year,
+                    "official_url": official_url,
+                    "official_page_url": OFFICIAL_HISTORY_PAGE_URL,
+                    "source_path": str(source_path) if source_path is not None else None,
+                    "fetch_mode": (
+                        "local_archive" if source_path is not None else "download"
+                    ),
+                    "run_id": run_id,
+                    "parser_version": PARSER_VERSION,
+                    "volume_open_interest_turnover_scope": (
+                        "single_sided_after_2020_per_official_page"
+                    ),
+                    "normalizes_business_fields": False,
+                    "source_layer": "raw_snapshot",
+                    "captured_at": utc_now().isoformat(),
+                },
+                parser_version=PARSER_VERSION,
+            )
 
         try:
             # 解析只发生在 core 标准化层；研究模块后续只能读 core parquet。
@@ -292,6 +302,40 @@ def official_history_url(year: int) -> str:
     """Return the official annual history ZIP URL for one year."""
     _validate_year(year)
     return OFFICIAL_HISTORY_URL_TEMPLATE.format(year=year)
+
+
+def _find_reusable_local_snapshot(
+    *,
+    store: RawSnapshotStore,
+    payload: bytes,
+    year: int,
+    source_path: Path | None,
+) -> RawSnapshotRecord | None:
+    """复用同路径同内容的本地快照；网络抓取仍保留每次采集事实。"""
+    if source_path is None:
+        return None
+    payload_sha256 = sha256_bytes(payload)
+    resolved_source = str(source_path.resolve())
+    candidates = store.find_records(
+        source_name=SOURCE_NAME,
+        product_code=PRODUCT_CODE,
+        year=year,
+    )
+    for record in reversed(candidates):
+        if record.sha256 != payload_sha256 or record.parser_version != PARSER_VERSION:
+            continue
+        recorded_source = record.metadata.get("source_path")
+        if recorded_source is None:
+            continue
+        try:
+            same_source = str(Path(str(recorded_source)).resolve()) == resolved_source
+        except OSError:
+            same_source = str(recorded_source) == resolved_source
+        if same_source:
+            # replay 会再次验证 payload 大小与 checksum，损坏快照不得复用。
+            store.replay(record.snapshot_id)
+            return record
+    return None
 
 
 def _download_official_archive(*, year: int) -> tuple[bytes | None, str | None]:
