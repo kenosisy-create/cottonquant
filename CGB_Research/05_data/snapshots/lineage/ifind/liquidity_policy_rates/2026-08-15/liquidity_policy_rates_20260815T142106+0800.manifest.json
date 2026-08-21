@@ -1,0 +1,109 @@
+{
+  "status": "success",
+  "dataset_id": "liquidity_policy_rates",
+  "as_of": "2026-08-15",
+  "fetched_at": "2026-08-15T14:21:06.699150+08:00",
+  "source": "iFinD API",
+  "sdk_version": "0.0.8",
+  "credential_target": "iFinD_API_Weekly_Report",
+  "request_file": "D:\\国债\\ifind_rebuild\\requests\\liquidity_policy_rates.json",
+  "request": {
+    "dataset_id": "liquidity_policy_rates",
+    "as_of": "2026-08-15",
+    "function": "THS_EDB",
+    "args": [
+      "M003135214;M002816448;M002816449;L001618739;L001619493;M004609298;M004609299;M004211453;M036089935;M036089917;L004428067;M002816523;M004369940;M002816548",
+      "",
+      "2022-01-01",
+      "2026-08-15"
+    ],
+    "effective_command": "THS_EDB('M003135214;M002816448;M002816449;L001618739;L001619493;M004609298;M004609299;M004211453;M036089935;M036089917;L004428067;M002816523;M004369940;M002816548','','2022-01-01','2026-08-15')",
+    "source_command": "THS_EDB('M003135214;M002816448;M002816449;L001618739;L001619493;M004609298;M004609299;M004211453;M036089935;M036089917;L004428067;M002816523;M004369940;M002816548','','2025-08-15','2026-08-15')",
+    "indicator_map": [
+      {
+        "id": "M003135214",
+        "label": "货币净投放量"
+      },
+      {
+        "id": "M002816448",
+        "label": "Shibor:隔夜"
+      },
+      {
+        "id": "M002816449",
+        "label": "Shibor:1周"
+      },
+      {
+        "id": "L001618739",
+        "label": "DR001"
+      },
+      {
+        "id": "L001619493",
+        "label": "DR007"
+      },
+      {
+        "id": "M004609298",
+        "label": "贷款市场报价利率(LPR):1年"
+      },
+      {
+        "id": "M004609299",
+        "label": "贷款市场报价利率(LPR):5年"
+      },
+      {
+        "id": "M004211453",
+        "label": "中期借贷便利(MLF):操作利率:1年"
+      },
+      {
+        "id": "M036089935",
+        "label": "中期借贷便利(MLF):净投放金额:当月值"
+      },
+      {
+        "id": "M036089917",
+        "label": "中期借贷便利(MLF):投放金额:当月值"
+      },
+      {
+        "id": "L004428067",
+        "label": "中债商业银行同业存单到期收益率(AAA-):1年"
+      },
+      {
+        "id": "M002816523",
+        "label": "超额存款准备金利率"
+      },
+      {
+        "id": "M004369940",
+        "label": "常备借贷便利(SLF):操作利率:7天"
+      },
+      {
+        "id": "M002816548",
+        "label": "逆回购:7日:回购利率"
+      }
+    ],
+    "local_derivations": [
+      "MLF投放金额按月映射到日频",
+      "AAA-同业存单1Y减MLF操作利率1Y",
+      "政策利率和准备金利率按前值填充到日历日"
+    ],
+    "expected": {
+      "indicator_count": 14,
+      "start_date": "2022-01-01",
+      "end_date": "2026-08-15"
+    }
+  },
+  "response": {
+    "errorcode": 0,
+    "dataVol": 8214,
+    "row_count": 8214,
+    "column_count": 5,
+    "columns": [
+      "time",
+      "id",
+      "value",
+      "index_name",
+      "rtime"
+    ],
+    "raw_sha256": "a287b8e594990f8773966b00d300f119a9c792fa46ec5b60bd4ea4b7e7ea28d5"
+  },
+  "files": {
+    "raw_json": "D:\\国债\\ifind_data\\raw\\liquidity_policy_rates\\2026-08-15\\liquidity_policy_rates_20260815T142106+0800.json",
+    "normalized_csv": "D:\\国债\\ifind_data\\normalized\\liquidity_policy_rates\\2026-08-15\\liquidity_policy_rates_20260815T142106+0800.csv"
+  }
+}

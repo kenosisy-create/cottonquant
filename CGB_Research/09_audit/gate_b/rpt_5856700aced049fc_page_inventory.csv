@@ -1,0 +1,14 @@
+﻿report_id,page,page_class,text_char_count,chart_dependency,visual_review_required,review_status,notes
+rpt_5856700aced049fc,1,text,1229,none,no,reviewed_text,策略摘要与核心观点；宏观资金价格和策略均有明确文字
+rpt_5856700aced049fc,2,divider,5879,none,no,reviewed_text,目录与图表目录前半；点线字符较多导致字符量较高
+rpt_5856700aced049fc,3,divider,2228,none,no,reviewed_text,图表目录后半；含一行PDF模板噪声但不影响识别
+rpt_5856700aced049fc,4,text,604,supportive,no,reviewed_text,三张文字表；部分更新表未打印实际观察日
+rpt_5856700aced049fc,5,chart,507,supportive,no,reviewed_text,图1至图4跳过视觉复核；表4量仓数字由文字层读取
+rpt_5856700aced049fc,6,chart,403,supportive,no,reviewed_text,图5至图8跳过视觉复核；表5及章节标题由文字层读取
+rpt_5856700aced049fc,7,chart,330,supportive,no,skipped_not_required,发行与跨期跨品种图；正文未给图表方向故不取点
+rpt_5856700aced049fc,8,chart,340,supportive,no,skipped_not_required,3T-TL方向已由第1页文字给出；TS的IRR基差净基差图不取点
+rpt_5856700aced049fc,9,chart,335,supportive,no,skipped_not_required,TF和T相关图表不取点；图24章节归属存在版面歧义
+rpt_5856700aced049fc,10,chart,349,supportive,no,skipped_not_required,T和TL的IRR基差净基差图不取点
+rpt_5856700aced049fc,11,low_text,82,none,no,reviewed_text,仅页眉页脚和空白版面；无研究证据
+rpt_5856700aced049fc,12,disclaimer,841,none,no,reviewed_text,署名联系信息与免责声明
+rpt_5856700aced049fc,13,divider,101,none,no,reviewed_text,封底联系信息

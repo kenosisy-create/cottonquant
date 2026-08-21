@@ -1,0 +1,43 @@
+{
+  "manifest_version": "1.0",
+  "created_at": "2026-08-16T10:34:15+08:00",
+  "file_role": "full_snapshot",
+  "effective": false,
+  "candidate_file": "09_audit/gate_b/indicator_candidates_v0.2.csv",
+  "candidate_sha256": "a1aa89c2c53a5172ec327fce3fb7fc2a932375f9b52f5232989a8006487afa83",
+  "row_count": 65,
+  "unique_indicator_id_count": 65,
+  "parent_file": "09_audit/gate_a/indicator_candidates_v0.1.csv",
+  "parent_sha256": "b3b701bbe484ba5b644c3114862ef06b3adcdbac6c83ba99f2752ecffcd226e2",
+  "parent_row_count": 41,
+  "inherited_row_count": 41,
+  "modified_inherited_indicator_ids": [
+    "cgb_ga_deliverable_conversion_factor",
+    "cgb_ga_gross_basis",
+    "cgb_ga_carry_to_delivery",
+    "cgb_ga_net_basis",
+    "cgb_ga_irr",
+    "cgb_ga_irr_funding_spread",
+    "cgb_ga_ctd_bond"
+  ],
+  "new_row_count": 24,
+  "new_indicator_id_count": 24,
+  "status_counts": {
+    "proposed_gate_a": 34,
+    "proposed_gate_a_blocked_dependency": 7,
+    "proposed_gate_b": 15,
+    "proposed_gate_b_availability_review": 5,
+    "proposed_gate_b_blocked_dependency": 4
+  },
+  "framework_file": "03_frameworks/gate_ab_integrated_framework_v0.2.md",
+  "framework_sha256": "d838f972aaad3aa9281af88710ae38d92d5214e6d11b897abf992b6a46f7fded",
+  "framework_effective": true,
+  "approval_status": "gate_b_approved_20260821",
+  "approved_at": "2026-08-21",
+  "encoding": "UTF-8-SIG",
+  "line_ending": "CRLF",
+  "import_policy": "select_exactly_one_version",
+  "proposal_evidence_semantics": "evidence_class explains why an indicator is proposed; it does not identify the source of production values",
+  "production_value_source_required": "[X]",
+  "promotion_status": "disabled_pending_dependency_validation"
+}

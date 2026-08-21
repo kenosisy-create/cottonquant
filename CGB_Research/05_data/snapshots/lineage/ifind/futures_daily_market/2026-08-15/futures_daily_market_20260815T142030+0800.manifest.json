@@ -1,0 +1,64 @@
+{
+  "status": "success",
+  "dataset_id": "futures_daily_market",
+  "as_of": "2026-08-15",
+  "fetched_at": "2026-08-15T14:20:30.505190+08:00",
+  "source": "iFinD API",
+  "sdk_version": "0.0.8",
+  "credential_target": "iFinD_API_Weekly_Report",
+  "request_file": "D:\\国债\\ifind_rebuild\\requests\\futures_daily_market.json",
+  "request": {
+    "dataset_id": "futures_daily_market",
+    "as_of": "2026-08-15",
+    "function": "THS_DS",
+    "args": [
+      "TZL.CFE,TFZL.CFE,TLZL.CFE,TSZL.CFE",
+      "ths_delivery_month_future;ths_close_price_future;ths_settle_future",
+      ";;",
+      "",
+      "2020-01-02",
+      "2026-08-15"
+    ],
+    "effective_command": "THS_DS('TZL.CFE,TFZL.CFE,TLZL.CFE,TSZL.CFE','ths_delivery_month_future;ths_close_price_future;ths_settle_future',';;','','2020-01-02','2026-08-15')",
+    "source_command": "THS_DS('TZL.CFE,TFZL.CFE,TLZL.CFE,TSZL.CFE','ths_delivery_month_future;ths_close_price_future;ths_settle_future',';;','','2026-07-15','2026-08-15')",
+    "indicator_map": [
+      {
+        "id": "ths_delivery_month_future",
+        "label": "交割月份"
+      },
+      {
+        "id": "ths_close_price_future",
+        "label": "收盘价"
+      },
+      {
+        "id": "ths_settle_future",
+        "label": "结算价"
+      }
+    ],
+    "expected": {
+      "code_count": 4,
+      "indicator_count": 3,
+      "frequency": "daily trading observations",
+      "start_date": "2020-01-02",
+      "end_date": "2026-08-15"
+    }
+  },
+  "response": {
+    "errorcode": 0,
+    "dataVol": 19248,
+    "row_count": 6416,
+    "column_count": 5,
+    "columns": [
+      "time",
+      "thscode",
+      "ths_delivery_month_future",
+      "ths_close_price_future",
+      "ths_settle_future"
+    ],
+    "raw_sha256": "1860ba401259aff347fa87700e1d455a8a151cd558143bbcafe196b56aff0479"
+  },
+  "files": {
+    "raw_json": "D:\\国债\\ifind_data\\raw\\futures_daily_market\\2026-08-15\\futures_daily_market_20260815T142030+0800.json",
+    "normalized_csv": "D:\\国债\\ifind_data\\normalized\\futures_daily_market\\2026-08-15\\futures_daily_market_20260815T142030+0800.csv"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "status": "success",
+  "dataset_id": "specified_bond_irr_tl",
+  "as_of": "2026-08-15",
+  "fetched_at": "2026-08-15T14:24:52.985908+08:00",
+  "source": "iFinD API",
+  "sdk_version": "0.0.8",
+  "credential_target": "iFinD_API_Weekly_Report",
+  "request_file": "D:\\国债\\ifind_rebuild\\requests\\specified_bond_irr_tl.json",
+  "request": {
+    "dataset_id": "specified_bond_irr_tl",
+    "as_of": "2026-08-15",
+    "function": "THS_DS",
+    "args": [
+      "2600004.IB,2600002.IB,2500006.IB",
+      "ths_bondfuture_irr_bond",
+      "TL00.CFE",
+      "",
+      "2026-06-01",
+      "2026-08-15"
+    ],
+    "effective_command": "THS_DS('2600004.IB,2600002.IB,2500006.IB','ths_bondfuture_irr_bond','TL00.CFE','','2026-06-01','2026-08-15')",
+    "selection_basis": "top 3 report-date volumes within the original TL deliverable list",
+    "expected": {
+      "bond_count": 3,
+      "futures_contract": "TL00.CFE"
+    }
+  },
+  "response": {
+    "errorcode": 0,
+    "dataVol": 162,
+    "row_count": 162,
+    "column_count": 3,
+    "columns": [
+      "time",
+      "thscode",
+      "ths_bondfuture_irr_bond"
+    ],
+    "raw_sha256": "dcb7728435de5f768c246369833a3de8d626c44a9093da25e7c812badeaa2f8c"
+  },
+  "files": {
+    "raw_json": "D:\\国债\\ifind_data\\raw\\specified_bond_irr_tl\\2026-08-15\\specified_bond_irr_tl_20260815T142452+0800.json",
+    "normalized_csv": "D:\\国债\\ifind_data\\normalized\\specified_bond_irr_tl\\2026-08-15\\specified_bond_irr_tl_20260815T142452+0800.csv"
+  }
+}

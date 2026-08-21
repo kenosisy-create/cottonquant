@@ -1,0 +1,41 @@
+{
+  "status": "success",
+  "dataset_id": "excess_reserve_rate_history",
+  "as_of": "2026-08-15",
+  "fetched_at": "2026-08-15T14:26:55.917045+08:00",
+  "source": "iFinD API",
+  "sdk_version": "0.0.8",
+  "credential_target": "iFinD_API_Weekly_Report",
+  "request_file": "D:\\国债\\ifind_rebuild\\requests\\excess_reserve_rate_history.json",
+  "request": {
+    "dataset_id": "excess_reserve_rate_history",
+    "as_of": "2026-08-15",
+    "function": "THS_EDB",
+    "args": [
+      "M002816523",
+      "",
+      "2000-01-01",
+      "2026-08-15"
+    ],
+    "effective_command": "THS_EDB('M002816523','','2000-01-01','2026-08-15')",
+    "reason": "No observation was returned after 2022-01-01; retrieve the last historical policy-rate observation for forward filling."
+  },
+  "response": {
+    "errorcode": 0,
+    "dataVol": 5,
+    "row_count": 5,
+    "column_count": 5,
+    "columns": [
+      "time",
+      "id",
+      "value",
+      "index_name",
+      "rtime"
+    ],
+    "raw_sha256": "4899bbb5ab6cc80f8cbec0c9244b8de2e3ab4c0f078863b385278ebeeb283b01"
+  },
+  "files": {
+    "raw_json": "D:\\国债\\ifind_data\\raw\\excess_reserve_rate_history\\2026-08-15\\excess_reserve_rate_history_20260815T142655+0800.json",
+    "normalized_csv": "D:\\国债\\ifind_data\\normalized\\excess_reserve_rate_history\\2026-08-15\\excess_reserve_rate_history_20260815T142655+0800.csv"
+  }
+}

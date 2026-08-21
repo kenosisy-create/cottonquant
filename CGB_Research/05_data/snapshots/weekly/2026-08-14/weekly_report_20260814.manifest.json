@@ -1,0 +1,115 @@
+{
+  "project": "国债周报底稿重建",
+  "report_date": "2026-08-14",
+  "built_at": "2026-08-15T15:33:38+08:00",
+  "database": "D:\\国债\\ifind_data\\local_mart\\2026-08-14\\weekly_report_20260814.sqlite",
+  "database_sha256": "4c737969c0a501c1432e461b6ec7121d78a70f51bc87c62eb7b3eb5e7f289361",
+  "table_rows": {
+    "yield_curve_daily": 19136,
+    "yield_curve_wide": 1472,
+    "futures_market_daily": 6416,
+    "futures_ctd_daily": 1100,
+    "deliverable_bond_master": 56,
+    "deliverable_bond_volume": 56,
+    "specified_bond_irr_daily": 702,
+    "active_bond_selection": 10,
+    "manufacturing_pmi_monthly": 266,
+    "manufacturing_pmi_wide": 19,
+    "liquidity_policy_raw": 8214,
+    "liquidity_policy_calendar": 1688,
+    "omo_weekly": 237,
+    "curve_and_futures_spreads": 1429,
+    "report_futures_summary": 4,
+    "report_yield_changes": 4,
+    "report_yield_curve_snapshots": 78
+  },
+  "lineage": [
+    {
+      "dataset_id": "yield_curve_cgb",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\yield_curve_cgb\\2026-08-15\\yield_curve_cgb_20260815T135558+0800.csv",
+      "normalized_sha256": "bb25afa0eea0c74b64c20c523edc56da49a91def094048b2ff0b996ad22f6e45",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\yield_curve_cgb\\2026-08-15\\yield_curve_cgb_20260815T135558+0800.manifest.json"
+    },
+    {
+      "dataset_id": "bond_futures_ctd_metrics",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\bond_futures_ctd_metrics\\2026-08-15\\bond_futures_ctd_metrics_20260815T135839+0800.csv",
+      "normalized_sha256": "15f17f0efe53e9a12a37af1b2e21fbcd02dd0f709fc1419c946cb1b96f1e7201",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\bond_futures_ctd_metrics\\2026-08-15\\bond_futures_ctd_metrics_20260815T135839+0800.manifest.json"
+    },
+    {
+      "dataset_id": "manufacturing_pmi_headline",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\manufacturing_pmi_headline\\2026-08-15\\manufacturing_pmi_headline_20260815T135901+0800.csv",
+      "normalized_sha256": "dba6b736927fe73ef650131285e1d6fd56925598bc506e1fbee176bf5e2a3c8e",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\manufacturing_pmi_headline\\2026-08-15\\manufacturing_pmi_headline_20260815T135901+0800.manifest.json"
+    },
+    {
+      "dataset_id": "futures_daily_market",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\futures_daily_market\\2026-08-15\\futures_daily_market_20260815T142030+0800.csv",
+      "normalized_sha256": "86908c93946e779691b54b878b96a2111f09eca17c2ac09c8e248c9195827710",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\futures_daily_market\\2026-08-15\\futures_daily_market_20260815T142030+0800.manifest.json"
+    },
+    {
+      "dataset_id": "liquidity_policy_rates",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\liquidity_policy_rates\\2026-08-15\\liquidity_policy_rates_20260815T142106+0800.csv",
+      "normalized_sha256": "6995e29033d2347e647de38722bd63385ae554bc485143f949d961398c8a5e72",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\liquidity_policy_rates\\2026-08-15\\liquidity_policy_rates_20260815T142106+0800.manifest.json"
+    },
+    {
+      "dataset_id": "deliverable_bond_volume",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\deliverable_bond_volume\\2026-08-15\\deliverable_bond_volume_20260815T142224+0800.csv",
+      "normalized_sha256": "52e149e190d99e97a8cc09867423e85c9dea529f525e49f173f7eef97125aba4",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\deliverable_bond_volume\\2026-08-15\\deliverable_bond_volume_20260815T142224+0800.manifest.json"
+    },
+    {
+      "dataset_id": "specified_bond_irr_ts",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\specified_bond_irr_ts\\2026-08-15\\specified_bond_irr_ts_20260815T142356+0800.csv",
+      "normalized_sha256": "9f8260f685b35949f60c7b670dfdfa942d890d4dfe1bf01929d5d251810a90c5",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\specified_bond_irr_ts\\2026-08-15\\specified_bond_irr_ts_20260815T142356+0800.manifest.json"
+    },
+    {
+      "dataset_id": "specified_bond_irr_ts_fallback",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\specified_bond_irr_ts_fallback\\2026-08-15\\specified_bond_irr_ts_fallback_20260815T142950+0800.csv",
+      "normalized_sha256": "2ec062c3545b00565a93bcc9c67a21f5b57c8562edce49eaafe3f8803316c3ab",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\specified_bond_irr_ts_fallback\\2026-08-15\\specified_bond_irr_ts_fallback_20260815T142950+0800.manifest.json"
+    },
+    {
+      "dataset_id": "specified_bond_irr_tf",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\specified_bond_irr_tf\\2026-08-15\\specified_bond_irr_tf_20260815T142415+0800.csv",
+      "normalized_sha256": "8e54a04c3fe9fbafb7766acd479daaba7583be616856c172c91ba433af2a69e6",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\specified_bond_irr_tf\\2026-08-15\\specified_bond_irr_tf_20260815T142415+0800.manifest.json"
+    },
+    {
+      "dataset_id": "specified_bond_irr_t",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\specified_bond_irr_t\\2026-08-15\\specified_bond_irr_t_20260815T142434+0800.csv",
+      "normalized_sha256": "314edd623f657db442518645163ee39d1828e1ebc37eda1d5ae5e426b8d532e3",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\specified_bond_irr_t\\2026-08-15\\specified_bond_irr_t_20260815T142434+0800.manifest.json"
+    },
+    {
+      "dataset_id": "specified_bond_irr_tl",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\specified_bond_irr_tl\\2026-08-15\\specified_bond_irr_tl_20260815T142452+0800.csv",
+      "normalized_sha256": "5e49eac04858eb67c17c64cc8076278e94b1602191ff977abcd5e78dd2329bd3",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\specified_bond_irr_tl\\2026-08-15\\specified_bond_irr_tl_20260815T142452+0800.manifest.json"
+    },
+    {
+      "dataset_id": "excess_reserve_ratio",
+      "normalized_csv": "D:\\国债\\ifind_data\\normalized\\excess_reserve_ratio\\2026-08-15\\excess_reserve_ratio_20260815T143957+0800.csv",
+      "normalized_sha256": "8356ecd32d0227e0971bfec944e7af11a9f61e5a48c8c8eba13c37765e953f58",
+      "manifest": "D:\\国债\\ifind_data\\manifests\\excess_reserve_ratio\\2026-08-15\\excess_reserve_ratio_20260815T143957+0800.manifest.json"
+    }
+  ],
+  "quality_assertions": {
+    "yield_curve_latest_complete": true,
+    "futures_latest_complete": true,
+    "ctd_latest_complete": true,
+    "selected_bond_counts": {
+      "T": 3,
+      "TF": 2,
+      "TL": 3,
+      "TS": 2
+    },
+    "weekly_omo_net_injection_100m": 2505.0,
+    "excess_reserve_ratio_latest_pct": 1.3,
+    "ts2609_excludes_260011": true,
+    "ts2609_includes_260006": true
+  }
+}

@@ -1,0 +1,19 @@
+# Preserve audit-facing CSV line endings and byte-order marks.
+.gitattributes text eol=lf
+.gitignore text eol=lf
+
+*.csv text eol=crlf
+
+# Project-authored text files use stable LF in the repository.
+*.md text eol=lf
+*.py text eol=lf
+*.mjs text eol=lf
+*.json text eol=lf
+
+# Historical v1 manifests and request templates are byte-for-byte evidence.
+# Mark them binary so Git neither normalizes bytes nor treats preserved CRLF as whitespace errors.
+05_data/snapshots/lineage/** binary
+05_data/snapshots/weekly/**/*.manifest.json binary
+08_scripts/config/ifind_requests/templates/*.json binary
+09_audit/legacy_ifind/*.json binary
+

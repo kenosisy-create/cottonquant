@@ -1,0 +1,36 @@
+{
+  "dataset_id": "futures_daily_market",
+  "as_of": "2026-08-15",
+  "function": "THS_DS",
+  "args": [
+    "TZL.CFE,TFZL.CFE,TLZL.CFE,TSZL.CFE",
+    "ths_delivery_month_future;ths_close_price_future;ths_settle_future",
+    ";;",
+    "",
+    "2020-01-02",
+    "2026-08-15"
+  ],
+  "effective_command": "THS_DS('TZL.CFE,TFZL.CFE,TLZL.CFE,TSZL.CFE','ths_delivery_month_future;ths_close_price_future;ths_settle_future',';;','','2020-01-02','2026-08-15')",
+  "source_command": "THS_DS('TZL.CFE,TFZL.CFE,TLZL.CFE,TSZL.CFE','ths_delivery_month_future;ths_close_price_future;ths_settle_future',';;','','2026-07-15','2026-08-15')",
+  "indicator_map": [
+    {
+      "id": "ths_delivery_month_future",
+      "label": "交割月份"
+    },
+    {
+      "id": "ths_close_price_future",
+      "label": "收盘价"
+    },
+    {
+      "id": "ths_settle_future",
+      "label": "结算价"
+    }
+  ],
+  "expected": {
+    "code_count": 4,
+    "indicator_count": 3,
+    "frequency": "daily trading observations",
+    "start_date": "2020-01-02",
+    "end_date": "2026-08-15"
+  }
+}

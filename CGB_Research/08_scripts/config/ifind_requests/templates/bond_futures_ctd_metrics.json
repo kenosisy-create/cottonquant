@@ -1,0 +1,78 @@
+{
+  "dataset_id": "bond_futures_ctd_metrics",
+  "as_of": "2026-08-15",
+  "function": "THS_DS",
+  "args": [
+    "TFZL.CFE,TSZL.CFE,TLZL.CFE,TZL.CFE",
+    "ths_ctd_new_future;ths_bondfuture_basis_new_future;ths_irr_new_future;ths_spread_new_future;ths_net_basis_new_future;ths_invoiceprice_new_future",
+    "100,100,2;100,100,2;100,100,2;100,100,2;100,100,2,108;100,100,2",
+    "",
+    "2025-05-21",
+    "2026-08-15"
+  ],
+  "effective_command": "THS_DS('TFZL.CFE,TSZL.CFE,TLZL.CFE,TZL.CFE','ths_ctd_new_future;ths_bondfuture_basis_new_future;ths_irr_new_future;ths_spread_new_future;ths_net_basis_new_future;ths_invoiceprice_new_future','100,100,2;100,100,2;100,100,2;100,100,2;100,100,2,108;100,100,2','','2025-07-01','2026-08-15')",
+  "source_commands": [
+    "THS_DS('TFZL.CFE,TSZL.CFE,TLZL.CFE,TZL.CFE','ths_ctd_new_future;ths_bondfuture_basis_new_future;ths_irr_new_future;ths_spread_new_future;ths_net_basis_new_future;ths_invoiceprice_new_future','100,100,2;100,100,2;100,100,2;100,100,2;100,100,2,108;100,100,2','','2026-07-15','2026-08-15')",
+    "THS_DS('TZL.CFE','ths_irr_new_future','100,100,2','','2026-07-15','2026-08-15')"
+  ],
+  "indicator_map": [
+    {
+      "id": "ths_ctd_new_future",
+      "label": "CTD"
+    },
+    {
+      "id": "ths_bondfuture_basis_new_future",
+      "label": "基差"
+    },
+    {
+      "id": "ths_irr_new_future",
+      "label": "IRR"
+    },
+    {
+      "id": "ths_spread_new_future",
+      "label": "期现价差"
+    },
+    {
+      "id": "ths_net_basis_new_future",
+      "label": "净基差"
+    },
+    {
+      "id": "ths_invoiceprice_new_future",
+      "label": "发票价格"
+    }
+  ],
+  "code_map": [
+    {
+      "code": "TSZL.CFE",
+      "contract": "TS",
+      "tenor": "2Y"
+    },
+    {
+      "code": "TFZL.CFE",
+      "contract": "TF",
+      "tenor": "5Y"
+    },
+    {
+      "code": "TZL.CFE",
+      "contract": "T",
+      "tenor": "10Y"
+    },
+    {
+      "code": "TLZL.CFE",
+      "contract": "TL",
+      "tenor": "30Y"
+    }
+  ],
+  "expected": {
+    "frequency": "daily trading observations",
+    "code_count": 4,
+    "indicator_count": 6,
+    "minimum_trading_days": 252,
+    "start_date": "2025-07-01",
+    "end_date": "2026-08-15"
+  },
+  "review_status": {
+    "ctd_crosscheck": "matched Wind cache on all overlapping code-dates tested",
+    "valuation_fields": "pending parameter-definition confirmation; do not mix with Wind values"
+  }
+}

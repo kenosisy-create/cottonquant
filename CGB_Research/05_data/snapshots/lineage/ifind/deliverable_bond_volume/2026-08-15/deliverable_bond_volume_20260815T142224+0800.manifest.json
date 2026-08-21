@@ -1,0 +1,52 @@
+{
+  "status": "success",
+  "dataset_id": "deliverable_bond_volume",
+  "as_of": "2026-08-15",
+  "fetched_at": "2026-08-15T14:22:24.781681+08:00",
+  "source": "iFinD API",
+  "sdk_version": "0.0.8",
+  "credential_target": "iFinD_API_Weekly_Report",
+  "request_file": "D:\\国债\\ifind_rebuild\\requests\\deliverable_bond_volume.json",
+  "request": {
+    "dataset_id": "deliverable_bond_volume",
+    "as_of": "2026-08-15",
+    "function": "THS_DS",
+    "args": [
+      "260006.IB,230008.IB,250010.IB,260013.IB,230015.IB,250015.IB,230021.IB,230022.IB,250023.IB,240001.IB,260004.IB,240008.IB,260011.IB,250020.IB,230028.IB,260003.IB,240006.IB,260008.IB,240013.IB,260015.IB,240018.IB,240025.IB,2500802.IB,260007.IB,230012.IB,260012.IB,230018.IB,230026.IB,240004.IB,240011.IB,240017.IB,2400101.IB,240023.IB,250004.IB,250009.IB,250011.IB,250016.IB,250022.IB,2500101.IB,260005.IB,260010.IB,210014.IB,220008.IB,220024.IB,230009.IB,230023.IB,2400001.IB,2400004.IB,2400006.IB,250002.IB,2500002.IB,2500005.IB,2500006.IB,260002.IB,2600002.IB,2600004.IB",
+      "ths_vol_yz_bond",
+      "100",
+      "",
+      "2026-08-14",
+      "2026-08-14"
+    ],
+    "effective_command": "THS_DS('<56 original deliverable .IB codes>','ths_vol_yz_bond','100','','2026-08-14','2026-08-14')",
+    "source_command": "THS_DS('260006.IB','ths_vol_yz_bond','100','','2026-07-15','2026-08-15')",
+    "selection_policy": {
+      "TS": 2,
+      "TF": 2,
+      "T": 3,
+      "TL": 3
+    },
+    "expected": {
+      "code_count": 56,
+      "indicator_count": 1,
+      "date": "2026-08-14"
+    }
+  },
+  "response": {
+    "errorcode": 0,
+    "dataVol": 56,
+    "row_count": 56,
+    "column_count": 3,
+    "columns": [
+      "time",
+      "thscode",
+      "ths_vol_yz_bond"
+    ],
+    "raw_sha256": "06fc00c3ddce42bf7f43976ffbe52e9b27b67a1c9a40a5cf24f2c30fd6d67835"
+  },
+  "files": {
+    "raw_json": "D:\\国债\\ifind_data\\raw\\deliverable_bond_volume\\2026-08-15\\deliverable_bond_volume_20260815T142224+0800.json",
+    "normalized_csv": "D:\\国债\\ifind_data\\normalized\\deliverable_bond_volume\\2026-08-15\\deliverable_bond_volume_20260815T142224+0800.csv"
+  }
+}

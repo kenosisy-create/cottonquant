@@ -1,0 +1,1 @@
+﻿anomaly_id,event_date,market_object,metric,observed_value,unit,comparison_baseline,threshold_rule,fact,interpretation,evidence_class,source,source_date,trigger_conditions,falsification_conditions,tracking_indicators,review_status,notes

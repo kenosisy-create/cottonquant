@@ -1,0 +1,21 @@
+{
+  "unique_hashes": {
+    "1c1e882c78d08365b09056735c8643f2a87875dd93ad0a781caa321bb5ba65e2": {
+      "physical_object": "99_archive/ifind_sqlite_history/1c1e882c78d08365b09056735c8643f2a87875dd93ad0a781caa321bb5ba65e2/weekly_report_20260814_144711.sqlite.bak",
+      "source_aliases": [
+        "D:\\国债\\ifind_data\\local_mart\\2026-08-14\\weekly_report_20260814_144711.sqlite.bak",
+        "D:\\国债\\ifind_data\\local_mart\\2026-08-14\\weekly_report_20260814_145357.sqlite.bak"
+      ]
+    },
+    "4c737969c0a501c1432e461b6ec7121d78a70f51bc87c62eb7b3eb5e7f289361": {
+      "physical_object": "05_data/snapshots/weekly/2026-08-14/weekly_report_20260814.sqlite",
+      "source_aliases": [
+        "D:\\国债\\ifind_data\\local_mart\\2026-08-14\\weekly_report_20260814_151712.sqlite.bak",
+        "D:\\国债\\ifind_data\\local_mart\\2026-08-14\\weekly_report_20260814_152606.sqlite.bak",
+        "D:\\国债\\ifind_data\\local_mart\\2026-08-14\\weekly_report_20260814_153306.sqlite.bak",
+        "D:\\国债\\ifind_data\\local_mart\\2026-08-14\\weekly_report_20260814_153337.sqlite.bak"
+      ],
+      "note": "Physical object retained in weekly baseline, referenced from archive index."
+    }
+  }
+}

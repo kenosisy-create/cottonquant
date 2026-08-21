@@ -1,0 +1,10 @@
+﻿report_id,page,page_class,text_char_count,chart_dependency,visual_review_required,review_status,notes
+rpt_feca128af69a3d3b,1,cover_and_executive_summary,1487,none,false,text_reviewed_visual_not_required,"封面、报告导读、投资要点、作者与相关报告；主结论和5.92年/3.91年写入正文，无图表依赖。"
+rpt_feca128af69a3d3b,2,table_of_contents,504,none,false,text_reviewed_visual_not_required,"目录页；用于核对正文结构和物理页映射。"
+rpt_feca128af69a3d3b,3,core_analysis_with_figures,1598,supporting_only,false,text_reviewed_visual_not_required,"图1-2包含时序曲线，但正文已明确1.7%、71.5%分位、84.6%分位及历史区间；不需要图中逐点值。"
+rpt_feca128af69a3d3b,4,core_analysis_with_figures,1632,supporting_only,false,text_reviewed_visual_not_required,"图3-4佐证分歧度和两阶段卖压；正文已写明方向、案例月份和机制边界，图表不是不可替代证据。"
+rpt_feca128af69a3d3b,5,core_analysis_and_weekly_table,1826,supporting_only,false,text_reviewed_visual_not_required,"图5的两周领先、下穿条件及当前数值均在正文；表1文字层可直接读取8/3-8/8的ETF方向和数值。"
+rpt_feca128af69a3d3b,6,weekly_overview_with_figures,1555,peripheral_supporting,false,text_reviewed_visual_not_required,"图6-11属ETF和短债基金一周概览；正文已给主要η²、收益和波动摘要，不影响核心久期拐点命题。"
+rpt_feca128af69a3d3b,7,fund_performance_with_figures,1313,peripheral_supporting,false,text_reviewed_visual_not_required,"图12-17属基金收益/波动和十分位分组；中长债基金主要汇总值已在正文，图中独有柱形值不提取。"
+rpt_feca128af69a3d3b,8,fund_performance_and_risks,693,peripheral_supporting,false,text_reviewed_visual_not_required,"图18-21和风险提示；核心论点不依赖图中精确分组值，风险提示文字可直接读取。"
+rpt_feca128af69a3d3b,9,disclosures,1563,none,false,text_reviewed_visual_not_required,"分析师声明、免责声明、评级说明和机构地址；无研究证据图表。"

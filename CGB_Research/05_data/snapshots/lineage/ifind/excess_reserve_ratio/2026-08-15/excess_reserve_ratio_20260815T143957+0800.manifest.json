@@ -1,0 +1,54 @@
+{
+  "status": "success",
+  "dataset_id": "excess_reserve_ratio",
+  "as_of": "2026-08-15",
+  "fetched_at": "2026-08-15T14:39:57.052660+08:00",
+  "source": "iFinD API",
+  "sdk_version": "0.0.8",
+  "credential_target": "iFinD_API_Weekly_Report",
+  "request_file": "D:\\国债\\ifind_rebuild\\requests\\excess_reserve_ratio.json",
+  "request": {
+    "dataset_id": "excess_reserve_ratio",
+    "as_of": "2026-08-15",
+    "function": "THS_EDB",
+    "args": [
+      "L015211400",
+      "",
+      "2021-01-01",
+      "2026-08-15"
+    ],
+    "effective_command": "THS_EDB('L015211400','','2021-01-01','2026-08-15')",
+    "source_command": "THS_EDB('L001619810;L015211400','','2025-05-01','2025-09-30')",
+    "indicator_map": [
+      {
+        "id": "L015211400",
+        "label": "超额存款准备金率(超储率):金融机构",
+        "target": "国债行情!CN",
+        "unit": "%",
+        "frequency": "quarterly"
+      }
+    ],
+    "excluded_source_indicator": {
+      "id": "L001619810",
+      "reason": "超额存款准备金利率与目标超额存款准备金率定义不同"
+    }
+  },
+  "response": {
+    "errorcode": 0,
+    "dataVol": 22,
+    "row_count": 22,
+    "column_count": 5,
+    "columns": [
+      "time",
+      "id",
+      "value",
+      "index_name",
+      "rtime"
+    ],
+    "raw_sha256": "346dbb4f64d95b09eb228b63d25f73dbac5fe18d18374a31e8d547c7233bd76d"
+  },
+  "files": {
+    "raw_json": "D:\\国债\\ifind_data\\raw\\excess_reserve_ratio\\2026-08-15\\excess_reserve_ratio_20260815T143957+0800.json",
+    "normalized_csv": "D:\\国债\\ifind_data\\normalized\\excess_reserve_ratio\\2026-08-15\\excess_reserve_ratio_20260815T143957+0800.csv"
+  }
+}

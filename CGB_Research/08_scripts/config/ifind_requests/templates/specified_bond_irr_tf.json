@@ -1,0 +1,19 @@
+{
+  "dataset_id": "specified_bond_irr_tf",
+  "as_of": "2026-08-15",
+  "function": "THS_DS",
+  "args": [
+    "250020.IB,230028.IB,260003.IB,240006.IB,260008.IB,240013.IB,260015.IB,240018.IB,240025.IB,2500802.IB",
+    "ths_bondfuture_irr_bond",
+    "TF00.CFE",
+    "",
+    "2026-05-16",
+    "2026-08-15"
+  ],
+  "effective_command": "THS_DS('260008.IB,260015.IB','ths_bondfuture_irr_bond','TF00.CFE','','2026-06-01','2026-08-15')",
+  "selection_basis": "top 2 report-date volumes within the original TF deliverable list",
+  "expected": {
+    "bond_count": 2,
+    "futures_contract": "TF00.CFE"
+  }
+}

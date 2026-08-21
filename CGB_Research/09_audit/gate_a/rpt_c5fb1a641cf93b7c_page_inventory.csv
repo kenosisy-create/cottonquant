@@ -1,0 +1,15 @@
+﻿report_id,page,page_class,text_char_count,chart_dependency,visual_review_required,review_status,notes
+rpt_c5fb1a641cf93b7c,1,divider,246,none,no,reviewed_text,封面；标题作者发布日期可由文字层读取
+rpt_c5fb1a641cf93b7c,2,text,1029,none,no,reviewed_text,策略摘要与核心观点；报告判断均有明确文字
+rpt_c5fb1a641cf93b7c,3,divider,2366,none,no,reviewed_text,目录与图表目录；含模板噪声字符串但不影响页分类
+rpt_c5fb1a641cf93b7c,4,text,885,supportive,no,reviewed_text,四品种涨跌成交持仓及比率均由正文明确给出
+rpt_c5fb1a641cf93b7c,5,text,880,supportive,no,reviewed_text,四阶段行情复盘可由正文独立支持
+rpt_c5fb1a641cf93b7c,6,text,843,supportive,no,reviewed_text,2024至2026期限品种相对表现可由正文独立支持
+rpt_c5fb1a641cf93b7c,7,text,870,supportive,no,reviewed_text,结构转型与化债机制；图5图6仅作佐证
+rpt_c5fb1a641cf93b7c,8,text,943,supportive,no,reviewed_text,政府债供给与货币投放机制；图7图8非必要
+rpt_c5fb1a641cf93b7c,9,chart,757,supportive,no,skipped_not_required,四张结构图占主导；卡片不提取图中点位
+rpt_c5fb1a641cf93b7c,10,text,692,necessary,yes,reviewed_visual,图13图14承担趋势与周期相对影响的经验依据；已做最小视觉复核
+rpt_c5fb1a641cf93b7c,11,chart,762,supportive,no,skipped_not_required,价格周期与全球热力图；仅采用正文前瞻与IRR定性表述
+rpt_c5fb1a641cf93b7c,12,chart,271,supportive,no,skipped_not_required,四合约IRR图；未提取任何未标注精确值
+rpt_c5fb1a641cf93b7c,13,disclaimer,676,none,no,reviewed_text,免责声明与法律主体
+rpt_c5fb1a641cf93b7c,14,divider,65,none,no,reviewed_text,封底联系信息

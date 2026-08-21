@@ -1,0 +1,112 @@
+{
+  "project": "国债周报底稿重建",
+  "as_of": "2026-08-15",
+  "scope_sheets": [
+    "国债行情",
+    "可交割国债",
+    "制造业数据"
+  ],
+  "datasets": [
+    {
+      "dataset_id": "yield_curve_cgb",
+      "status": "complete_validated",
+      "request": "requests/yield_curve_cgb.json",
+      "coverage": "13 tenors; 2020-09-21 through 2026-08-14",
+      "quality": "19,136 rows; 0 missing; 0 duplicate id-date; 13/13 values matched Wind cache on 2026-08-07"
+    },
+    {
+      "dataset_id": "manufacturing_pmi_headline",
+      "status": "complete_validated",
+      "request": "requests/manufacturing_pmi_headline.json",
+      "coverage": "14 headline components; 2025-01-31 through 2026-07-31",
+      "quality": "266 rows; 0 missing; 0 duplicate id-date; 14/14 latest values matched Wind cache"
+    },
+    {
+      "dataset_id": "bond_futures_ctd_metrics",
+      "status": "collected_pending_definition_review",
+      "request": "requests/bond_futures_ctd_metrics.json",
+      "coverage": "4 main continuous contracts; 6 metrics; 2025-07-01 through 2026-08-14",
+      "quality": "1,100 rows; 0 missing; 0 duplicate code-date; 275 trading days per code",
+      "review_note": "CTD matched Wind in overlap; IRR/basis/net basis use a different valuation parameter convention and must remain labeled iFinD convention"
+    },
+    {
+      "dataset_id": "deliverable_bond_master",
+      "status": "complete_validated_against_cffex_current",
+      "source": "中国金融期货交易所可交割国债信息 / 周报底稿.xlsx static rows",
+      "policy": "retain matching bond rows but roll conversion-factor headers and interpretation to 2609/2612/2703",
+      "quality": "CFFEX row counts TS/TF/T/TL = 13/10/18/15 and static values matched the reference rows; 260011.IB is TS2703-only with factor 0.964"
+    },
+    {
+      "dataset_id": "futures_daily_market",
+      "status": "complete_validated_with_expected_nulls",
+      "request": "requests/futures_daily_market.json",
+      "coverage": "4 continuous contracts; close and settlement; 2020-01-02 through 2026-08-14",
+      "quality": "6,416 code-date rows; close/settlement match Wind overlap; TL pre-listing observations are expected blanks",
+      "review_note": "ths_delivery_month_future is blank for both ZL and 00 continuous aliases; current report contract month is retained as configured 2609"
+    },
+    {
+      "dataset_id": "deliverable_bond_volume",
+      "status": "complete_validated",
+      "request": "requests/deliverable_bond_volume.json",
+      "coverage": "56 original deliverable bond codes; report date 2026-08-14",
+      "quality": "56 rows; 0 missing; 0 duplicate code-date; 4 valid zero-volume observations"
+    },
+    {
+      "dataset_id": "specified_bond_irr",
+      "status": "complete_validated_with_history_gaps",
+      "requests": [
+        "requests/specified_bond_irr_ts.json",
+        "requests/specified_bond_irr_ts_fallback.json",
+        "requests/specified_bond_irr_tf.json",
+        "requests/specified_bond_irr_t.json",
+        "requests/specified_bond_irr_tl.json"
+      ],
+      "coverage": "10 selected bonds plus 3 TS fallback candidates; 2026-06-01 through 2026-08-14",
+      "quality": "0 duplicate code-date; report-date IRR available for final 2/2/3/3 TS/TF/T/TL selections",
+      "selection_note": "Filter the official CFFEX 2609 basket by non-null conversion factor before volume ranking; TS therefore selects 260013.IB and 260006.IB. iFinD's actual-contract parameter returned all blanks, so the supported 00 main-contract parameter is retained after basket validation."
+    },
+    {
+      "dataset_id": "specified_bond_irr_actual_contract_probe",
+      "status": "excluded_no_data",
+      "requests": [
+        "requests/specified_bond_irr_ts2609.json",
+        "requests/specified_bond_irr_tf2609.json",
+        "requests/specified_bond_irr_t2609.json",
+        "requests/specified_bond_irr_tl2609.json"
+      ],
+      "quality": "540 code-date rows were returned but all IRR values were blank; these probe outputs are not loaded into the data mart"
+    },
+    {
+      "dataset_id": "liquidity_policy_rates",
+      "status": "complete_with_definition_exceptions",
+      "request": "requests/liquidity_policy_rates.json",
+      "coverage": "13 returned iFinD series; 2022-01-01 through 2026-08-14 where available",
+      "quality": "8,214 rows; 0 missing within returned series; 0 duplicate id-date; weekly net injection reconciled exactly",
+      "review_note": "NCD is AAA- rather than prior AAA; MLF amount series starts 2025-05; the previously supplied excess-reserve interest rate is excluded"
+    },
+    {
+      "dataset_id": "excess_reserve_rate_history",
+      "status": "excluded_wrong_definition",
+      "request": "requests/excess_reserve_rate_history.json",
+      "coverage": "5 policy-rate observations; 2002-02-21 through 2020-04-07",
+      "review_note": "Do not load into the weekly-report reserve-ratio column"
+    },
+    {
+      "dataset_id": "excess_reserve_ratio",
+      "status": "complete_validated",
+      "request": "requests/excess_reserve_ratio.json",
+      "coverage": "22 quarterly observations; 2021-03-31 through 2026-06-30",
+      "quality": "0 missing; 0 duplicate id-date; latest 2026-Q2 is 1.3% and replaces the stale 1.4% reference cache"
+    }
+  ],
+  "open_items": [
+    {
+      "item": "main-contract actual code mapping",
+      "impact": "Delivery-month indicators return blank for continuous aliases; current report uses confirmed 2609, while future automation should add an actual-main-contract mapping or determine it from contract volume/open interest"
+    },
+    {
+      "item": "pre-2025 MLF monthly amount history",
+      "impact": "The supplied iFinD amount series begins 2025-05; preserve the pre-2025 reference cache only if the full 2022 chart history must remain visually populated"
+    }
+  ]
+}

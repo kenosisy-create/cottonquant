@@ -1,0 +1,29 @@
+{
+  "run_id": "init_shadow_20260815",
+  "mode": "no-fetch/no-promote/no-publish",
+  "output_root": "D:\\国债\\CGB_Research\\05_data\\snapshots\\runs\\init_shadow_20260815",
+  "writer_id": "initialization_read_only_shadow",
+  "source_migration_manifest": "09_audit/ifind_migration_manifest.json",
+  "source_migration_manifest_sha256": "1ad68d17bcebc51fe338fc1f50687f06a05f1e4a0531b38eb7cc96c3f6dd88d6",
+  "frozen_inputs": [
+    {"dataset_id": "bond_futures_ctd_metrics", "relative_path": "05_data/processed/ifind/bond_futures_ctd_metrics/2026-08-15/bond_futures_ctd_metrics_20260815T135839+0800.csv", "sha256": "15f17f0efe53e9a12a37af1b2e21fbcd02dd0f709fc1419c946cb1b96f1e7201"},
+    {"dataset_id": "deliverable_bond_volume", "relative_path": "05_data/processed/ifind/deliverable_bond_volume/2026-08-15/deliverable_bond_volume_20260815T142224+0800.csv", "sha256": "52e149e190d99e97a8cc09867423e85c9dea529f525e49f173f7eef97125aba4"},
+    {"dataset_id": "excess_reserve_ratio", "relative_path": "05_data/processed/ifind/excess_reserve_ratio/2026-08-15/excess_reserve_ratio_20260815T143957+0800.csv", "sha256": "8356ecd32d0227e0971bfec944e7af11a9f61e5a48c8c8eba13c37765e953f58"},
+    {"dataset_id": "futures_daily_market", "relative_path": "05_data/processed/ifind/futures_daily_market/2026-08-15/futures_daily_market_20260815T142030+0800.csv", "sha256": "86908c93946e779691b54b878b96a2111f09eca17c2ac09c8e248c9195827710"},
+    {"dataset_id": "liquidity_policy_rates", "relative_path": "05_data/processed/ifind/liquidity_policy_rates/2026-08-15/liquidity_policy_rates_20260815T142106+0800.csv", "sha256": "6995e29033d2347e647de38722bd63385ae554bc485143f949d961398c8a5e72"},
+    {"dataset_id": "manufacturing_pmi_headline", "relative_path": "05_data/processed/ifind/manufacturing_pmi_headline/2026-08-15/manufacturing_pmi_headline_20260815T135901+0800.csv", "sha256": "dba6b736927fe73ef650131285e1d6fd56925598bc506e1fbee176bf5e2a3c8e"},
+    {"dataset_id": "specified_bond_irr_t", "relative_path": "05_data/processed/ifind/specified_bond_irr_t/2026-08-15/specified_bond_irr_t_20260815T142434+0800.csv", "sha256": "314edd623f657db442518645163ee39d1828e1ebc37eda1d5ae5e426b8d532e3"},
+    {"dataset_id": "specified_bond_irr_tf", "relative_path": "05_data/processed/ifind/specified_bond_irr_tf/2026-08-15/specified_bond_irr_tf_20260815T142415+0800.csv", "sha256": "8e54a04c3fe9fbafb7766acd479daaba7583be616856c172c91ba433af2a69e6"},
+    {"dataset_id": "specified_bond_irr_tl", "relative_path": "05_data/processed/ifind/specified_bond_irr_tl/2026-08-15/specified_bond_irr_tl_20260815T142452+0800.csv", "sha256": "5e49eac04858eb67c17c64cc8076278e94b1602191ff977abcd5e78dd2329bd3"},
+    {"dataset_id": "specified_bond_irr_ts", "relative_path": "05_data/processed/ifind/specified_bond_irr_ts/2026-08-15/specified_bond_irr_ts_20260815T142356+0800.csv", "sha256": "9f8260f685b35949f60c7b670dfdfa942d890d4dfe1bf01929d5d251810a90c5"},
+    {"dataset_id": "specified_bond_irr_ts_fallback", "relative_path": "05_data/processed/ifind/specified_bond_irr_ts_fallback/2026-08-15/specified_bond_irr_ts_fallback_20260815T142950+0800.csv", "sha256": "2ec062c3545b00565a93bcc9c67a21f5b57c8562edce49eaafe3f8803316c3ab"},
+    {"dataset_id": "yield_curve_cgb", "relative_path": "05_data/processed/ifind/yield_curve_cgb/2026-08-15/yield_curve_cgb_20260815T135558+0800.csv", "sha256": "bb25afa0eea0c74b64c20c523edc56da49a91def094048b2ff0b996ad22f6e45"}
+  ],
+  "active_contracts": {"TS": "manual_review_required", "TF": "manual_review_required", "T": "manual_review_required", "TL": "manual_review_required"},
+  "cffex_snapshot_sha256": "28be9d8c01c0f84baec6dfe0b8adc5b1e8920c172bb571599c410722fc25aa31",
+  "cffex_snapshot_complete": false,
+  "dynamic_conversion_factor_validated": false,
+  "single_writer_lock_validated": false,
+  "atomic_current_update_validated": false,
+  "notes": "只读安全门演练；不创建run输出，不调用API，不晋升，不发布。"
+}

@@ -1,0 +1,343 @@
+{
+  "snapshot_id": "cffex_20260815_official_01",
+  "snapshot_date": "2026-08-15",
+  "retrieved_at": "2026-08-15T22:38:54+08:00",
+  "source_authority": "China Financial Futures Exchange (CFFEX)",
+  "source_landing_url": "http://www.cffex.com.cn/kjggzxx/",
+  "source_index_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/index_6882.csv",
+  "source_javascript_url": "http://www.cffex.com.cn/r/cms/www/default/js/kjggzxx.js",
+  "raw_objects": [
+    {
+      "relative_path": "contracts/T2609/T2609.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/T2609/T2609.csv",
+      "sha256": "99af7718e1753008961b99eec41f10b6d5bf70494683ad42f2900631ffc04e23",
+      "bytes": 1388,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"56c-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/T2609/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/T2609/index_1.xml",
+      "sha256": "51ea5d557f8329bfd03fb19c158731de0f66a10a2c11204d69acd32087e38ba8",
+      "bytes": 7475,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"1d33-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/T2612/T2612.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/T2612/T2612.csv",
+      "sha256": "c5e3cc83e323556a4edab111d92e78477bd75b101bf32fa5532919970ff5a98f",
+      "bytes": 1167,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"48f-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/T2612/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/T2612/index_1.xml",
+      "sha256": "a9bce23e53c0ee2f608e9b4cb99606dc15f35acb2eb73b4354f8c1bd0323f9ba",
+      "bytes": 6238,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"185e-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/T2703/T2703.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/T2703/T2703.csv",
+      "sha256": "8a7fd686adbd2b0af8d4203bb4dc4a9e7fecc4fe2db0fb354866f7311a73e5b8",
+      "bytes": 1099,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"44b-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/T2703/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/T2703/index_1.xml",
+      "sha256": "1741818e00b1b688739eda981965a1086f93f47a266cff08ea6a204ba2efc3c5",
+      "bytes": 5831,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"16c7-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TF2609/TF2609.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TF2609/TF2609.csv",
+      "sha256": "e60652170480289792c6fea4fa17341779e7a3cc893d5b89fbb04fe152fd097b",
+      "bytes": 581,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"245-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TF2609/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TF2609/index_1.xml",
+      "sha256": "2b3fa2e2900ef2aee3c2f797c9c955a737ddbdf0cb3ab03685b78c7da6b3ed93",
+      "bytes": 2954,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"b8a-658fd5547c140\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:01 GMT"
+    },
+    {
+      "relative_path": "contracts/TF2612/TF2612.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TF2612/TF2612.csv",
+      "sha256": "12816fd7ea888062591e0ef22233032fb55b9ad9b5a7907f29a52f1ffbc440f8",
+      "bytes": 509,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"1fd-658fd5547c140\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:01 GMT"
+    },
+    {
+      "relative_path": "contracts/TF2612/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TF2612/index_1.xml",
+      "sha256": "65f495714e86b8ad644dcfb6bb3102ef761382ba2b24b9b70302f7912df91a83",
+      "bytes": 2540,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"9ec-658fd5547c140\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:01 GMT"
+    },
+    {
+      "relative_path": "contracts/TF2703/TF2703.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TF2703/TF2703.csv",
+      "sha256": "85ede54871d9fe4e598c4b16cbd9206cab5b949b17553aa9672dd3b00d6a1028",
+      "bytes": 522,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"20a-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TF2703/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TF2703/index_1.xml",
+      "sha256": "c5b8e9412ab158a11ea9f958d99f1fe370eeb0dbf2fcffdc84b68fbed662e961",
+      "bytes": 2560,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"a00-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TL2609/TL2609.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TL2609/TL2609.csv",
+      "sha256": "d56084a45d00b4ca131d3ae8836cb0acadffcca16cfdcbc183e3eca4df05f29d",
+      "bytes": 1079,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"437-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TL2609/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TL2609/index_1.xml",
+      "sha256": "e51764c3fd9df29b2c7979ce294950e3c2d8814bf9b52500bec0d2e16863a3f9",
+      "bytes": 5832,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"16c8-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TL2612/TL2612.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TL2612/TL2612.csv",
+      "sha256": "579c7688b394e2e652fa32eff440c040911dd64c6e91ec564729db64185bb6d5",
+      "bytes": 1003,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"3eb-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TL2612/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TL2612/index_1.xml",
+      "sha256": "b3a964ac99d43aae4c1dfb1c01dfea5ea988b315eae7c444b5a4b4239900893e",
+      "bytes": 5415,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"1527-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TL2703/TL2703.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TL2703/TL2703.csv",
+      "sha256": "26c29284f387714f2be4942b71db1700676a26dc50ae59460b9c9f335b783d19",
+      "bytes": 1006,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"3ee-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TL2703/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TL2703/index_1.xml",
+      "sha256": "03d89b5866e86b83bac566f1cfea468f3c6696163e0cf3ee0f2c771503bc3941",
+      "bytes": 5418,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"152a-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TS2609/TS2609.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TS2609/TS2609.csv",
+      "sha256": "fb8f6034d4add60b96ba6483b4b013ea7cec6668cf22e497b4d938a2c6b95249",
+      "bytes": 657,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"291-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TS2609/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TS2609/index_1.xml",
+      "sha256": "b3184b9ff5b992d019f9a5c5eb74e342bc67e0fdc5898bea135cac3881bb4443",
+      "bytes": 3372,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"d2c-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TS2612/TS2612.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TS2612/TS2612.csv",
+      "sha256": "401512d285e8ab214b4c63f84ece7efa0bb94f06e0858d8418fb42806329f6ad",
+      "bytes": 662,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"296-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TS2612/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TS2612/index_1.xml",
+      "sha256": "1293ce3f272f895bd301d5a09c0debd05dc6c792fb8e7790bf6e923a506d2885",
+      "bytes": 3379,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"d33-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TS2703/TS2703.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TS2703/TS2703.csv",
+      "sha256": "0f057b0e4c621c22f9e3f78593bcb8f1e2c7869901cd7cc7f5b44992449940dc",
+      "bytes": 588,
+      "encoding_or_content_type": "gb18030",
+      "etag": "\"24c-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "contracts/TS2703/index_1.xml",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/TS2703/index_1.xml",
+      "sha256": "fe7dd770654269000b180faa96f38a8fd29365176488cc8ea447e4605e9064c2",
+      "bytes": 2963,
+      "encoding_or_content_type": "application/xml",
+      "etag": "\"b93-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "index_6882.csv",
+      "source_url": "http://www.cffex.com.cn/sj/jgsj/jgqsj/index_6882.csv",
+      "sha256": "30f2ad109f06a156791786d86520b32f64eea0d52bf943ecd638afc1bd819a37",
+      "bytes": 12151,
+      "encoding_or_content_type": "utf-8-sig",
+      "etag": "\"2f77-658fd55570380\"",
+      "last_modified": "Fri, 14 Aug 2026 08:09:02 GMT"
+    },
+    {
+      "relative_path": "kjggzxx.js",
+      "source_url": "http://www.cffex.com.cn/r/cms/www/default/js/kjggzxx.js",
+      "sha256": "6ac5536877599826530223080a2a601f144d0d5dc836557af832e5f306709d67",
+      "bytes": 12041,
+      "encoding_or_content_type": "utf-8",
+      "etag": "\"2f09-64e039f417700\"",
+      "last_modified": "Fri, 27 Mar 2026 16:02:04 GMT"
+    },
+    {
+      "relative_path": "landing.html",
+      "source_url": "http://www.cffex.com.cn/kjggzxx/",
+      "sha256": "106e7953afd80987b2f63689a126c464b09d65de07a2fc0f7300d96c3a283294",
+      "bytes": 38255,
+      "encoding_or_content_type": "utf-8",
+      "etag": "\"956f-651d9e92c1f80\"",
+      "last_modified": "Fri, 15 May 2026 11:57:02 GMT"
+    }
+  ],
+  "normalized_relative_path": "05_data/processed/cffex/2026-08-15/deliverable_bonds_cffex_20260815_official_01.csv",
+  "normalized_sha256": "ae0c45ffad9f0d5a4eed36b3e1c4fd1315ba0eb7d54a131087f0cf494f8f416f",
+  "normalized_encoding": "utf-8-sig",
+  "normalized_columns": [
+    "snapshot_id",
+    "product",
+    "contract_code",
+    "bond_code",
+    "exchange_code_sse",
+    "exchange_code_szse",
+    "bond_full_name",
+    "maturity_date",
+    "coupon_rate_pct",
+    "conversion_factor",
+    "valid_from",
+    "observed_on",
+    "source_snapshot_id",
+    "source_url"
+  ],
+  "row_count": 129,
+  "contract_count": 12,
+  "product_contracts": {
+    "TS": [
+      "TS2609",
+      "TS2612",
+      "TS2703"
+    ],
+    "TF": [
+      "TF2609",
+      "TF2612",
+      "TF2703"
+    ],
+    "T": [
+      "T2609",
+      "T2612",
+      "T2703"
+    ],
+    "TL": [
+      "TL2609",
+      "TL2612",
+      "TL2703"
+    ]
+  },
+  "contract_row_counts": {
+    "T2609": 18,
+    "T2612": 15,
+    "T2703": 14,
+    "TF2609": 7,
+    "TF2612": 6,
+    "TF2703": 6,
+    "TL2609": 14,
+    "TL2612": 13,
+    "TL2703": 13,
+    "TS2609": 8,
+    "TS2612": 8,
+    "TS2703": 7
+  },
+  "source_encodings": {
+    "index": "utf-8-sig",
+    "contracts": {
+      "T2609": "gb18030",
+      "T2612": "gb18030",
+      "T2703": "gb18030",
+      "TF2609": "gb18030",
+      "TF2612": "gb18030",
+      "TF2703": "gb18030",
+      "TL2609": "gb18030",
+      "TL2612": "gb18030",
+      "TL2703": "gb18030",
+      "TS2609": "gb18030",
+      "TS2612": "gb18030",
+      "TS2703": "gb18030"
+    }
+  },
+  "validation": {
+    "all_four_products_present": true,
+    "three_listed_contracts_per_product": true,
+    "index_equals_union_of_contract_csv": true,
+    "primary_key_unique": true,
+    "current_cross_section_complete": true,
+    "point_in_time_history_complete": false
+  },
+  "promotion_enabled": false,
+  "limitations": [
+    "valid_from is intentionally blank until CFFEX release/addition notices are event-sourced.",
+    "This snapshot does not select active/main contracts and does not modify CURRENT.json."
+  ],
+  "tool": "08_scripts/cffex/fetch_deliverable_snapshot.py",
+  "tool_version": "0.1.0"
+}

@@ -1,0 +1,10 @@
+{
+  "snapshot_id": "weekly_2026-08-14_baseline",
+  "snapshot_relative_path": "05_data/snapshots/weekly/2026-08-14/weekly_report_20260814.sqlite",
+  "snapshot_sha256": "4c737969c0a501c1432e461b6ec7121d78a70f51bc87c62eb7b3eb5e7f289361",
+  "report_summary_relative_path": "06_weekly/2026-W33/data_snapshot/report_summary.json",
+  "report_summary_sha256": "24682c197f4a49456a5db8716d15d686b48d91eb99b2e29f703a4323e8704ff4",
+  "status": "baseline_read_only",
+  "promotion_enabled": false,
+  "note": "Initialization pointer only; no fetch, promote, publish, or writer switch was performed."
+}

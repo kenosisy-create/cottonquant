@@ -1,0 +1,28 @@
+{
+  "source_url": "http://www.cffex.com.cn/kjggzxx/",
+  "captured_at": "2026-08-15",
+  "source_authority": "中国金融期货交易所",
+  "products": {
+    "TS": {
+      "contracts": ["TS2609", "TS2612", "TS2703"],
+      "row_count": 13
+    },
+    "TF": {
+      "contracts": ["TF2609", "TF2612", "TF2703"],
+      "row_count": 10
+    },
+    "T": {
+      "contracts": ["T2609", "T2612", "T2703"],
+      "row_count": 18
+    },
+    "TL": {
+      "contracts": ["TL2609", "TL2612", "TL2703"],
+      "row_count": 15
+    }
+  },
+  "verification": {
+    "static_rows": "Bond names, codes, maturities, coupons and the three displayed conversion-factor values match the reference workbook row-for-row.",
+    "required_replacement": "Roll the three contract headers from 2606/2609/2612 to 2609/2612/2703 and interpret the row conversion factors under the new current headers.",
+    "specific_check": "260011.IB has no TS2609 or TS2612 conversion factor and has TS2703 conversion factor 0.964."
+  }
+}

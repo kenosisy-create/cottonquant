@@ -1,0 +1,100 @@
+{
+  "dataset_id": "manufacturing_pmi_headline",
+  "as_of": "2026-08-15",
+  "function": "THS_EDB",
+  "args": [
+    "M002043802;M002043803;M002043804;M002043811;M002043812;M002043813;M002043805;M002043809;M002043808;M002043810;M004266530;M002043807;M002043806;M003721097",
+    "",
+    "2025-01-01",
+    "2026-08-15"
+  ],
+  "effective_command": "THS_EDB('M002043802;M002043803;M002043804;M002043811;M002043812;M002043813;M002043805;M002043809;M002043808;M002043810;M004266530;M002043807;M002043806;M003721097','','2025-01-01','2026-08-15')",
+  "indicator_map": [
+    {
+      "id": "M002043802",
+      "label": "制造业PMI",
+      "target_column": "B"
+    },
+    {
+      "id": "M002043803",
+      "label": "制造业PMI:生产",
+      "target_column": "C"
+    },
+    {
+      "id": "M002043804",
+      "label": "制造业PMI:新订单",
+      "target_column": "D"
+    },
+    {
+      "id": "M002043805",
+      "label": "制造业PMI:新出口订单",
+      "target_column": "E"
+    },
+    {
+      "id": "M002043806",
+      "label": "制造业PMI:在手订单",
+      "target_column": "F"
+    },
+    {
+      "id": "M002043807",
+      "label": "制造业PMI:产成品库存",
+      "target_column": "G"
+    },
+    {
+      "id": "M002043808",
+      "label": "制造业PMI:采购量",
+      "target_column": "H"
+    },
+    {
+      "id": "M002043809",
+      "label": "制造业PMI:进口",
+      "target_column": "I"
+    },
+    {
+      "id": "M004266530",
+      "label": "制造业PMI:出厂价格",
+      "target_column": "J"
+    },
+    {
+      "id": "M002043810",
+      "label": "制造业PMI:主要原材料购进价格",
+      "target_column": "K"
+    },
+    {
+      "id": "M002043811",
+      "label": "制造业PMI:原材料库存",
+      "target_column": "L"
+    },
+    {
+      "id": "M002043812",
+      "label": "制造业PMI:从业人员",
+      "target_column": "M"
+    },
+    {
+      "id": "M002043813",
+      "label": "制造业PMI:供应商配送时间",
+      "target_column": "N"
+    },
+    {
+      "id": "M003721097",
+      "label": "制造业PMI:生产经营活动预期",
+      "target_column": "O"
+    }
+  ],
+  "source_command_scope": {
+    "provided_indicator_count": 81,
+    "selected_indicator_count": 14,
+    "excluded_groups": [
+      "大型/中型/小型企业分项",
+      "装备制造业/高技术制造业/基础原材料/消费品行业分项",
+      "停更历史均值、地区和行业数量序列"
+    ]
+  },
+  "expected": {
+    "frequency": "monthly",
+    "unit": "%",
+    "indicator_count": 14,
+    "start_date": "2025-01-01",
+    "end_date": "2026-08-15"
+  }
+}

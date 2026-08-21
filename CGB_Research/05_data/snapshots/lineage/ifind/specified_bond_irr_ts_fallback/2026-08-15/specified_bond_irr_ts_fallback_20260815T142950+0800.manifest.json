@@ -1,0 +1,45 @@
+{
+  "status": "success",
+  "dataset_id": "specified_bond_irr_ts_fallback",
+  "as_of": "2026-08-15",
+  "fetched_at": "2026-08-15T14:29:50.706160+08:00",
+  "source": "iFinD API",
+  "sdk_version": "0.0.8",
+  "credential_target": "iFinD_API_Weekly_Report",
+  "request_file": "D:\\国债\\ifind_rebuild\\requests\\specified_bond_irr_ts_fallback.json",
+  "request": {
+    "dataset_id": "specified_bond_irr_ts_fallback",
+    "as_of": "2026-08-15",
+    "function": "THS_DS",
+    "args": [
+      "260006.IB,260004.IB,260003.IB",
+      "ths_bondfuture_irr_bond",
+      "TS00.CFE",
+      "",
+      "2026-06-01",
+      "2026-08-15"
+    ],
+    "effective_command": "THS_DS('260006.IB,260004.IB,260003.IB','ths_bondfuture_irr_bond','TS00.CFE','','2026-06-01','2026-08-15')",
+    "selection_basis": "Fallback candidates by report-date volume after 260011.IB returned no IRR observations",
+    "expected": {
+      "bond_count": 3,
+      "futures_contract": "TS00.CFE"
+    }
+  },
+  "response": {
+    "errorcode": 0,
+    "dataVol": 162,
+    "row_count": 162,
+    "column_count": 3,
+    "columns": [
+      "time",
+      "thscode",
+      "ths_bondfuture_irr_bond"
+    ],
+    "raw_sha256": "d9a6967c8ba64397a0860dacbbe0008a09bc94f7805b8bfb4a82c4510056a228"
+  },
+  "files": {
+    "raw_json": "D:\\国债\\ifind_data\\raw\\specified_bond_irr_ts_fallback\\2026-08-15\\specified_bond_irr_ts_fallback_20260815T142950+0800.json",
+    "normalized_csv": "D:\\国债\\ifind_data\\normalized\\specified_bond_irr_ts_fallback\\2026-08-15\\specified_bond_irr_ts_fallback_20260815T142950+0800.csv"
+  }
+}

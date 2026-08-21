@@ -1,0 +1,9 @@
+﻿report_id,page,page_class,text_char_count,chart_dependency,visual_review_required,review_status,notes
+rpt_737662a2d6e52aed,1,text,1510,none,no,reviewed_text,封面与投资要点；主结论和关键数字均有文字层
+rpt_737662a2d6e52aed,2,divider,407,none,no,reviewed_text,目录页；核对正文结构与物理页码
+rpt_737662a2d6e52aed,3,text,1430,supportive,no,reviewed_text,决议票型声明SEP历史案例与表1；表中必要信息均由正文明确给出
+rpt_737662a2d6e52aed,4,text,829,none,no,reviewed_text,多数票制度IORB与记者会表述；正文可独立支持
+rpt_737662a2d6e52aed,5,chart,389,supportive,no,reviewed_text,含图1与表2上半部；记者问答和盘中定价由正文复述故跳过视觉复刻
+rpt_737662a2d6e52aed,6,text,1499,supportive,no,reviewed_text,表2下半部沟通解释政治经济学推断及短端情景；正文独立支持
+rpt_737662a2d6e52aed,7,text,520,none,no,reviewed_text,短端与10年美债情景后续跟踪及风险提示
+rpt_737662a2d6e52aed,8,disclaimer,1580,none,no,reviewed_text,分析师声明免责声明评级说明与机构信息

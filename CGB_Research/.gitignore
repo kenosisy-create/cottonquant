@@ -1,0 +1,53 @@
+# Immutable source documents and pending binary attachments
+00_inbox/raw_reports/*.pdf
+00_inbox/pending_review/*
+
+# Raw/processed data and binary snapshots
+05_data/raw/**
+05_data/processed/**
+05_data/snapshots/**/*.sqlite
+05_data/snapshots/**/*.sqlite-*
+05_data/snapshots/**/*.db
+05_data/snapshots/**/*.xlsx
+05_data/snapshots/**/*.xls
+06_weekly/**/data_snapshot/**/*.csv
+06_weekly/**/data_snapshot/**/*.json
+06_weekly/**/legacy_copy/**
+06_weekly/template/imported/*.xlsx
+99_archive/**/*.sqlite
+99_archive/**/*.sqlite-*
+99_archive/**/*.db
+99_archive/**/*.xlsx
+99_archive/**/raw/**
+99_archive/**/normalized/**
+99_archive/**/*.bak
+99_archive/ifind_rebuild_v0/**
+99_archive/ifind_probes/**
+
+# Environments, caches, logs and temporary renderings
+.venv/
+venv/
+node_modules/
+__pycache__/
+*.py[cod]
+*.log
+*.tmp
+*.temp
+*.bak.tmp
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.codex_work/
+rendered/
+renders/
+tmp/
+
+# Office locks and platform noise
+~$*
+Thumbs.db
+.DS_Store
+
+# Runtime locks and unpublished runs
+05_data/snapshots/runs/**
+05_data/snapshots/*.lock
+CURRENT.json.tmp
