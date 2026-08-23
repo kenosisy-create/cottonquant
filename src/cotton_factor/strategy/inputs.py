@@ -21,6 +21,8 @@ from cotton_factor.common.exceptions import (
 )
 from cotton_factor.common.paths import data_dir, project_root, reports_dir
 from cotton_factor.core import (
+    CF_MAIN_CYCLE_MONTHS,
+    CF_MAIN_CYCLE_ROLL_RULE_VERSION,
     TradingCalendar,
     build_chain_map,
     build_contract_master,
@@ -38,7 +40,7 @@ from cotton_factor.research import build_continuous_price
 PRODUCT_CODE = "CF"
 EXCHANGE = "CZCE"
 SIGNAL_OBJECT_ID = "CF.C1"
-INPUT_RULE_VERSION = "V5.1_R86_strategy_inputs_v1"
+INPUT_RULE_VERSION = "V5.1_R86_strategy_inputs_v2_main_cycle"
 UNIFIED_CALENDAR_VERSION = "CZCE_OFFICIAL_CF_HISTORY_UNIFIED_V1"
 
 
@@ -128,6 +130,8 @@ def prepare_cf_strategy_inputs(
             calendar=calendar,
             product_code=PRODUCT_CODE,
             signal_object_id=SIGNAL_OBJECT_ID,
+            roll_rule_version=CF_MAIN_CYCLE_ROLL_RULE_VERSION,
+            eligible_delivery_months=CF_MAIN_CYCLE_MONTHS,
         )
         continuous_result = build_continuous_price(
             quotes=build_quotes,

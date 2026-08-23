@@ -56,7 +56,16 @@ def test_update_cf_latest_research_has_weekly_pack_contract() -> None:
     assert "[switch]$RunForwardEvidenceWeekly" in script
     assert "$runTrendForwardLedgerEffective" in script
     assert "$runForwardEvidenceWeeklyEffective" in script
+    assert "[switch]$RunFundamentalTrendIncremental" in script
+    assert "$runFundamentalTrendIncrementalEffective" in script
+    assert "[switch]$RunTrendConfirmationTiming" in script
+    assert "$runTrendConfirmationTimingEffective" in script
+    assert "[switch]$RunOptionMaturityConfirmation" in script
+    assert "$runOptionMaturityConfirmationEffective" in script
     assert "build-cf-symmetric-trend-research" in script
+    assert "build-cf-fundamental-trend-incremental-research" in script
+    assert "build-cf-trend-confirmation-timing-research" in script
+    assert "build-cf-option-maturity-confirmation-research" in script
     assert "build-cf-trend-candidate-forward-ledger" in script
     assert "build-cf-forward-evidence-weekly" in script
     assert '--continuous-price-path "$($strategyInput.continuous_price_path)"' in script
@@ -91,7 +100,23 @@ def test_update_cf_latest_research_has_weekly_pack_contract() -> None:
     assert "member_position_research" in script
     assert "member_position_is_member_level_not_customer_identity" in script
     assert "[switch]$RunOptionStrikePositionResearch" in script
+    assert "[switch]$RunDynamicOptionWallResearch" in script
+    assert "$runDynamicOptionWallResearchEffective" in script
+    assert "[switch]$RunOptionWallFactorV2" in script
+    assert "$runOptionWallFactorV2Effective" in script
+    assert "[switch]$RunFuturesOptionEventPath" in script
+    assert "$runFuturesOptionEventPathEffective" in script
+    assert "[switch]$RunFuturesOptionRegimeInteraction" in script
+    assert "$runFuturesOptionRegimeInteractionEffective" in script
     assert "build-cf-option-strike-position-research" in script
+    assert "build-cf-futures-option-dynamic-wall-research" in script
+    assert "build-cf-futures-option-wall-factor-v2" in script
+    assert "build-cf-futures-option-event-path-research" in script
+    assert "build-cf-futures-option-regime-interaction-research" in script
+    assert "futures_option_dynamic_wall" in script
+    assert "futures_option_wall_factor_v2" in script
+    assert "futures_option_event_path" in script
+    assert "futures_option_regime_interaction" in script
     assert "option_strike_position_research" in script
     assert "option_open_interest_long_short_ownership_unknown" in script
     assert "--fundamental-observation-json-path" in script
@@ -99,15 +124,21 @@ def test_update_cf_latest_research_has_weekly_pack_contract() -> None:
     assert script.count('Pattern "CF_*_futures_option_divergence.json"') >= 2
 
     assert "cf_weekly_research_run_manifest" in script
-    assert "R58_cf_weekly_research_run_v1" in script
+    assert "R58_cf_weekly_research_run_v2" in script
     assert "build-cf-weekly-research-audit" in script
     assert "reports\\research\\weekly_audit" in script
     assert "runs\\weekly\\CF" in script
     assert "latest_signal_only_contains_forward_return_validation" in script
     assert "historical_forward_returns_are_validation_labels" in script
     assert "fundamental_signal_status" in script
+    assert "trend_confirmation_timing" in script
+    assert "option_maturity_confirmation" in script
     assert "futures_option_divergence_interpretation" in script
     assert "futures_option_playbook_interpretation" in script
+    assert "event_path_fixed_checkpoint_interpretation" in script
+    assert "event_path_purged_loo_interpretation" in script
+    assert "historical_release_date_backfill" in script
+    assert "fundamental_incremental_sample_size" in script
 
 
 def test_update_cf_latest_research_has_official_daily_download_contract() -> None:
@@ -141,7 +172,15 @@ def test_readme_documents_weekly_pack_command() -> None:
     readme = Path("README.md").read_text(encoding="utf-8")
 
     assert "-RunWeeklyResearchPack" in readme
-    assert "R41 -> R83 -> R84 -> R55 -> R60 -> R69 -> R71 -> R56 -> R59" in readme
+    assert (
+        "R41 -> R83 -> R84 -> R55 -> R60 -> R69 -> R71 -> "
+        "R93K -> R93L -> R93M -> R93N -> R93O -> R93P -> R56 -> R59"
+        in readme
+    )
+    assert "build-cf-futures-option-wall-factor-v2" in readme
+    assert "build-cf-futures-option-event-path-research" in readme
+    assert "build-cf-option-maturity-confirmation-research" in readme
+    assert "2022-2023 expansion" in readme
     assert "build-cf-option-strike-position-research" in readme
     assert "build-cf-event-threshold-sensitivity" in readme
     assert "build-cf-weekly-research-audit" in readme

@@ -1,0 +1,30 @@
+version: V5.1_R93G_policy_reference_v1
+product_code: CF
+cotton_year:
+  start_month: 9
+  start_day: 1
+target_price_reference:
+  value: 18600
+  unit: CNY_PER_TON_LINT
+  geography: XINJIANG
+  price_object: COTTON_TARGET_PRICE_POLICY_REFERENCE
+  source_status: USER_CONFIRMED_RESEARCH_REFERENCE
+  official_effective_period_verified: false
+  source_note: "用户确认的研究参考值；政策有效期、标准级口径和补贴结算规则仍需官方文件复核"
+spot_price_object:
+  indicator_id: S0031714
+  indicator_name: "中国棉花价格指数:3128B"
+  unit: CNY_PER_TON
+  comparability_status: HUMAN_REVIEW_REQUIRED
+futures_price_object:
+  source_field: raw_price
+  description: "R86映射真实主力合约当日结算价"
+  comparability_status: CONTRACT_AND_DELIVERY_EXPECTATION_DIFFER
+excluded_price_objects:
+  - additive_adjusted_continuous_price
+  - roll_neutral_return_index
+fundamental_signal_status: not_connected
+research_boundary:
+  - "18600只作为政策研究参考线，不解释为期货支撑位、现货保底价或公允价值"
+  - "加法连续价和无换月跳空收益指数均不得与18600进行价格水平比较"
+  - "基本面与政策变量不进入composite_score或自动交易结论"

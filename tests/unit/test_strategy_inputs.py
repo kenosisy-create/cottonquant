@@ -38,7 +38,7 @@ def test_prepare_strategy_inputs_keeps_cross_year_t_plus_one_mapping(tmp_path: P
     ]
     assert validation["status"].tolist() == ["PASS", "PASS"]
     assert result.pending_signal_dates == (date(2024, 1, 3),)
-    assert manifest["rule_version"] == "V5.1_R86_strategy_inputs_v1"
+    assert manifest["rule_version"] == "V5.1_R86_strategy_inputs_v2_main_cycle"
     assert "不构成交易指令" in result.markdown_path.read_text(encoding="utf-8")
 
 

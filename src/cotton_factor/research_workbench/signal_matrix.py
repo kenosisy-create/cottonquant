@@ -19,9 +19,13 @@ from cotton_factor.research_workbench import trend_continuity_board as r29
 from cotton_factor.research_workbench.core_quotes import CORE_QUOTE_FILE_NAME
 
 PRODUCT_CODE = "CF"
-SIGNAL_MATRIX_VERSION = "R35_signal_matrix_v1"
+SIGNAL_MATRIX_VERSION = "R35_signal_matrix_v3_main_cycle_option_relay"
 OUTPUT_DIR = "signal_matrix"
 DEFAULT_HORIZONS = (1, 3, 5, 10, 20, 40)
+MIN_OPTION_RELAY_ELIGIBLE_COUNT = 4
+MIN_OPTION_RELAY_LIQUIDITY_SCORE = 20.0
+MIN_RELAY_FUTURES_OI_SHARE = 0.10
+MIN_RELAY_FUTURES_VOLUME_SHARE = 0.10
 WARNING_SEVERITY = "WARN"
 INFO_SEVERITY = "INFO"
 HUMAN_REVIEW_REQUIRED = (
@@ -31,6 +35,7 @@ HUMAN_REVIEW_REQUIRED = (
     "factor_thresholds",
     "option_signal_placeholder",
     "option_signal_filter_rules_before_trading_use",
+    "option_tenor_relay_rules",
     "contract_rule_assumptions",
 )
 
@@ -68,6 +73,15 @@ class SignalMatrixWarningRecord:
             "affected_count": str(self.affected_count),
             "human_review_required": ";".join(self.human_review_required),
         }
+
+
+@dataclass(frozen=True)
+class OptionFactorLookup:
+    """按合约与交易日组织的期权因子，只包含当日可观察字段。"""
+
+    by_contract: dict[tuple[date, str], dict[str, object]]
+    by_date: dict[date, tuple[dict[str, object], ...]]
+    futures_by_contract: dict[tuple[date, str], dict[str, object]]
 
 
 @dataclass(frozen=True)
@@ -175,7 +189,7 @@ def build_cf_signal_matrix(
         if trend_rule_candidate_path is None
         else r23._load_trend_rule_candidates(input_path=trend_rule_candidate_path)
     )
-    option_lookup = _load_option_factor_lookup(option_factor_path)
+    option_lookup = _load_option_factor_lookup(option_factor_path, quotes=quotes)
     # R35 复用 R29 逐日可观察状态，避免另起一套主力识别、趋势阶段和质量评分规则。
     score_dates = [value for value in available_dates if value <= active_end]
     board_rows = r29._board_rows(
@@ -255,7 +269,7 @@ def _matrix_rows(
     start: date,
     end: date,
     horizons: tuple[int, ...],
-    option_lookup: dict[tuple[date, str], dict[str, object]] | None,
+    option_lookup: OptionFactorLookup | None,
 ) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for board_row in board_rows:
@@ -279,7 +293,7 @@ def _matrix_row(
     board_row: dict[str, object],
     quotes: pd.DataFrame,
     horizon: int,
-    option_lookup: dict[tuple[date, str], dict[str, object]] | None,
+    option_lookup: OptionFactorLookup | None,
 ) -> dict[str, object]:
     trade_date = date.fromisoformat(str(board_row["trade_date"]))
     main_contract = str(board_row["main_contract"])
@@ -327,6 +341,7 @@ def _matrix_row(
         confidence_score=confidence_score,
         horizon_return=horizon_return,
         option_signal=str(option_context["option_signal"]),
+        option_relay_used=bool(option_context["option_relay_used"]),
     )
     return {
         "run_id": board_row["run_id"],
@@ -344,6 +359,24 @@ def _matrix_row(
         "option_signal": option_context["option_signal"],
         "option_signal_direction": option_context["option_signal_direction"],
         "option_factor_status": option_context["option_factor_status"],
+        "option_underlying_contract": option_context["option_underlying_contract"],
+        "option_selection_reason": option_context["option_selection_reason"],
+        "option_relay_used": option_context["option_relay_used"],
+        "option_tenor_gap_months": option_context["option_tenor_gap_months"],
+        "option_eligible_option_count": option_context["option_eligible_option_count"],
+        "option_liquidity_score": option_context["option_liquidity_score"],
+        "option_underlying_futures_open_interest": option_context[
+            "option_underlying_futures_open_interest"
+        ],
+        "option_underlying_futures_oi_share": option_context[
+            "option_underlying_futures_oi_share"
+        ],
+        "option_underlying_futures_volume": option_context[
+            "option_underlying_futures_volume"
+        ],
+        "option_underlying_futures_volume_share": option_context[
+            "option_underlying_futures_volume_share"
+        ],
         "option_atm_iv_rank": option_context["option_atm_iv_rank"],
         "option_pcr_volume": option_context["option_pcr_volume"],
         "option_pcr_oi": option_context["option_pcr_oi"],
@@ -406,7 +439,9 @@ def _past_return(
 
 def _load_option_factor_lookup(
     option_factor_path: Path | None,
-) -> dict[tuple[date, str], dict[str, object]] | None:
+    *,
+    quotes: pd.DataFrame,
+) -> OptionFactorLookup | None:
     if option_factor_path is None:
         return None
     if not option_factor_path.exists():
@@ -434,29 +469,52 @@ def _load_option_factor_lookup(
     for column in ("atm_iv_rank", "pcr_volume", "pcr_oi", "skew_proxy"):
         working[column] = pd.to_numeric(working[column], errors="coerce")
     lookup: dict[tuple[date, str], dict[str, object]] = {}
+    by_date: dict[date, list[dict[str, object]]] = {}
     for row in working.itertuples(index=False):
-        lookup[(row.trade_date, str(row.underlying_contract))] = {
+        record = {
+            "underlying_contract": str(row.underlying_contract),
             "factor_status": str(row.factor_status),
             "atm_iv_rank": r23._float_or_none(row.atm_iv_rank),
             "pcr_volume": r23._float_or_none(row.pcr_volume),
             "pcr_oi": r23._float_or_none(row.pcr_oi),
             "skew_proxy": r23._float_or_none(row.skew_proxy),
+            "eligible_option_count": _optional_int_column(row, "eligible_option_count"),
+            "option_liquidity_score": _optional_float_column(
+                row,
+                "option_liquidity_score",
+            ),
         }
-    return lookup
+        lookup[(row.trade_date, str(row.underlying_contract))] = record
+        by_date.setdefault(row.trade_date, []).append(record)
+    return OptionFactorLookup(
+        by_contract=lookup,
+        by_date={key: tuple(value) for key, value in by_date.items()},
+        futures_by_contract=_futures_activity_lookup(quotes=quotes),
+    )
 
 
 def _option_context(
     *,
-    option_lookup: dict[tuple[date, str], dict[str, object]] | None,
+    option_lookup: OptionFactorLookup | None,
     trade_date: date,
     main_contract: str,
     futures_direction: str,
 ) -> dict[str, object]:
     if option_lookup is None:
-        return _empty_option_context(option_signal="not_connected")
-    option_row = option_lookup.get((trade_date, main_contract))
+        return _empty_option_context(
+            option_signal="not_connected",
+            selection_reason="OPTION_FACTOR_NOT_CONNECTED",
+        )
+    option_row, selection = _select_option_factor_row(
+        option_lookup=option_lookup,
+        trade_date=trade_date,
+        main_contract=main_contract,
+    )
     if option_row is None:
-        return _empty_option_context(option_signal="not_available")
+        return _empty_option_context(
+            option_signal="not_available",
+            selection_reason=str(selection["selection_reason"]),
+        )
     factor_status = str(option_row.get("factor_status"))
     atm_iv_rank = r23._float_or_none(option_row.get("atm_iv_rank"))
     pcr_volume = r23._float_or_none(option_row.get("pcr_volume"))
@@ -485,6 +543,20 @@ def _option_context(
         "option_signal": option_signal,
         "option_signal_direction": option_direction,
         "option_factor_status": factor_status,
+        "option_underlying_contract": option_row.get("underlying_contract"),
+        "option_selection_reason": selection["selection_reason"],
+        "option_relay_used": selection["relay_used"],
+        "option_tenor_gap_months": selection["tenor_gap_months"],
+        "option_eligible_option_count": option_row.get("eligible_option_count"),
+        "option_liquidity_score": option_row.get("option_liquidity_score"),
+        "option_underlying_futures_open_interest": selection.get(
+            "futures_open_interest"
+        ),
+        "option_underlying_futures_oi_share": selection.get("futures_oi_share"),
+        "option_underlying_futures_volume": selection.get("futures_volume"),
+        "option_underlying_futures_volume_share": selection.get(
+            "futures_volume_share"
+        ),
         "option_atm_iv_rank": atm_iv_rank,
         "option_pcr_volume": pcr_volume,
         "option_pcr_oi": pcr_oi,
@@ -492,11 +564,189 @@ def _option_context(
     }
 
 
-def _empty_option_context(*, option_signal: str) -> dict[str, object]:
+def _select_option_factor_row(
+    *,
+    option_lookup: OptionFactorLookup,
+    trade_date: date,
+    main_contract: str,
+) -> tuple[dict[str, object] | None, dict[str, object]]:
+    exact = option_lookup.by_contract.get((trade_date, main_contract))
+    if exact is not None and str(exact.get("factor_status")) == "READY":
+        activity = option_lookup.futures_by_contract.get((trade_date, main_contract), {})
+        return exact, {
+            "selection_reason": "MAIN_CONTRACT_READY",
+            "relay_used": False,
+            "tenor_gap_months": 0,
+            **activity,
+        }
+
+    # CF609之后的方向性接力只能是CF701。03/07/11属于中间结构合约，
+    # 即便持仓较高也不能代替下一01/05/09主力周期进入期权方向判断。
+    next_delivery = _next_main_cycle_delivery(
+        main_contract=main_contract,
+        trade_date=trade_date,
+    )
+    candidates: list[tuple[float, str, dict[str, object], dict[str, object]]] = []
+    for candidate in option_lookup.by_date.get(trade_date, ()):
+        if str(candidate.get("factor_status")) != "READY":
+            continue
+        contract = str(candidate.get("underlying_contract") or "")
+        candidate_delivery = _contract_delivery_or_none(
+            contract_code=contract,
+            trade_date=trade_date,
+        )
+        if next_delivery is None or candidate_delivery != next_delivery:
+            continue
+        eligible_count = _int_or_none(candidate.get("eligible_option_count"))
+        if (
+            eligible_count is None
+            or eligible_count < MIN_OPTION_RELAY_ELIGIBLE_COUNT
+        ):
+            continue
+        liquidity = r23._float_or_none(candidate.get("option_liquidity_score"))
+        if liquidity is None or liquidity < MIN_OPTION_RELAY_LIQUIDITY_SCORE:
+            continue
+        activity = option_lookup.futures_by_contract.get((trade_date, contract))
+        if activity is None:
+            continue
+        oi_share = r23._float_or_none(activity.get("futures_oi_share"))
+        volume_share = r23._float_or_none(activity.get("futures_volume_share"))
+        if oi_share is None or oi_share < MIN_RELAY_FUTURES_OI_SHARE:
+            continue
+        if volume_share is None or volume_share < MIN_RELAY_FUTURES_VOLUME_SHARE:
+            continue
+        candidates.append((-(liquidity or 0.0), contract, candidate, activity))
+    if candidates:
+        _, _, selected, activity = min(candidates, key=lambda item: item[:2])
+        gap = _contract_month_gap(
+            main_contract=main_contract,
+            option_contract=str(selected["underlying_contract"]),
+            trade_date=trade_date,
+        )
+        return selected, {
+            "selection_reason": "NEXT_MAIN_CYCLE_RELAY",
+            "relay_used": True,
+            "tenor_gap_months": gap,
+            **activity,
+        }
+    if exact is not None:
+        activity = option_lookup.futures_by_contract.get((trade_date, main_contract), {})
+        return exact, {
+            "selection_reason": "MAIN_CONTRACT_DEGRADED_NO_MAIN_CYCLE_RELAY",
+            "relay_used": False,
+            "tenor_gap_months": 0,
+            **activity,
+        }
+    return None, {
+        "selection_reason": "NO_ELIGIBLE_NEXT_MAIN_CYCLE_OPTION",
+        "relay_used": False,
+        "tenor_gap_months": None,
+    }
+
+
+def _next_main_cycle_delivery(*, main_contract: str, trade_date: date) -> date | None:
+    main_delivery = _contract_delivery_or_none(
+        contract_code=main_contract,
+        trade_date=trade_date,
+    )
+    if main_delivery is None or main_delivery.month not in r23.CF_MAIN_CYCLE_MONTHS:
+        return None
+    cycle_months = sorted(r23.CF_MAIN_CYCLE_MONTHS)
+    for month in cycle_months:
+        if month > main_delivery.month:
+            return date(main_delivery.year, month, 1)
+    return date(main_delivery.year + 1, cycle_months[0], 1)
+
+
+def _contract_delivery_or_none(*, contract_code: str, trade_date: date) -> date | None:
+    try:
+        return r23._delivery_date(
+            contract_code=contract_code,
+            trade_date=trade_date,
+        )
+    except ResearchWorkbenchError:
+        return None
+
+
+def _futures_activity_lookup(
+    *,
+    quotes: pd.DataFrame,
+) -> dict[tuple[date, str], dict[str, object]]:
+    """构造当日期货全链活跃度，供下一主力周期接力门槛使用。"""
+    working = quotes[["trade_date", "contract_code", "open_interest", "volume"]].copy()
+    working["open_interest"] = pd.to_numeric(working["open_interest"], errors="coerce")
+    working["volume"] = pd.to_numeric(working["volume"], errors="coerce")
+    lookup: dict[tuple[date, str], dict[str, object]] = {}
+    for trade_date, daily in working.groupby("trade_date", sort=False):
+        total_oi = float(daily["open_interest"].fillna(0).sum())
+        total_volume = float(daily["volume"].fillna(0).sum())
+        for row in daily.itertuples(index=False):
+            open_interest = r23._float_or_none(row.open_interest)
+            volume = r23._float_or_none(row.volume)
+            lookup[(trade_date, str(row.contract_code))] = {
+                "futures_open_interest": open_interest,
+                "futures_oi_share": (
+                    None if open_interest is None or total_oi <= 0 else open_interest / total_oi
+                ),
+                "futures_volume": volume,
+                "futures_volume_share": (
+                    None if volume is None or total_volume <= 0 else volume / total_volume
+                ),
+            }
+    return lookup
+
+
+def _contract_month_gap(
+    *,
+    main_contract: str,
+    option_contract: str,
+    trade_date: date,
+) -> int | None:
+    try:
+        main_delivery = r23._delivery_date(
+            contract_code=main_contract,
+            trade_date=trade_date,
+        )
+        option_delivery = r23._delivery_date(
+            contract_code=option_contract,
+            trade_date=trade_date,
+        )
+    except ResearchWorkbenchError:
+        return None
+    return (
+        (option_delivery.year - main_delivery.year) * 12
+        + option_delivery.month
+        - main_delivery.month
+    )
+
+
+def _optional_float_column(row: object, name: str) -> float | None:
+    return r23._float_or_none(getattr(row, name, None))
+
+
+def _optional_int_column(row: object, name: str) -> int | None:
+    return _int_or_none(getattr(row, name, None))
+
+
+def _empty_option_context(
+    *,
+    option_signal: str,
+    selection_reason: str,
+) -> dict[str, object]:
     return {
         "option_signal": option_signal,
         "option_signal_direction": "unknown",
         "option_factor_status": "not_connected",
+        "option_underlying_contract": None,
+        "option_selection_reason": selection_reason,
+        "option_relay_used": False,
+        "option_tenor_gap_months": None,
+        "option_eligible_option_count": None,
+        "option_liquidity_score": None,
+        "option_underlying_futures_open_interest": None,
+        "option_underlying_futures_oi_share": None,
+        "option_underlying_futures_volume": None,
+        "option_underlying_futures_volume_share": None,
         "option_atm_iv_rank": None,
         "option_pcr_volume": None,
         "option_pcr_oi": None,
@@ -627,6 +877,7 @@ def _warning_flags(
     confidence_score: int,
     horizon_return: float | None,
     option_signal: str,
+    option_relay_used: bool,
 ) -> tuple[str, ...]:
     flags: list[str] = []
     if option_signal in {"not_connected", "not_available"}:
@@ -637,6 +888,8 @@ def _warning_flags(
         flags.append("option_volatility_risk")
     elif option_signal == "option_watch":
         flags.append("option_watch")
+    if option_relay_used:
+        flags.append("option_tenor_relay")
     phase_code = str(board_row.get("trend_phase_code"))
     if phase_code == "S3":
         flags.append("trend_exhaustion_watch")
@@ -761,6 +1014,26 @@ def _warning_records(
                 human_review_required=("option_signal_filter_rules_before_trading_use",),
             )
         )
+        relay_count = sum(bool(row.get("option_relay_used")) for row in matrix_rows)
+        if relay_count:
+            records.append(
+                _warning(
+                    run_id=run_id,
+                    section="option_tenor_selection",
+                    severity=INFO_SEVERITY,
+                    warning_code="R35_OPTION_NEXT_MAIN_CYCLE_RELAY_USED",
+                    warning_message=(
+                        "主力标的期权不可用时，已按当日可见 READY 状态、"
+                        "期权流动性及期货持仓/成交份额门槛接到下一01/05/09"
+                        "主力周期；03/07/11中间合约不参与方向性接力。"
+                    ),
+                    affected_count=relay_count,
+                    human_review_required=(
+                        "option_signal_filter_rules_before_trading_use",
+                        "option_tenor_relay_rules",
+                    ),
+                )
+            )
     records.append(
         _warning(
             run_id=run_id,
@@ -899,8 +1172,8 @@ def _write_markdown(
         "",
         "## 二、最新多周期观察",
         "",
-        "| Horizon | 方向 | 期权过滤 | 置信度 | 阶段 | 证据等级 | 操作类型 | 风险标签 |",
-        "| ---: | --- | --- | ---: | --- | --- | --- | --- |",
+        "| Horizon | 方向 | 期权标的 | 期权过滤 | 置信度 | 阶段 | 证据等级 | 操作类型 | 风险标签 |",
+        "| ---: | --- | --- | --- | ---: | --- | --- | --- | --- |",
     ]
     for row in latest_sorted:
         lines.append(
@@ -909,6 +1182,7 @@ def _write_markdown(
                 [
                     str(row["horizon"]),
                     str(row["direction"]),
+                    str(row.get("option_underlying_contract") or "未连接"),
                     str(row.get("option_signal")),
                     str(row["confidence_score"]),
                     f"{row['trend_phase']} {row['trend_phase_label']}",
@@ -952,6 +1226,8 @@ def _write_markdown(
             "- R35 只输出多周期可观察信号矩阵，不包含未来收益标签。",
             "- evidence_level 当前是启发式证据等级，完整历史表现由 R36 滚动验证更新。",
             "- option_signal 是期权过滤和风险提示字段，不进入 composite_score。",
+            "- 期权期限接力仅在主力标的因子不为 READY 时启用；"
+            "只允许下一01/05/09主力周期，并校验对应期货持仓和成交份额。",
             "- 本表用于研究观察，不构成交易指令。",
             "",
             "## 五、人工复核项",

@@ -130,3 +130,50 @@ def test_chain_map_fails_when_all_candidates_blocked() -> None:
             product_code="CF",
             min_volume=1,
         )
+
+
+def test_chain_map_can_restrict_cf_to_010509_main_cycle() -> None:
+    calendar_result = build_trading_calendar(
+        start=date(2024, 1, 1),
+        end=date(2025, 12, 31),
+        exchange="CZCE",
+    )
+    contracts = []
+    for year in (2024, 2025):
+        contracts.extend(
+            build_contract_master(
+                product_code="CF",
+                year=year,
+                trading_dates=calendar_result.calendar.trading_dates,
+            ).contracts
+        )
+    trade_date = date(2024, 8, 6)
+    quotes = [
+        CoreQuoteDailyRow(
+            source_snapshot_id=f"raw_{contract}",
+            exchange="CZCE",
+            product_code="CF",
+            contract_code=contract,
+            trade_date=trade_date,
+            volume=volume,
+            open_interest=open_interest,
+        )
+        for contract, volume, open_interest in (
+            ("CF409", 100, 1_000),
+            ("CF411", 500, 10_000),
+            ("CF501", 300, 5_000),
+        )
+    ]
+
+    result = build_chain_map(
+        quotes=quotes,
+        contracts=contracts,
+        calendar=calendar_result.calendar,
+        product_code="CF",
+        eligible_delivery_months=(1, 5, 9),
+        roll_rule_version="cf_main_cycle_010509_oi_v1",
+    )
+
+    assert result.rows[0].mapped_contract == "CF501"
+    assert result.rows[0].mapped_contract != "CF411"
+    assert result.rows[0].roll_rule_version == "cf_main_cycle_010509_oi_v1"

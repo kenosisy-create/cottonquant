@@ -31,6 +31,19 @@ from cotton_factor.research_workbench.cost_sensitivity import (
     ResearchCostSensitivityResult,
     build_cf_cost_sensitivity,
 )
+from cotton_factor.research_workbench.cotton_year_policy import (
+    CottonYearPolicyWarningRecord,
+    PolicyReferenceConfig,
+    ResearchCottonYearPolicyResult,
+    build_cf_cotton_year_policy_research,
+    build_cotton_year_fundamental_summary,
+    build_cotton_year_summary,
+    build_policy_reference_daily,
+    build_policy_reference_historical_validation,
+    build_policy_reference_validation_summary,
+    cotton_year_label,
+    load_policy_reference_config,
+)
 from cotton_factor.research_workbench.current_watch_window import (
     ResearchCurrentWatchWindowResult,
     build_cf_current_watch_window,
@@ -55,6 +68,10 @@ from cotton_factor.research_workbench.data_quality import (
     CfDataQualityResult,
     DataQualityIssue,
     check_cf_data_quality,
+)
+from cotton_factor.research_workbench.delivery_adjusted_curve import (
+    ResearchDeliveryAdjustedCurveResult,
+    build_cf_delivery_adjusted_curve,
 )
 from cotton_factor.research_workbench.dual_price_state import (
     ResearchDualPriceStateResult,
@@ -105,11 +122,21 @@ from cotton_factor.research_workbench.fundamental_data_contract import (
     ResearchFundamentalDataContractResult,
     build_cf_fundamental_data_contract,
 )
+from cotton_factor.research_workbench.fundamental_data_status import (
+    FundamentalDataStatusWarningRecord,
+    ResearchFundamentalDataStatusResult,
+    build_cf_fundamental_data_status,
+)
 from cotton_factor.research_workbench.fundamental_observation import (
     FundamentalObservationDatasetSummary,
     FundamentalObservationWarningRecord,
     ResearchFundamentalObservationResult,
     build_cf_fundamental_observation,
+)
+from cotton_factor.research_workbench.fundamental_trend_incremental import (
+    FundamentalTrendIncrementalResult,
+    FundamentalTrendIncrementalWarningRecord,
+    build_cf_fundamental_trend_incremental_research,
 )
 from cotton_factor.research_workbench.futures_option_divergence import (
     FuturesOptionDivergenceWarningRecord,
@@ -121,6 +148,27 @@ from cotton_factor.research_workbench.futures_option_divergence_playbook import 
     ResearchFuturesOptionDivergencePlaybookResult,
     build_cf_futures_option_divergence_playbook,
 )
+from cotton_factor.research_workbench.futures_option_dynamic_wall import (
+    FuturesOptionDynamicWallWarningRecord,
+    ResearchFuturesOptionDynamicWallResult,
+    build_cf_dynamic_option_wall_research,
+    build_cf_futures_option_dynamic_wall_research,
+)
+from cotton_factor.research_workbench.futures_option_event_path import (
+    FuturesOptionEventPathWarningRecord,
+    ResearchFuturesOptionEventPathResult,
+    build_cf_futures_option_event_path_research,
+)
+from cotton_factor.research_workbench.futures_option_regime_interaction import (
+    FuturesOptionRegimeInteractionWarningRecord,
+    ResearchFuturesOptionRegimeInteractionResult,
+    build_cf_futures_option_regime_interaction_research,
+)
+from cotton_factor.research_workbench.futures_option_wall_factor_v2 import (
+    FuturesOptionWallFactorV2WarningRecord,
+    ResearchFuturesOptionWallFactorV2Result,
+    build_cf_futures_option_wall_factor_v2_research,
+)
 from cotton_factor.research_workbench.historical_event_explanation import (
     HistoricalEventExplanationWarningRecord,
     ResearchHistoricalEventExplanationResult,
@@ -130,6 +178,11 @@ from cotton_factor.research_workbench.historical_evidence import (
     HistoricalEvidenceWarningRecord,
     ResearchHistoricalEvidenceResult,
     build_cf_historical_evidence_pack,
+)
+from cotton_factor.research_workbench.ifind_edb_context import (
+    IFindEdbWarningRecord,
+    ResearchIFindEdbContextResult,
+    connect_cf_ifind_edb_context,
 )
 from cotton_factor.research_workbench.latest_signal_brief import (
     LatestSignalBriefResult,
@@ -199,6 +252,11 @@ from cotton_factor.research_workbench.option_factor_proxy import (
     ResearchOptionFactorProxyResult,
     build_cf_option_factor_proxy,
 )
+from cotton_factor.research_workbench.option_maturity_confirmation import (
+    OptionMaturityConfirmationResult,
+    OptionMaturityConfirmationWarningRecord,
+    build_cf_option_maturity_confirmation_research,
+)
 from cotton_factor.research_workbench.option_strike_position_research import (
     ResearchOptionStrikePositionResult,
     build_cf_option_strike_position_research,
@@ -235,6 +293,10 @@ from cotton_factor.research_workbench.raw_ingest import (
     ResearchRawIngestResult,
     ingest_cf_raw,
     list_cf_raw_manifest,
+)
+from cotton_factor.research_workbench.rebound_lifecycle import (
+    ReboundLifecycleResult,
+    build_cf_rebound_lifecycle_research,
 )
 from cotton_factor.research_workbench.replay import (
     ResearchPipelineReplayResult,
@@ -278,6 +340,10 @@ from cotton_factor.research_workbench.state_transition_competing_risk import (
     ResearchStateTransitionCompetingRiskResult,
     build_cf_state_transition_competing_risk_research,
 )
+from cotton_factor.research_workbench.structural_position_attribution import (
+    ResearchStructuralPositionAttributionResult,
+    build_cf_structural_position_attribution,
+)
 from cotton_factor.research_workbench.structure_factors import (
     ResearchStructureFactorsBuildResult,
     build_cf_structure_factors,
@@ -296,6 +362,11 @@ from cotton_factor.research_workbench.trend_candidate_stability import (
     TrendCandidateStabilityResult,
     TrendCandidateStabilityWarningRecord,
     build_cf_trend_candidate_stability_research,
+)
+from cotton_factor.research_workbench.trend_confirmation_timing import (
+    TrendConfirmationTimingResult,
+    TrendConfirmationTimingWarningRecord,
+    build_cf_trend_confirmation_timing_research,
 )
 from cotton_factor.research_workbench.trend_continuity_board import (
     ResearchTrendContinuityBoardResult,
@@ -362,6 +433,7 @@ __all__ = [
     "ResearchRawFileRecord",
     "ResearchRawIngestResult",
     "ResearchStructureFactorsBuildResult",
+    "ResearchStructuralPositionAttributionResult",
     "ResearchModeConfig",
     "ResearchSingleFactorBacktestResult",
     "ResearchSignalMatrixResult",
@@ -373,6 +445,7 @@ __all__ = [
     "ContractRuleReviewRow",
     "CostSensitivitySummaryRow",
     "CostSensitivityWarningRecord",
+    "CottonYearPolicyWarningRecord",
     "DailyBriefWarningRecord",
     "DailyOperationAuditWarningRecord",
     "DataQualityIssue",
@@ -387,31 +460,42 @@ __all__ = [
     "ResearchMemberPositionResult",
     "ResearchContinuousBuildResult",
     "ResearchCostSensitivityResult",
+    "ResearchCottonYearPolicyResult",
     "ResearchDailyBriefResult",
     "ResearchDailyOperationAuditResult",
     "ResearchDataContinuityAuditResult",
+    "ResearchDeliveryAdjustedCurveResult",
     "ResearchDualPriceStateResult",
     "FactorOutputArtifactContract",
     "FactorOutputContractResult",
     "FactorWarningRecord",
     "ForwardReturnWarningRecord",
     "FuturesOptionDivergenceWarningRecord",
+    "FuturesOptionDynamicWallWarningRecord",
     "FundamentalDataContractWarningRecord",
+    "FundamentalDataStatusWarningRecord",
+    "FundamentalTrendIncrementalWarningRecord",
     "FundamentalDatasetContract",
     "FundamentalContextWarningRecord",
     "FundamentalObservationDatasetSummary",
     "FundamentalObservationWarningRecord",
+    "PolicyReferenceConfig",
     "HistoricalEventExplanationWarningRecord",
     "HistoricalEvidenceWarningRecord",
+    "IFindEdbWarningRecord",
     "MultifactorDiagnosticWarningRecord",
     "ResearchFactorDiagnosticsBuildResult",
     "ResearchForwardReturnsBuildResult",
     "ResearchFuturesOptionDivergenceResult",
+    "ResearchFuturesOptionDynamicWallResult",
     "ResearchFundamentalDataContractResult",
+    "ResearchFundamentalDataStatusResult",
+    "FundamentalTrendIncrementalResult",
     "ResearchFundamentalContextResult",
     "ResearchFundamentalObservationResult",
     "ResearchHistoricalEventExplanationResult",
     "ResearchHistoricalEvidenceResult",
+    "ResearchIFindEdbContextResult",
     "ResearchEventLifecycleResult",
     "ResearchStateTransitionCompetingRiskResult",
     "ResearchEventThresholdReviewResult",
@@ -426,6 +510,7 @@ __all__ = [
     "ResearchOptionVolatilityTermStructureResult",
     "ResearchDailyPipelineResult",
     "ResearchProductRegistryResult",
+    "ReboundLifecycleResult",
     "ResearchTrendTurningPointResult",
     "ResearchTrendContinuityBoardResult",
     "ResearchTrendPhaseEventResult",
@@ -437,6 +522,8 @@ __all__ = [
     "TrendCandidateForwardWarningRecord",
     "TrendCandidateStabilityResult",
     "TrendCandidateStabilityWarningRecord",
+    "TrendConfirmationTimingResult",
+    "TrendConfirmationTimingWarningRecord",
     "TrendOptionTimingResult",
     "TrendOptionTimingWarningRecord",
     "ResearchTrendQualityCalibrationResult",
@@ -451,6 +538,8 @@ __all__ = [
     "MemberPositionSourceRecord",
     "OptionDataContractWarningRecord",
     "OptionFactorProxyWarningRecord",
+    "OptionMaturityConfirmationResult",
+    "OptionMaturityConfirmationWarningRecord",
     "OptionQualityRow",
     "OptionSourceRecord",
     "LatestSignalBriefResult",
@@ -483,17 +572,34 @@ __all__ = [
     "build_cf_contract_rule_review",
     "build_cf_carry_factor",
     "build_cf_cost_sensitivity",
+    "build_cf_cotton_year_policy_research",
+    "build_cotton_year_fundamental_summary",
+    "build_cotton_year_summary",
     "build_cf_daily_brief",
     "build_cf_daily_operation_audit",
     "build_cf_current_watch_window",
     "build_cf_data_continuity_audit",
+    "build_cf_delivery_adjusted_curve",
     "build_cf_dual_price_state",
     "build_cf_factor_diagnostics",
     "build_cf_factor_output_contract",
     "build_cf_forward_returns",
     "build_cf_futures_option_divergence_research",
     "build_cf_futures_option_divergence_playbook",
+    "build_cf_futures_option_dynamic_wall_research",
+    "build_cf_dynamic_option_wall_research",
+    "FuturesOptionEventPathWarningRecord",
+    "ResearchFuturesOptionEventPathResult",
+    "build_cf_futures_option_event_path_research",
+    "FuturesOptionRegimeInteractionWarningRecord",
+    "ResearchFuturesOptionRegimeInteractionResult",
+    "build_cf_futures_option_regime_interaction_research",
+    "FuturesOptionWallFactorV2WarningRecord",
+    "ResearchFuturesOptionWallFactorV2Result",
+    "build_cf_futures_option_wall_factor_v2_research",
     "build_cf_fundamental_data_contract",
+    "build_cf_fundamental_data_status",
+    "build_cf_fundamental_trend_incremental_research",
     "build_cf_fundamental_context",
     "build_cf_fundamental_observation",
     "build_cf_historical_event_explanation",
@@ -505,15 +611,20 @@ __all__ = [
     "build_research_framework_context",
     "build_cf_option_data_contract",
     "build_cf_option_factor_proxy",
+    "build_cf_option_maturity_confirmation_research",
     "build_cf_option_structure_research",
     "build_cf_option_strike_position_research",
     "build_cf_option_volatility_term_structure_research",
     "build_cf_post_r22_validation_pack",
     "build_cf_product_research_registry",
     "build_cf_publish_pack",
+    "build_policy_reference_daily",
+    "build_policy_reference_historical_validation",
+    "build_policy_reference_validation_summary",
     "connect_cf_official_history",
     "connect_cf_option_history",
     "connect_cf_member_position_history",
+    "connect_cf_ifind_edb_context",
     "fetch_cf_official_daily_files",
     "fetch_cf_official_member_position",
     "fetch_cf_official_member_position_history",
@@ -526,12 +637,14 @@ __all__ = [
     "build_cf_multifactor_diagnostics",
     "build_cf_research_continuous",
     "build_cf_research_mapping",
+    "build_cf_rebound_lifecycle_research",
     "build_cf_single_factor_backtest",
     "build_cf_signal_matrix",
     "build_cf_signal_matrix_validation",
     "build_cf_signal_threshold_research",
     "build_cf_stage_decision_pack",
     "build_cf_structure_factors",
+    "build_cf_structural_position_attribution",
     "build_cf_trend_turning_point_analysis",
     "build_cf_trend_continuity_board",
     "build_cf_trend_phase_events",
@@ -540,6 +653,7 @@ __all__ = [
     "build_cf_symmetric_trend_research",
     "build_cf_trend_candidate_forward_ledger",
     "build_cf_trend_candidate_stability_research",
+    "build_cf_trend_confirmation_timing_research",
     "build_cf_trend_option_timing_research",
     "build_cf_trend_quality_calibration",
     "build_cf_trend_rule_candidates",
@@ -547,11 +661,13 @@ __all__ = [
     "build_cf_weekly_research_audit",
     "check_cf_data_quality",
     "classify_cf_trend_phase",
+    "cotton_year_label",
     "default_recent_history_years",
     "display_threshold_status",
     "factor_output_artifact_contracts",
     "ingest_cf_raw",
     "list_cf_raw_manifest",
+    "load_policy_reference_config",
     "load_research_mode_config",
     "normalize_cf_core_quotes",
     "official_history_url",

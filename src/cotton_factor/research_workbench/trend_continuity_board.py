@@ -20,7 +20,7 @@ from cotton_factor.research_workbench.core_quotes import CORE_QUOTE_FILE_NAME
 PRODUCT_CODE = "CF"
 UNIVERSE = "CF_MAIN"
 SIGNAL_OBJECT_ID = "CF.C1"
-TREND_CONTINUITY_RULE_VERSION = "R29_trend_continuity_board_v2_r31_quality"
+TREND_CONTINUITY_RULE_VERSION = "R29_trend_continuity_board_v3_main_cycle"
 TREND_QUALITY_RULE_VERSION = "R31_trend_quality_score_v1"
 TREND_QUALITY_CALIBRATION_CONTEXT_VERSION = "R33_trend_quality_calibration_context_v1"
 DEFAULT_LOOKBACK_TRADING_DAYS = 20
@@ -438,7 +438,12 @@ def _single_day_row(*, quotes: pd.DataFrame, trade_date: date, run_id: str) -> d
     visible_quotes = quotes.loc[quotes["trade_date"] <= trade_date].copy()
     latest_quotes = visible_quotes.loc[visible_quotes["trade_date"] == trade_date].copy()
     activity_rows = r23._activity_rows(visible_quotes=visible_quotes, active_date=trade_date)
-    main_contract = str(activity_rows[0]["contract_code"])
+    main_contract = str(
+        r23._research_main_activity_row(
+            activity_rows=activity_rows,
+            active_date=trade_date,
+        )["contract_code"]
+    )
     main_history = r23._main_contract_history(
         visible_quotes=visible_quotes,
         contract_code=main_contract,

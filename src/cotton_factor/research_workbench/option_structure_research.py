@@ -24,13 +24,14 @@ from cotton_factor.research_workbench.state_upgrade_common import (
 )
 
 PRODUCT_CODE = "CF"
-OPTION_STRUCTURE_RESEARCH_VERSION = "R75_option_structure_research_v1"
+OPTION_STRUCTURE_RESEARCH_VERSION = "R75_option_structure_research_v3_main_cycle_relay"
 DEFAULT_PRIMARY_HORIZON = 20
 HUMAN_REVIEW_REQUIRED = (
     "option_proxy_model_interpretation",
     "pcr_direction_threshold",
     "skew_proxy_definition",
     "option_expiry_and_liquidity_weighting",
+    "option_tenor_relay_interpretation",
     "historical_forward_label_interpretation",
 )
 RESEARCH_BOUNDARY = {
@@ -222,14 +223,42 @@ def _daily_rows(
     matrix_working = normalize_trade_date(matrix)
     matrix_working["horizon"] = pd.to_numeric(matrix_working["horizon"], errors="coerce")
     primary = matrix_working.loc[matrix_working["horizon"].eq(primary_horizon)].copy()
+    # R35 是唯一的期限选择入口。旧产物没有接力字段时回退到主力标的，
+    # 避免 R75 再独立选择一次而造成研究口径漂移。
+    if "option_underlying_contract" not in primary.columns:
+        primary["option_underlying_contract"] = primary["main_contract"]
+    else:
+        selected = primary["option_underlying_contract"].astype("string")
+        primary["option_underlying_contract"] = selected.where(
+            selected.notna() & selected.ne(""),
+            primary["main_contract"],
+        )
+    if "option_selection_reason" not in primary.columns:
+        primary["option_selection_reason"] = "LEGACY_MAIN_CONTRACT_FALLBACK"
+    if "option_relay_used" not in primary.columns:
+        primary["option_relay_used"] = False
+    if "option_tenor_gap_months" not in primary.columns:
+        primary["option_tenor_gap_months"] = 0
     primary = primary[
-        ["trade_date", "main_contract", "direction"]
+        [
+            "trade_date",
+            "main_contract",
+            "direction",
+            "option_underlying_contract",
+            "option_selection_reason",
+            "option_relay_used",
+            "option_tenor_gap_months",
+        ]
     ].rename(columns={"direction": "futures_direction"})
-    daily = option.merge(
-        primary,
-        left_on=["trade_date", "underlying_contract"],
-        right_on=["trade_date", "main_contract"],
-        how="inner",
+    daily = primary.merge(
+        option,
+        left_on=["trade_date", "option_underlying_contract"],
+        right_on=["trade_date", "underlying_contract"],
+        how="left",
+        validate="one_to_one",
+    )
+    daily["underlying_contract"] = daily["underlying_contract"].fillna(
+        daily["option_underlying_contract"]
     )
     scores: list[float] = []
     directions: list[str] = []
@@ -270,7 +299,11 @@ def _daily_rows(
     daily["trading_instruction"] = "not_a_trading_instruction"
     columns = [
         "trade_date",
+        "main_contract",
         "underlying_contract",
+        "option_selection_reason",
+        "option_relay_used",
+        "option_tenor_gap_months",
         "futures_direction",
         "option_direction",
         "option_direction_score",
@@ -374,13 +407,12 @@ def _validation_rows(
         daily[
             [
                 "trade_date",
-                "underlying_contract",
+                "main_contract",
                 "confirmation_state",
                 "confirmation_strength",
             ]
         ],
-        left_on=["trade_date", "main_contract"],
-        right_on=["trade_date", "underlying_contract"],
+        on=["trade_date", "main_contract"],
         how="inner",
     )
     joined = joined.loc[joined["forward_label_available"].fillna(False).astype(bool)].copy()
@@ -412,7 +444,21 @@ def _warning_rows(
     *, daily: pd.DataFrame, run_id: str, validation: pd.DataFrame
 ) -> list[dict[str, object]]:
     low_vol = daily["volatility_repricing_state"].eq("LOW_VOL_UNPRICED")
+    relay = daily["option_relay_used"].fillna(False).astype(bool)
     return [
+        {
+            "run_id": run_id,
+            "section": "option_tenor_selection",
+            "severity": "INFO",
+            "warning_code": "OPTION_NEXT_MAIN_CYCLE_RELAY_STATUS",
+            "warning_message": (
+                "主力标的不可用时沿用 R35 的下一01/05/09主力周期接力；"
+                "03/07/11中间合约只保留为结构观察，期货主力和期权采用"
+                "标的分别留存。"
+            ),
+            "affected_count": int(relay.sum()),
+            "human_review_required": "option_tenor_relay_interpretation",
+        },
         {
             "run_id": run_id,
             "section": "research_boundary",
@@ -494,6 +540,9 @@ def _write_markdown(
         "## 最新结构",
         "",
         f"- 标的合约：`{latest['underlying_contract']}`",
+        f"- 期货主力：`{latest['main_contract']}`；期权期限选择："
+        f"`{latest['option_selection_reason']}`；是否接力："
+        f"`{bool(latest['option_relay_used'])}`",
         f"- 期货方向：`{latest['futures_direction']}`",
         f"- 期权方向：`{latest['option_direction']}`，连续分数 "
         f"`{fmt_number(latest['option_direction_score'], 4)}`",

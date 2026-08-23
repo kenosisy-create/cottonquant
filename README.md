@@ -91,6 +91,11 @@ gate, latest signal state, R48 option factors, and R60 threshold review into a
 Chinese go/no-go review artifact before any non-CF pilot. Future work should
 stay on the CF-first research route until human review clears the R65/R52
 expansion boundary.
+R93N now adds the next historical research layer: dynamic local option walls,
+wall migration/build-unwind events, T+1-separated lifecycle labels, 1D/3D/5D
+posterior evidence, and mature-market leave-one-year-out incremental checks.
+It is a research-only sidecar and does not modify `signal_matrix`,
+`composite_score`, direction, sizing, or any strategy registry.
 
 ## Current Direction
 
@@ -216,6 +221,8 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futu
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-divergence-playbook --event-path data/research/CF/futures_option_divergence/CF_2021-01-04_2026-07-06_futures_option_divergence_divergence_event_daily.parquet --node-summary-path data/research/CF/futures_option_divergence/CF_2021-01-04_2026-07-06_futures_option_divergence_summary_by_node.parquet --latest-signal-json-path runs/daily/CF/2026-07-07/latest_signal_brief.json --output-dir data/research/CF/futures_option_divergence_playbook --report-output-dir reports/research/futures_option_divergence_playbook
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-dual-price-state --core-quote-path data/core/CF/core_quote_daily.parquet --output-dir data/research/CF/dual_price_state --report-output-dir reports/research/dual_price_state
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-chain-oi-structure --core-quote-path data/core/CF/core_quote_daily.parquet --output-dir data/research/CF/chain_oi_structure --report-output-dir reports/research/chain_oi_structure --roll-lookback-days 5
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-delivery-adjusted-curve --core-quote-path data/core/CF/core_quote_daily.parquet --near-contract CF609 --far-contract CF611 --start 2026-01-09 --aging-discount 248 --storage-cost-per-ton-day 0.7753225806 --annual-financing-rate 0.025 --holding-days 62
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-structural-position-attribution --core-quote-path data/core/CF/core_quote_daily.parquet --target-contract CF611 --source-contract CF609 --next-contract CF701 --focus-start 2026-05-15 --option-horizons 1,3,5,10
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-oi-roll-window-research --core-quote-path data/core/CF/core_quote_daily.parquet --windows 3,5,10 --output-dir data/research/CF/oi_roll_window --report-output-dir reports/research/oi_roll_window
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-option-structure-research --option-factor-path data/research/CF/option_factors/CF_2021-01-04_2026-07-13_option_factor_proxy_daily.parquet --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-13_signal_matrix_daily.parquet --output-dir data/research/CF/option_structure --report-output-dir reports/research/option_structure
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-phase-v2 --dual-price-path data/research/CF/dual_price_state/CF_2021-01-04_2026-07-13_dual_price_state_daily.parquet --chain-oi-path data/research/CF/chain_oi_structure/CF_2021-01-04_2026-07-13_chain_oi_structure_daily.parquet --option-structure-path data/research/CF/option_structure/CF_2021-01-04_2026-07-13_option_structure_daily.parquet --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-07-13_signal_matrix_daily.parquet --output-dir data/research/CF/trend_phase_v2 --report-output-dir reports/research/trend_phase_v2
@@ -337,6 +344,10 @@ proxy and T+1 historical wall-crossing paths:
 
 ```powershell
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-option-strike-position-research --option-core-path data/core/CF/core_option_quote_daily.parquet --core-quote-path data/core/CF/core_quote_daily.parquet --option-expiry-path configs/products/CF_OPTION_EXPIRY_OFFICIAL.csv --horizons 1,3,5,10
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-dynamic-wall-research --option-core-path data/core/CF/core_option_quote_daily.parquet --core-quote-path data/core/CF/core_quote_daily.parquet --option-factor-path data/research/CF/option_factors/CF_2021-01-04_2026-08-21_option_factor_proxy_daily.parquet --signal-matrix-path data/research/CF/signal_matrix/CF_2021-01-04_2026-08-21_signal_matrix_daily.parquet --horizons 1,3,5 --output-dir data/research/CF/futures_option_dynamic_wall --report-output-dir reports/research/futures_option_dynamic_wall
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-wall-factor-v2 --dynamic-wall-feature-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_feature_daily.parquet --dynamic-wall-label-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_lifecycle_label_daily.parquet --option-factor-path data/research/CF/option_factors/CF_2021-01-04_2026-08-21_option_factor_proxy_daily.parquet --horizons 1,3,5 --output-dir data/research/CF/futures_option_wall_factor_v2 --report-output-dir reports/research/futures_option_wall_factor_v2
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-event-path-research --event-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_event_daily.parquet --event-lifecycle-label-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_event_lifecycle_label.parquet --feature-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_feature_daily.parquet --horizons 1,3,5 --output-dir data/research/CF/futures_option_event_path --report-output-dir reports/research/futures_option_event_path
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-regime-interaction-research --event-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_event_daily.parquet --checkpoint-path data/research/CF/futures_option_event_path/CF_2021-01-05_2026-08-21_futures_option_event_path_checkpoint_daily.parquet --path-path data/research/CF/futures_option_event_path/CF_2021-01-05_2026-08-21_futures_option_event_path_path_daily.parquet --feature-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_feature_daily.parquet --horizons 1,3,5 --output-dir data/research/CF/futures_option_regime_interaction --report-output-dir reports/research/futures_option_regime_interaction
 ```
 
 Use `-RunOptionStrikePositionResearch` for an ad-hoc run. R84 stays in the
@@ -364,12 +375,21 @@ R54 fundamental context, R55 event details, R60 threshold summary, or R53
 observation JSON already exist, the weekly script passes them forward
 automatically. Default daily updates do not run these weekly research/publish
 steps.
+Use `-RunDynamicOptionWallResearch` for an explicit R93N run; it is also
+included in `-RunWeeklyResearchPack` and is intentionally skipped by the
+default daily lane because it rebuilds full-history option-chain evidence.
+Use `-RunFuturesOptionEventPath` for an explicit R93P event-path run; the
+weekly pack runs it after R93N/R93O, while the default daily lane skips it.
+Use `-RunFuturesOptionRegimeInteraction` for the R93Q episode-level market-stage
+interaction study. The weekly pack runs it after R93P; the default daily lane
+skips it because it rebuilds full-history Fisher, permutation and purged-LOO
+evidence.
 Default daily updates also skip the R34 operation audit to keep the research
 refresh fast. Use `-RunDailyOperationAudit` only for an ad-hoc review.
 Use `-RunWeeklyResearchPack` after the final official trading session of each
 week (normally the fifth trading day) as the one-switch weekly path for
-R41 -> R83 -> R84 -> R55 -> R60 -> R69 -> R71 -> R56 -> R59, a run manifest, and a weekly
-audit report:
+R41 -> R83 -> R84 -> R55 -> R60 -> R69 -> R71 -> R93K -> R93L -> R93M -> R93N -> R93O -> R93P -> R56 -> R59, a run
+manifest, and a weekly audit report:
 
 ```powershell
 .\scripts\update_cf_latest_research.ps1 -Year 2026 -RunWeeklyResearchPack
@@ -607,26 +627,39 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy evaluate --sp
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy run-backtest --spec configs/strategy/CF_phase_gated_v0.yaml --start 2021-01-04
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy evaluate --spec configs/strategy/CF_phase_gated_v0.yaml
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy compare --spec-a configs/strategy/CF_tsmom_v0.yaml --spec-b configs/strategy/CF_phase_gated_v0.yaml
-$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy run-shadow --date 2026-07-20 --record-mode HISTORICAL_REPLAY
-$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy weekly-audit
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay --overlay ovl_option_veto --start 2021-01-04 --end 2026-07-17
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay --overlay ovl_member_position --start 2021-01-04 --end 2026-07-17
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy test-overlay --overlay ovl_strike_wall --start 2021-01-04 --end 2026-07-17
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-symmetric-trend-research
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-option-timing-research
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-rebound-lifecycle
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-candidate-stability-research
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-candidate-forward-ledger
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-forward-evidence-weekly
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main strategy build-roll-neutral-return-index
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-cotton-year-policy-research
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research connect-cf-ifind-edb-context
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-fundamental-data-status
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-fundamental-trend-incremental-research --horizons 5,20 --change-periods 4 --min-sample-size 20 --fdr-level 0.10 --proxy-lags 0,5,10
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-trend-confirmation-timing-research --horizons 5,20 --confirmation-days 2 --min-sample-size 15 --fdr-level 0.10
 ```
+
+R90 shadow accounting is retired from the active mainline as of 2026-08-06.
+Daily and weekly refreshes no longer run it by default, and its former 40-day
+gate is removed. Existing ledgers remain immutable historical audit evidence;
+`-RunStrategyShadow` is reserved for an explicit audit request only.
 
 The strategy lane uses adjusted continuous settlement prices only for signals.
 All fills, costs, positions and PnL use real contracts at T+1 settlement. It is
 research simulation and does not create orders or trading instructions.
-Only a same-day latest-core run can be marked `FORWARD_CAPTURE`; historical
-replays remain explicitly excluded from the 40-day expansion gate.
-R93A symmetric-trend research runs beside that ledger: it separates long/short
+For CF, the signal chain is restricted to the 01/05/09 main cycle and records
+`cf_main_cycle_010509_oi_v1`; 03/07/11 remain observable structure contracts
+but cannot replace the strategy mapping merely because of delivery or hedge OI.
+The historical shadow CLI remains available only to inspect archived evidence;
+it is no longer an active research or promotion requirement.
+R93A symmetric-trend research separates long/short
 direction from lifecycle stage and keeps posterior breakout returns out of the
-daily state. It does not change the frozen phase-gated candidate or shadow lots.
+daily state. It does not change the frozen phase-gated candidate.
 R93B keeps only the first breakout in each independent trend episode, joins
 T-day volatility, IV, skew, PCR OI and strike-wall states, then compares each
 group with the remaining same-horizon episodes using Fisher exact tests and a
@@ -635,17 +668,139 @@ not change either registered strategy.
 R93C freezes three R93B candidates in a versioned research specification. It
 separates retrospective stability diagnostics from events after the fixed
 2026-07-28 forward boundary, and reports direction, era, yearly, leave-one-year
-and bootstrap evidence without changing strategy targets or shadow lots.
+and bootstrap evidence without changing strategy targets.
 R93D writes a capture-only immutable JSON event when a post-registration
 breakout is first observed, then appends a checksum-linked outcome event after
 the fixed 5D/20D label is available. Late captures remain auditable but are
 excluded from strict forward evidence; Parquet is only the materialized view.
-R93E keeps the two forward channels separate in one weekly Chinese report:
-R90 strategy-shadow days track operational/accounting continuity toward the
-40-day governance gate, while R93D captures and outcomes test the preregistered
-5D/20D candidates. Neither count triggers automatic promotion.
-The weekly audit reports the latest five ledger rows, cumulative real forward
-days, accounting anomalies and differences versus the fixed TSMOM baseline.
+R93E now focuses on R93D preregistered 5D/20D candidate events. The former R90
+shadow channel and 40-day gate are retired from the active research mainline.
+R93F builds a separate base-100 return index from real mapped-contract
+settlement returns. On roll dates it uses the old contract's observable daily
+return and excludes the same-day old/new spread. It compares 20-day momentum,
+volatility and research sizing with the existing additive continuous price,
+without changing the registered strategy, shadow ledger or historical output.
+R93G maps CF observations into September-August cotton years and treats 18,600
+CNY/t only as a policy research reference. It compares that level with CCIndex
+3128B and mapped real-contract settlement, never with adjusted continuous
+prices or return indexes. Current facts and overlapping posterior convergence
+labels are stored separately; neither enters composite scoring or strategy
+promotion.
+R93H normalizes the user-confirmed iFinD EDB cotton spot, reserve-sale, yarn and
+USD/CNY swap-curve series into traceable research tables. The swap curve is not
+used as spot FX, units remain human-review items, and all R93H fields remain
+outside composite scoring. R93G can accept the R93H spot parquet through
+`--spot-extension-path`; it appends only dates after the primary CCIndex series
+ends and never overwrites overlapping history.
+R93J combines the normalized long-history fundamental tables with the latest
+R93H sidecar into one frequency-aware coverage view. Daily, weekly and monthly
+series use separate freshness thresholds, event series are never zero-filled,
+and missing orders, yarn-profit, spot-FX, ICE-cotton and warehouse-detail
+contracts remain explicit. The daily refresh rebuilds this local status view
+without calling iFinD; it does not create a fundamental direction or enter
+`composite_score`.
+R93K aligns fundamental observations to each independent R93A trend episode by
+the first knowledge date available on or before the event. Source `rtime` is
+kept as `RELEASE_DATE_EXACT`; long-history tables without a historical release
+timestamp are physically separated as `OBSERVATION_DATE_PROXY` and tested at
+0/5/10 CF trading-session lags. Fisher comparisons and FDR correction use 5D
+and 20D posterior event labels only. The first 2021-2026 run contains 55
+independent episodes, 109 episode-horizon rows, 126 exact event-feature rows
+and 3,597 proxy event-feature rows. Confirmed normalized-name transitions are
+stitched as one series while retaining each selected row's source indicator ID.
+It found no strict positive candidate and
+no strict negative filter; proxy relationships were neither FDR-significant
+nor stable across lags. R93K therefore remains a weekly evidence screen and
+does not create `fundamental_signal` or change `composite_score`.
+R93L aligns each independent R93A episode's first breakout with full-chain OI
+participation and option-direction confirmation from T-10 through T+20. Two
+consecutive sessions are required and confirmation becomes knowable only on
+the second session. Episode-level Fisher/FDR results must also pass annual
+coverage and direction-consistency gates. The first official run through
+2026-08-12 contains 56 episodes: option non-confirmation remains WATCH-only,
+while 20D full-chain participation non-confirmation is the sole stable negative
+research candidate. It remains a posterior research warning and cannot change
+signal direction, `composite_score`, strategy targets or position sizing.
+Full-window non-confirmation is only knowable at T+20, so every R93L result is
+promotion-ineligible; any actionable follow-up must be retested at explicit
+T+1/T+3/T+5/T+10 as-of checkpoints. Run
+it weekly with `-RunTrendConfirmationTiming` or as part of
+`-RunWeeklyResearchPack`; it is not part of the default daily path.
+R93M then splits option evidence into 2021 early-thin, 2022-2023 expansion and
+2024-2026 mature-active calendar stages, while separately calculating an as-of
+trailing 60-session activity state from option volume and open interest. It
+tests T/T+1/T+3/T+5/T+10 confirmation checkpoints and keeps all later 5D/20D
+returns in a physically separate posterior table. The first official run
+through 2026-08-12 found no FDR-significant positive or negative stage
+hypothesis. Mature-active negative differences remain WATCH evidence, not
+reverse alpha, and cannot change direction, `composite_score` or sizing. Run it
+with:
+
+```powershell
+py -3.12 -m cotton_factor.cli.main research build-cf-option-maturity-confirmation-research
+.\scripts\update_cf_latest_research.ps1 -RunOptionMaturityConfirmation
+```
+
+The report is written under
+`reports/research/option_maturity_confirmation/`; the weekly pack runs R93M
+after R93L, while the default daily path skips both heavy historical studies.
+R93N extends the option line from static strike walls to dynamic local walls.
+It keeps all valid OI in the static R84 baseline, then excludes low-liquidity
+and deep-OTM proxy rows from the local dynamic feature set. It records wall OI,
+local OI changes, wall migration, range narrowing/expansion, approach/touch/
+breakout events, and futures-option joint nodes. The event and lifecycle tables
+are separated from T-day features; T+1 execution, 1D/3D/5D returns, TBM, MFE
+and MAE are historical posterior labels only. R93N also reports mature-active
+2024-2026 leave-one-year-out incremental evidence and Benjamini-Hochberg FDR
+status. It does not infer option ownership or dealer gamma, does not reverse
+the futures direction, and never modifies `composite_score`, strategy direction
+or sizing. Run it explicitly with `-RunDynamicOptionWallResearch`, or let
+`-RunWeeklyResearchPack` run it; the default daily lane skips it.
+The bundle is written under
+`data/research/CF/futures_option_dynamic_wall/` and
+`reports/research/futures_option_dynamic_wall/`.
+R93O consumes the frozen R93N feature and posterior-label tables and tests a
+small pre-registered set of wall distance, normalized wall OI change, 1/3/5D
+wall migration, build/unwind asymmetry, IV-RV repricing, PCR change and expiry
+bucket gates. It compares futures-only, R48 and R93N on the same 1D/3D/5D
+labels, applies FDR and mature-active leave-one-year-out checks, and emits only
+`KEEP/WATCH/REJECT` evidence decisions. It never reverses direction, changes
+`composite_score`, or treats public OI as option ownership. Run it with
+`-RunOptionWallFactorV2`, or let the weekly pack run it after R93N; the default
+daily lane remains unchanged. Outputs are written under
+`data/research/CF/futures_option_wall_factor_v2/` and
+`reports/research/futures_option_wall_factor_v2/`.
+R93P then consumes only the frozen R93N event and event-lifecycle tables. It
+separates approach/touch/breakout, migration, build/unwind and range events,
+builds T+1/T+3/T+5 path labels, resolution timing, MFE/MAE and event
+co-occurrence summaries, and runs a fixed purged leave-one-year-out check.
+The descriptive event evidence and predictive screen are reported separately;
+the screen is not a promotion gate and cannot reverse direction or modify
+`composite_score`. Its outputs are written under
+`data/research/CF/futures_option_event_path/` and
+`reports/research/futures_option_event_path/`.
+R93Q compresses consecutive repeated events into first-observable episodes,
+then freezes 2021 as `EARLY_THIN`, 2022-2023 as `EXPANSION`, and 2024-2026 as
+`MATURE_ACTIVE`. Its preregistered event-family table estimates incremental
+stage interactions with 01/05/09 cycles, expiry buckets, roll context,
+cotton-year and trend phase; event-type slices are written to a separate
+exploratory table. Fundamental and policy observations are named context only
+and never enter the direction test. Outputs are written under
+`data/research/CF/futures_option_regime_interaction/` and
+`reports/research/futures_option_regime_interaction/`.
+R93I freezes a separate rebound lifecycle with `PREPARE`, `TRIGGER`, `CONFIRM`
+and `FAIL` states. Daily states use only T-day or earlier features; T+1 returns,
+MFE, MAE and volatility barriers are stored only in the posterior validation
+table. The first 2021-2026 run found 63 preparation episodes, 54 triggers and
+28 confirmations, but annual stability is `WEAK_OR_UNSTABLE` because the 2024
+window failed materially. R93I therefore remains research evidence and does
+not change `composite_score` or the trend strategy.
+R35/R93I define CF research main contracts on the 01/05/09 cycle. If the current
+main option becomes unusable, the option context may relay only to the next
+01/05/09 contract after passing option-liquidity and futures OI/volume-share
+checks. Intermediate 03/07/11 contracts remain in curve, delivery and hedge
+structure observations but cannot replace the next main-cycle option signal;
+therefore CF609 relays to CF701 rather than CF611.
 R92 tests one pre-registered overlay at a time with the same T+1 engine, cost
 scenarios and annual promotion gate. The first real CF run classified option
 veto as `WATCH` (full conservative Delta Sharpe +0.061), Top20 member-position

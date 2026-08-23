@@ -16,6 +16,9 @@ from cotton_factor.core.schemas import (
 )
 from cotton_factor.core.trading_calendar import TradingCalendar
 
+CF_MAIN_CYCLE_MONTHS = frozenset({1, 5, 9})
+CF_MAIN_CYCLE_ROLL_RULE_VERSION = "cf_main_cycle_010509_oi_v1"
+
 
 @dataclass(frozen=True)
 class ChainMapBuildResult:
@@ -43,12 +46,14 @@ def build_chain_map(
     roll_rule_version: str = "roll_placeholder_v1",
     ltd_buffer_days: int = 0,
     min_volume: int = 1,
+    eligible_delivery_months: Sequence[int] | None = None,
 ) -> ChainMapBuildResult:
     """Build `core_chain_map_daily` rows from normalized daily quotes."""
     if ltd_buffer_days < 0:
         raise ChainMapError("ltd_buffer_days must be >= 0")
     if min_volume < 0:
         raise ChainMapError("min_volume must be >= 0")
+    delivery_month_filter = _normalize_delivery_month_filter(eligible_delivery_months)
 
     product = product_code.upper()
     contract_by_code = {
@@ -72,7 +77,18 @@ def build_chain_map(
             ltd_buffer_days=ltd_buffer_days,
             min_volume=min_volume,
         )
+        if delivery_month_filter is not None:
+            candidates = [
+                candidate
+                for candidate in candidates
+                if candidate.contract.delivery_month in delivery_month_filter
+            ]
         if not candidates:
+            if delivery_month_filter is not None:
+                raise ChainMapError(
+                    f"{trade_date}: no contract in eligible delivery months "
+                    f"{sorted(delivery_month_filter)}"
+                )
             warnings.append(f"{trade_date}: no known contracts in quotes")
             continue
 
@@ -177,6 +193,20 @@ def _rank_candidates(
         ),
         reverse=True,
     )
+
+
+def _normalize_delivery_month_filter(
+    months: Sequence[int] | None,
+) -> frozenset[int] | None:
+    if months is None:
+        return None
+    normalized = frozenset(int(month) for month in months)
+    if not normalized:
+        raise ChainMapError("eligible_delivery_months must not be empty")
+    invalid = sorted(month for month in normalized if month < 1 or month > 12)
+    if invalid:
+        raise ChainMapError(f"invalid eligible_delivery_months: {invalid}")
+    return normalized
 
 
 def _is_ltd_blocked(

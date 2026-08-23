@@ -12,9 +12,10 @@ strategy-accountable without turning it into an execution platform.
 Engineering serves research. Do not turn this repository into a platform
 project.
 
-V5.1 adds reproducible historical strategy evaluation and forward shadow
-accounting. These are research simulations only: no automatic order routing,
-OMS, live execution, or trading recommendation is permitted.
+V5.1 keeps reproducible historical strategy evaluation. Forward shadow
+accounting was retired from the active research mainline on 2026-08-06; its
+existing artifacts are retained only as historical audit evidence. No automatic
+order routing, OMS, live execution, or trading recommendation is permitted.
 
 The workbench must help a research analyst answer:
 
@@ -41,7 +42,7 @@ Primary output:
 - Data quality report.
 - Simple run log.
 - Historical strategy comparison.
-- Forward-only shadow ledger and weekly strategy audit.
+- Historical strategy comparison and event-based research validation.
 
 Do not prioritize:
 
@@ -55,7 +56,7 @@ Do not prioritize:
 - full metadata catalog
 - production-grade artifact registry
 - SR/AP real production ingest before CF is validated
-- SR/TA/MA expansion before the V5.1 CF shadow gate is explicitly approved
+- SR/TA/MA expansion before CF historical evidence and research gates are approved
 
 ## Non-Negotiable Research Correctness Rules
 

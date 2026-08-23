@@ -14,12 +14,14 @@ support daily CF research decisions with real or production-like data.
 Cottonquant V5.1 advances the CF research workbench into a
 strategy-accountable research workbench. Research modules must now be tested
 against a simple baseline with real-contract T+1 accounting, and retained only
-when they add post-cost value. The daily shadow ledger is a forward research
-record, not a trading account and not an execution instruction.
+when they add post-cost value. Forward shadow accounting was retired from the
+active mainline on 2026-08-06; existing ledgers remain historical audit evidence
+and are not trading accounts or execution instructions.
 
-The first V5.1 phase remains CF-only. Multi-product work is gated until R86-R93
-are complete, at least 40 real forward trading days are recorded, accounting
-differences are resolved, and expansion receives separate approval.
+The first V5.1 phase remains CF-only. Multi-product work is gated until CF
+historical evidence, event lifecycle, futures-option interaction and
+out-of-sample candidate validation pass, and expansion receives separate
+approval.
 
 Build a CF-first research workbench that helps an analyst answer:
 

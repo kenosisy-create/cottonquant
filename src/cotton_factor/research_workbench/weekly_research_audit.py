@@ -15,7 +15,7 @@ from cotton_factor.common.paths import project_root, reports_dir
 from cotton_factor.common.time import utc_now
 
 PRODUCT_CODE = "CF"
-WEEKLY_RESEARCH_AUDIT_VERSION = "R59_weekly_research_audit_v1"
+WEEKLY_RESEARCH_AUDIT_VERSION = "R59_weekly_research_audit_v2"
 OUTPUT_DIR = "weekly_audit"
 INFO_SEVERITY = "INFO"
 WARN_SEVERITY = "WARN"
@@ -25,6 +25,7 @@ EXPECTED_STEPS = (
     "trend_continuity_board",
     "daily_operation_audit",
     "historical_evidence",
+    "fundamental_trend_incremental",
     "event_explanation",
     "event_threshold_sensitivity",
     "validated_brief",
@@ -32,6 +33,7 @@ EXPECTED_STEPS = (
 )
 WEEKLY_RESEARCH_STEPS = (
     "historical_evidence",
+    "fundamental_trend_incremental",
     "event_explanation",
     "event_threshold_sensitivity",
     "validated_brief",
@@ -531,6 +533,12 @@ def _render_markdown(
             "## R41 历史证据",
             "",
             *_step_lines(weekly_manifest, "historical_evidence"),
+            "",
+            "## R93K 基本面趋势增量证据",
+            "",
+            *_step_lines(weekly_manifest, "fundamental_trend_incremental"),
+            "- 严格发布日期和观察日代理证据必须分组；代理证据不得晋级策略。",
+            "- 趋势收益仅作历史后验标签，R93K不生成基本面方向信号。",
             "",
             "## R55 事件解释与基本面上下文覆盖",
             "",

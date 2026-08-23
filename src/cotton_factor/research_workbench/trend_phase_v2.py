@@ -23,7 +23,7 @@ from cotton_factor.research_workbench.state_upgrade_common import (
 )
 
 PRODUCT_CODE = "CF"
-TREND_PHASE_V2_VERSION = "R76_trend_phase_v2_v2"
+TREND_PHASE_V2_VERSION = "R76_trend_phase_v2_v4_main_cycle_relay"
 DEFAULT_PRIMARY_HORIZON = 20
 HUMAN_REVIEW_REQUIRED = (
     "trend_phase_v2_rules",
@@ -267,6 +267,18 @@ def _phase_rows(
         if column not in oi_working.columns:
             oi_working[column] = default
     option_working = normalize_trade_date(option)
+    # 新版 R75 同时保留期货主力与实际采用的期权期限；旧表则按同月标的兼容。
+    if "main_contract" not in option_working.columns:
+        option_working["main_contract"] = option_working["underlying_contract"]
+    option_working["option_underlying_contract"] = option_working[
+        "underlying_contract"
+    ]
+    if "option_selection_reason" not in option_working.columns:
+        option_working["option_selection_reason"] = "LEGACY_MAIN_CONTRACT_FALLBACK"
+    if "option_relay_used" not in option_working.columns:
+        option_working["option_relay_used"] = False
+    if "option_tenor_gap_months" not in option_working.columns:
+        option_working["option_tenor_gap_months"] = 0
     matrix_working = normalize_trade_date(matrix)
     matrix_working["horizon"] = pd.to_numeric(matrix_working["horizon"], errors="coerce")
     primary = matrix_working.loc[matrix_working["horizon"].eq(primary_horizon)].copy()
@@ -293,7 +305,11 @@ def _phase_rows(
     )
     option_columns = [
         "trade_date",
-        "underlying_contract",
+        "main_contract",
+        "option_underlying_contract",
+        "option_selection_reason",
+        "option_relay_used",
+        "option_tenor_gap_months",
         "option_direction",
         "confirmation_state",
         "confirmation_strength",
@@ -301,9 +317,9 @@ def _phase_rows(
     ]
     joined = joined.merge(
         option_working[option_columns],
-        left_on=["trade_date", "main_contract"],
-        right_on=["trade_date", "underlying_contract"],
+        on=["trade_date", "main_contract"],
         how="left",
+        validate="one_to_one",
     )
     phases: list[str] = []
     labels: list[str] = []
@@ -369,6 +385,10 @@ def _phase_rows(
         "chain_oi_change_window_adjusted",
         "positive_other_oi_change_window",
         "roll_transfer_ratio_window",
+        "option_underlying_contract",
+        "option_selection_reason",
+        "option_relay_used",
+        "option_tenor_gap_months",
         "option_direction",
         "confirmation_state",
         "confirmation_strength",

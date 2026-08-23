@@ -151,6 +151,41 @@ def test_trend_option_timing_rejects_missing_option_fields(tmp_path: Path) -> No
         )
 
 
+def test_trend_option_timing_uses_relay_tenor_for_option_and_strike_features(
+    tmp_path: Path,
+) -> None:
+    paths = _write_fixture(tmp_path)
+    option = pd.read_parquet(paths["option"])
+    option["main_contract"] = "CF401"
+    option["underlying_contract"] = "CF405"
+    option["option_selection_reason"] = "NEXT_MAIN_CYCLE_RELAY"
+    option["option_relay_used"] = True
+    option["option_tenor_gap_months"] = 4
+    option.to_parquet(paths["option"], index=False)
+    strike = pd.read_parquet(paths["strike"])
+    strike["underlying_contract"] = "CF405"
+    strike.to_parquet(paths["strike"], index=False)
+
+    result = build_cf_trend_option_timing_research(
+        symmetric_trend_daily_path=paths["daily"],
+        breakout_event_path=paths["events"],
+        option_structure_path=paths["option"],
+        strike_position_path=paths["strike"],
+        output_dir=tmp_path / "relay_data",
+        report_output_dir=tmp_path / "relay_reports",
+        run_id="trend_option_relay_fixture",
+        rank_window=20,
+        rank_min_periods=10,
+        min_sample_size=2,
+    )
+
+    events = pd.read_parquet(result.event_feature_path)
+    assert events["main_contract"].eq("CF401").all()
+    assert events["option_underlying_contract"].eq("CF405").all()
+    assert events["option_relay_used"].all()
+    assert events["directional_wall_bucket"].ne("MISSING").all()
+
+
 def _write_fixture(tmp_path: Path) -> dict[str, Path]:
     start = date(2024, 1, 1)
     dates = [start + timedelta(days=index) for index in range(40)]
