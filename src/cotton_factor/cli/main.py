@@ -3050,6 +3050,106 @@ if typer is not None:
 
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @research_app.command("build-cf-futures-option-evidence-gate")
+    def research_build_cf_futures_option_evidence_gate(
+        r93n_label_path: Annotated[
+            Path | None,
+            typer.Option("--r93n-label-path", help="R93N生命周期历史后验标签。"),
+        ] = None,
+        r93o_evidence_path: Annotated[
+            Path | None,
+            typer.Option("--r93o-evidence-path", help="R93O固定候选证据表。"),
+        ] = None,
+        r93o_posterior_path: Annotated[
+            Path | None,
+            typer.Option("--r93o-posterior-path", help="R93O候选历史后验标签。"),
+        ] = None,
+        r93p_summary_path: Annotated[
+            Path | None,
+            typer.Option("--r93p-summary-path", help="R93P事件类型摘要。"),
+        ] = None,
+        r93p_resolution_path: Annotated[
+            Path | None,
+            typer.Option("--r93p-resolution-path", help="R93P事件解决周期。"),
+        ] = None,
+        r93p_oos_path: Annotated[
+            Path | None,
+            typer.Option("--r93p-oos-path", help="R93P purged留一年验证。"),
+        ] = None,
+        r93q_main_effect_path: Annotated[
+            Path | None,
+            typer.Option("--r93q-main-effect-path", help="R93Q阶段主效应。"),
+        ] = None,
+        r93q_primary_path: Annotated[
+            Path | None,
+            typer.Option("--r93q-primary-path", help="R93Q预注册主交互。"),
+        ] = None,
+        horizons: Annotated[
+            str,
+            typer.Option("--horizons", help="固定历史后验周期，只允许1,3,5。"),
+        ] = "1,3,5",
+        cost_bps_per_side: Annotated[
+            str,
+            typer.Option(
+                "--cost-bps-per-side",
+                help="逗号分隔的单边事件成本bps，必须包含0。",
+            ),
+        ] = "0,5,10",
+        min_sample_size: Annotated[
+            int,
+            typer.Option("--min-sample-size", help="统一门控最低样本数。"),
+        ] = 30,
+        fdr_level: Annotated[
+            float,
+            typer.Option("--fdr-level", help="统一Benjamini-Hochberg FDR水平。"),
+        ] = 0.10,
+        dead_zone_bps: Annotated[
+            int,
+            typer.Option("--dead-zone-bps", help="成本后命中的收益死区。"),
+        ] = 10,
+        output_dir: Annotated[
+            Path | None,
+            typer.Option("--output-dir", help="R93R数据输出目录。"),
+        ] = None,
+        report_output_dir: Annotated[
+            Path | None,
+            typer.Option("--report-output-dir", help="R93R报告输出目录。"),
+        ] = None,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="可选稳定运行编号。"),
+        ] = None,
+    ) -> None:
+        """构建R93R统一证据门控与CF期权研究停止决策。"""
+        from cotton_factor.research_workbench import (
+            build_cf_futures_option_evidence_gate,
+        )
+
+        try:
+            result = build_cf_futures_option_evidence_gate(
+                r93n_label_path=r93n_label_path,
+                r93o_evidence_path=r93o_evidence_path,
+                r93o_posterior_path=r93o_posterior_path,
+                r93p_summary_path=r93p_summary_path,
+                r93p_resolution_path=r93p_resolution_path,
+                r93p_oos_path=r93p_oos_path,
+                r93q_main_effect_path=r93q_main_effect_path,
+                r93q_primary_path=r93q_primary_path,
+                horizons=_parse_horizons(horizons),
+                cost_bps_per_side=_parse_non_negative_ints(cost_bps_per_side),
+                min_sample_size=min_sample_size,
+                fdr_level=fdr_level,
+                dead_zone_bps=dead_zone_bps,
+                output_dir=output_dir,
+                report_output_dir=report_output_dir,
+                run_id=run_id,
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+
     @research_app.command("build-cf-dual-price-state")
     def research_build_cf_dual_price_state(
         core_quote_path: Annotated[

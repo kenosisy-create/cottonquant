@@ -348,6 +348,7 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futu
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-wall-factor-v2 --dynamic-wall-feature-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_feature_daily.parquet --dynamic-wall-label-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_lifecycle_label_daily.parquet --option-factor-path data/research/CF/option_factors/CF_2021-01-04_2026-08-21_option_factor_proxy_daily.parquet --horizons 1,3,5 --output-dir data/research/CF/futures_option_wall_factor_v2 --report-output-dir reports/research/futures_option_wall_factor_v2
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-event-path-research --event-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_event_daily.parquet --event-lifecycle-label-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_event_lifecycle_label.parquet --feature-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_feature_daily.parquet --horizons 1,3,5 --output-dir data/research/CF/futures_option_event_path --report-output-dir reports/research/futures_option_event_path
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-regime-interaction-research --event-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_event_daily.parquet --checkpoint-path data/research/CF/futures_option_event_path/CF_2021-01-05_2026-08-21_futures_option_event_path_checkpoint_daily.parquet --path-path data/research/CF/futures_option_event_path/CF_2021-01-05_2026-08-21_futures_option_event_path_path_daily.parquet --feature-path data/research/CF/futures_option_dynamic_wall/CF_2021-01-04_2026-08-21_futures_option_dynamic_wall_feature_daily.parquet --horizons 1,3,5 --output-dir data/research/CF/futures_option_regime_interaction --report-output-dir reports/research/futures_option_regime_interaction
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research build-cf-futures-option-evidence-gate --horizons 1,3,5 --cost-bps-per-side 0,5,10 --output-dir data/research/CF/futures_option_evidence_gate --report-output-dir reports/research/futures_option_evidence_gate
 ```
 
 Use `-RunOptionStrikePositionResearch` for an ad-hoc run. R84 stays in the
@@ -384,11 +385,14 @@ Use `-RunFuturesOptionRegimeInteraction` for the R93Q episode-level market-stage
 interaction study. The weekly pack runs it after R93P; the default daily lane
 skips it because it rebuilds full-history Fisher, permutation and purged-LOO
 evidence.
+Use `-RunFuturesOptionEvidenceGate` for the R93R common decision register and
+stop decision. The weekly pack runs it after R93Q; the default daily lane skips
+it. R93R does not search new thresholds and cannot change signals or sizing.
 Default daily updates also skip the R34 operation audit to keep the research
 refresh fast. Use `-RunDailyOperationAudit` only for an ad-hoc review.
 Use `-RunWeeklyResearchPack` after the final official trading session of each
 week (normally the fifth trading day) as the one-switch weekly path for
-R41 -> R83 -> R84 -> R55 -> R60 -> R69 -> R71 -> R93K -> R93L -> R93M -> R93N -> R93O -> R93P -> R56 -> R59, a run
+R41 -> R83 -> R84 -> R55 -> R60 -> R69 -> R71 -> R93K -> R93L -> R93M -> R93N -> R93O -> R93P -> R93Q -> R93R -> R56 -> R59, a run
 manifest, and a weekly audit report:
 
 ```powershell
@@ -788,6 +792,14 @@ exploratory table. Fundamental and policy observations are named context only
 and never enter the direction test. Outputs are written under
 `data/research/CF/futures_option_regime_interaction/` and
 `reports/research/futures_option_regime_interaction/`.
+R93R then publishes a common decision register without pooling incompatible
+daily-model, event-path and interaction-episode samples. Its real run through
+2026-08-21 produced 873 evidence rows and 198 cost rows, with zero promotable
+option candidates. The formal decision is to stop the current CF option-factor
+expansion, retain R48/R93N/R93P/R93Q for structural explanation, and keep
+R94-R99 blocked. Outputs are written under
+`data/research/CF/futures_option_evidence_gate/` and
+`reports/research/futures_option_evidence_gate/`.
 R93I freezes a separate rebound lifecycle with `PREPARE`, `TRIGGER`, `CONFIRM`
 and `FAIL` states. Daily states use only T-day or earlier features; T+1 returns,
 MFE, MAE and volatility barriers are stored only in the posterior validation

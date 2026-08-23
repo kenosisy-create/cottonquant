@@ -159,6 +159,11 @@ from cotton_factor.research_workbench.futures_option_event_path import (
     ResearchFuturesOptionEventPathResult,
     build_cf_futures_option_event_path_research,
 )
+from cotton_factor.research_workbench.futures_option_evidence_gate import (
+    FuturesOptionEvidenceGateWarningRecord,
+    ResearchFuturesOptionEvidenceGateResult,
+    build_cf_futures_option_evidence_gate,
+)
 from cotton_factor.research_workbench.futures_option_regime_interaction import (
     FuturesOptionRegimeInteractionWarningRecord,
     ResearchFuturesOptionRegimeInteractionResult,
@@ -591,6 +596,9 @@ __all__ = [
     "FuturesOptionEventPathWarningRecord",
     "ResearchFuturesOptionEventPathResult",
     "build_cf_futures_option_event_path_research",
+    "FuturesOptionEvidenceGateWarningRecord",
+    "ResearchFuturesOptionEvidenceGateResult",
+    "build_cf_futures_option_evidence_gate",
     "FuturesOptionRegimeInteractionWarningRecord",
     "ResearchFuturesOptionRegimeInteractionResult",
     "build_cf_futures_option_regime_interaction_research",

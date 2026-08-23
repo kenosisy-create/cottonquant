@@ -426,11 +426,17 @@ factor layer.
   and 4,401 exploratory interactions. No interaction reached READY or WATCH;
   the stable interaction count is zero. The opposite 2021 and 2022-2023 Call
   wall 1D stage effects are historical descriptions, not mature-period alpha.
-- R93R: evidence gate and analyst decision pack. Publish one comparison table
-  for futures-only, R48, R93N and any R93O candidate, including sample count,
-  mean/median return, hit rate, MFE/MAE, resolution timing, FDR q-value,
-  leave-one-year-out stability and cost sensitivity. The output status is
-  `KEEP`, `WATCH` or `REJECT`; it cannot modify `signal_matrix`,
+- R93R: evidence gate and analyst decision pack is implemented. It preserves
+  daily models, event paths and interaction episodes as distinct statistical
+  objects while publishing one common decision register, module-retention
+  table and 0/5/10 bps-per-side cost proxy. The real run through 2026-08-21
+  contains 873 evidence rows and 198 cost rows. Predictive decisions are
+  `KEEP=3` (all futures reference-baseline rows), `WATCH=1`, `REJECT=869`, with
+  zero promotable option candidates. The sole WATCH is the 6-15 DTE 5D bucket,
+  but its sample is 48, FDR q-value is 1.0 and complete-year OOS support is
+  0/1. The formal result is `REJECT_STOP_OPTION_FACTOR_EXPANSION`: keep R48,
+  R93N, R93P and R93Q as explanatory structures, freeze R93O threshold work,
+  and leave R94-R99 blocked. It cannot modify `signal_matrix`,
   `composite_score`, direction or sizing.
 
 R94 strategy work remains blocked until at least one fixed candidate has
