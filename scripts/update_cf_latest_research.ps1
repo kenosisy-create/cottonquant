@@ -34,6 +34,7 @@
     [switch]$RunOptionWallFactorV2,
     [switch]$RunFuturesOptionEventPath,
     [switch]$RunFuturesOptionRegimeInteraction,
+    [switch]$RunFuturesOptionEvidenceGate,
     [switch]$RunValidatedBrief,
     [switch]$RunPublishPack,
     [switch]$RunWeeklyResearchPack,
@@ -83,6 +84,9 @@ $runOptionWallFactorV2Effective = $RunOptionWallFactorV2.IsPresent -or $RunWeekl
 $runFuturesOptionEventPathEffective = $RunFuturesOptionEventPath.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runFuturesOptionRegimeInteractionEffective = (
     $RunFuturesOptionRegimeInteraction.IsPresent -or $RunWeeklyResearchPack.IsPresent
+)
+$runFuturesOptionEvidenceGateEffective = (
+    $RunFuturesOptionEvidenceGate.IsPresent -or $RunWeeklyResearchPack.IsPresent
 )
 $runValidatedBriefEffective = $RunValidatedBrief.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runPublishPackEffective = $RunPublishPack.IsPresent
@@ -1309,6 +1313,34 @@ if ($runFuturesOptionRegimeInteractionEffective) {
     Write-Host "R93Q episodes: $($futuresOptionRegimeInteraction.episode_count), stable interactions=$($futuresOptionRegimeInteraction.stable_interaction_count)"
 }
 
+if ($runFuturesOptionEvidenceGateEffective) {
+    # R93R只汇总冻结的R93N-R93Q证据，不重搜阈值、不改方向或仓位。
+    $evidenceGateArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-futures-option-evidence-gate",
+        "--horizons",
+        "1,3,5",
+        "--cost-bps-per-side",
+        "0,5,10",
+        "--output-dir",
+        "data\research\CF\futures_option_evidence_gate",
+        "--report-output-dir",
+        "reports\research\futures_option_evidence_gate",
+        "--run-id",
+        "$($RunId)_r93r"
+    )
+    $evidenceGateJson = & py @evidenceGateArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93R futures-option evidence gate failed."
+    }
+    $futuresOptionEvidenceGate = $evidenceGateJson | ConvertFrom-Json
+    Write-Host "Futures-option evidence gate: $($futuresOptionEvidenceGate.markdown_path)"
+    Write-Host "R93R expansion decision: $($futuresOptionEvidenceGate.expansion_decision), promotable candidates=$($futuresOptionEvidenceGate.promotable_candidate_count)"
+}
+
 if ($runEventExplanationEffective) {
     $eventExplanationArgs = @(
         "-3.12",
@@ -2257,6 +2289,7 @@ if ($runWeeklyManifestEffective) {
             futures_option_wall_factor_v2 = $runOptionWallFactorV2Effective
             futures_option_event_path = $runFuturesOptionEventPathEffective
             futures_option_regime_interaction = $runFuturesOptionRegimeInteractionEffective
+            futures_option_evidence_gate = $runFuturesOptionEvidenceGateEffective
             validated_brief = $runValidatedBriefEffective
             publish_pack = $runPublishPackEffective
             daily_operation_audit = $runDailyOperationAuditEffective

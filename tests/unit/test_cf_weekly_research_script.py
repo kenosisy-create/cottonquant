@@ -108,15 +108,22 @@ def test_update_cf_latest_research_has_weekly_pack_contract() -> None:
     assert "$runFuturesOptionEventPathEffective" in script
     assert "[switch]$RunFuturesOptionRegimeInteraction" in script
     assert "$runFuturesOptionRegimeInteractionEffective" in script
+    assert "[switch]$RunFuturesOptionEvidenceGate" in script
+    assert "$runFuturesOptionEvidenceGateEffective" in script
     assert "build-cf-option-strike-position-research" in script
     assert "build-cf-futures-option-dynamic-wall-research" in script
     assert "build-cf-futures-option-wall-factor-v2" in script
     assert "build-cf-futures-option-event-path-research" in script
     assert "build-cf-futures-option-regime-interaction-research" in script
+    assert "build-cf-futures-option-evidence-gate" in script
     assert "futures_option_dynamic_wall" in script
     assert "futures_option_wall_factor_v2" in script
     assert "futures_option_event_path" in script
     assert "futures_option_regime_interaction" in script
+    assert "futures_option_evidence_gate" in script
+    assert script.index("build-cf-futures-option-regime-interaction-research") < (
+        script.index("build-cf-futures-option-evidence-gate")
+    )
     assert "option_strike_position_research" in script
     assert "option_open_interest_long_short_ownership_unknown" in script
     assert "--fundamental-observation-json-path" in script
@@ -174,11 +181,13 @@ def test_readme_documents_weekly_pack_command() -> None:
     assert "-RunWeeklyResearchPack" in readme
     assert (
         "R41 -> R83 -> R84 -> R55 -> R60 -> R69 -> R71 -> "
-        "R93K -> R93L -> R93M -> R93N -> R93O -> R93P -> R56 -> R59"
+        "R93K -> R93L -> R93M -> R93N -> R93O -> R93P -> R93Q -> R93R -> "
+        "R56 -> R59"
         in readme
     )
     assert "build-cf-futures-option-wall-factor-v2" in readme
     assert "build-cf-futures-option-event-path-research" in readme
+    assert "build-cf-futures-option-evidence-gate" in readme
     assert "build-cf-option-maturity-confirmation-research" in readme
     assert "2022-2023 expansion" in readme
     assert "build-cf-option-strike-position-research" in readme
