@@ -227,8 +227,13 @@ factor platform.
   mapping and continuous-price inputs. R87-R90 then establish the naive
   baseline, strategy evaluation, fixed candidate comparison and forward shadow
   ledger. R91-R93 add weekly governance, overlay tests and the dashboard card.
-  R94-R99 remain blocked until 40 real forward shadow days and separate approval.
+  R94-R99 remain blocked until CF historical evidence, event lifecycle,
+  futures-option interaction and out-of-sample candidate validation pass, with
+  separate approval.
 - R86 is implemented with validated specs and a canonical 2021-2026 input pack.
+  Its CF chain map now applies an explicit 01/05/09 eligible-month filter and
+  records `cf_main_cycle_010509_oi_v1`; intermediate 03/07/11 contracts remain
+  available to structure research but cannot enter the strategy signal chain.
   R87 is implemented on the existing D16 engine with 20-day TSMOM targets,
   real-contract T+1 settlement fills and one-way notional bps costs.
 - R88 now evaluates non-overlapping years, diagnostic rolling windows and
@@ -241,6 +246,10 @@ factor platform.
   events, and stale dates cannot claim `FORWARD_CAPTURE`. The 2026-07-20
   acceptance row is correctly tagged `HISTORICAL_REPLAY` and does not count
   toward the 40-day expansion gate.
+- 2026-08-06 decision: R90 is retired from daily/weekly execution and from all
+  promotion gates. Existing ledgers remain immutable historical evidence, but
+  no new shadow day is required. The active mainline returns to historical
+  event labels, futures-option interaction and sample-out candidate validation.
 - R91 is implemented as a weekly-only shadow audit. It separates the latest
   five-row performance window from cumulative `FORWARD_CAPTURE` evidence,
   checks NAV continuity and reports differences versus the fixed TSMOM baseline.
@@ -274,10 +283,171 @@ factor platform.
   fixed-horizon outcomes are appended later with checksum lineage. Late capture
   and explicit corrections remain visible and cannot count as strict forward
   proof. The ledger has no strategy or promotion authority.
-- R93E is implemented as a weekly forward-evidence summary. It keeps R90 daily
-  shadow days separate from R93D event/horizon captures, verifies collection
-  freshness and correction visibility, and reports the 40-day governance
-  progress without treating it as statistical proof or automatic promotion.
+- R93E is implemented as a weekly candidate-evidence summary. After R90 retired
+  from the active mainline, it reports only R93D preregistered event/horizon
+  captures, collection freshness and correction visibility. It does not use a
+  shadow-day gate or trigger automatic promotion.
+- R93F is implemented as an isolated roll-neutral return measurement sidecar.
+  On a roll date it uses the old contract's observable close-to-close
+  settlement return, then switches to the new contract return from the next
+  session. It never injects the same-day contract spread and never overwrites
+  the additive continuous-price input. The first 2021-2026 comparison found no
+  20-day direction disagreement across 1,330 eligible rows, but target lots
+  differed on 860 rows because the roll-neutral/additive volatility median
+  ratio was 1.1556. The active TSMOM spec and shadow ledger remain unchanged;
+  any strategy adoption requires a separately versioned candidate backtest.
+- R93G is implemented as a cotton-year and policy-reference sidecar. It maps
+  September-August marketing years, compares the 18,600 CNY/t research
+  reference only with CCIndex 3128B spot and mapped real-contract settlement,
+  and explicitly excludes additive continuous prices and return indexes from
+  level comparisons. Current-state rows contain no future labels; 5/20/60-day
+  convergence labels are physically separate, posterior-only and based on
+  overlapping daily observations. The first run found mapped futures below the
+  reference on 87.11% of days and usable spot below it on 86.81% of days after
+  the R93H forward extension, so the
+  reference cannot be treated as a hard market floor. Policy-event quantities
+  remain unconnected and the isolated reserve-cotton project is not imported.
+- R93H is implemented as an observation-only iFinD EDB context layer for the
+  user-confirmed cotton spot, reserve-sale, yarn and USD/CNY swap-curve IDs.
+  It preserves source timing and checksums, rejects null, duplicate and future
+  rows, and keeps units under human review because the live response omitted
+  unit metadata. The swap curve is not treated as spot FX. R93G may append the
+  R93H 3128B spot series only after the primary CCIndex history ends; overlapping
+  dates are never overwritten and the source transition stays visible.
+- R93I is implemented as an event-based rebound research sidecar. CF research
+  main contracts are restricted to the 01/05/09 cycle; 03/07/11 remain visible
+  only as curve, delivery and hedge-structure contracts. R35 relays an unusable
+  main option only to the next liquid `READY` 01/05/09 main-cycle contract,
+  with minimum 10% futures OI and volume shares. It never substitutes CF611
+  for CF701 after CF609 merely because November is the nearest listed month. The
+  lifecycle separates PREPARE, TRIGGER, CONFIRM and FAIL using T-day features;
+  T+1 returns, MFE, MAE and volatility barriers remain posterior-only. The
+  first full-history run is `WEAK_OR_UNSTABLE`, driven by a material 2024
+  failure window, so it is not promoted into composite scoring or strategy.
+- R93J is implemented as a frequency-aware fundamental coverage and freshness
+  view. It joins the normalized historical fundamental tables with the latest
+  R93H artifacts, keeps daily/weekly/monthly/event publication semantics
+  separate, and makes missing industrial, spot-FX, ICE-cotton and warehouse
+  detail inputs explicit. It is rebuilt locally during daily refresh and never
+  creates a direction signal or changes `composite_score`.
+- R93K is implemented as a release-aware fundamental incremental-evidence
+  sidecar for the first R93A breakout in each independent trend episode. It
+  uses source `rtime` as exact release evidence, rolls releases at or after
+  15:00 to the next official CF session, and physically separates historical
+  observation-date proxies tested at 0/5/10 trading-session lags. Fisher tests
+  and FDR correction are partitioned by evidence quality, lag and 5D/20D
+  horizon. The first real run spans 55 episodes and 109 episode-horizon rows,
+  with 126 exact and 3,597 proxy event-feature rows after canonical-name series
+  stitching removed duplicate votes while retaining source indicator IDs. It found no strict
+  positive candidate or negative filter; proxy findings were not FDR-significant
+  and were unstable across lag assumptions. R93K runs weekly, never creates a
+  fundamental direction, and cannot change `composite_score` or strategy.
+- R93L is implemented as an episode-level confirmation-timing sidecar around
+  the first R93A breakout. It observes T-10 through T+20, requires two
+  consecutive sessions and records the second session as the first knowable
+  confirmation date. Futures participation uses direction-matched full-chain
+  OI states; option confirmation additionally requires a READY factor and the
+  fixed liquidity floor. Trajectory rows contain no forward outcome, while
+  5D/20D labels and wait-for-confirmation returns remain physically separate
+  posterior evidence. Fisher/FDR candidates must also pass minimum annual
+  coverage and direction-consistency gates. The first official run through
+  2026-08-12 contains 56 episodes. No option-timing state passed FDR; option
+  non-confirmation remains WATCH only. The sole stable negative research
+  candidate is 20D full-chain participation non-confirmation, but R93L does
+  not write back to signals, strategy direction or sizing and cannot trigger
+  an automatic veto or short reversal. Because full-window non-confirmation is
+  only knowable at T+20, every R93L row remains promotion-ineligible; the next
+  useful test is a set of T+1/T+3/T+5/T+10 as-of checkpoints.
+- R93M implements those as-of checkpoints while separating the historical
+  option market into 2021 early-thin, 2022-2023 expansion and 2024-2026
+  mature-active calendar regimes. A second, non-look-ahead activity state uses
+  trailing 60-session option-volume and open-interest medians relative to a
+  frozen 2021 baseline; calendar and activity regimes are reported separately
+  whenever they disagree. The first official run through 2026-08-12 covers 56
+  independent episodes, 277 checkpoint features and 435 physically separated
+  posterior labels. No stage hypothesis survives FDR. Mature-active 20D
+  confirmation differences are WATCH_NEGATIVE only: they are not reverse alpha,
+  cannot trigger automatic shorting or a veto, and never enter signals, scores
+  or sizing. R93M runs weekly after R93L and remains promotion-ineligible.
+- R93N extends the option line from static strike walls to dynamic local walls
+  around the currently observed 01/05/09 research main contract. It retains a
+  full-chain static OI baseline, excludes low-liquidity and deep-OTM proxy rows
+  from the dynamic core, and records wall build/unwind, migration,
+  approach/touch/breakout, range compression/expansion, and futures-option
+  joint nodes. T-day features are separated from T+1-executed 1D/3D/5D
+  posterior labels, TBM, MFE and MAE. Mature-active leave-one-year-out
+  summaries, sample-size evidence levels and FDR q-values are included, but a
+  lack of READY candidates is preserved as a valid result. R93N is a
+  research-only sidecar: it cannot infer option ownership or dealer gamma,
+  reverse futures direction, modify `composite_score`, change sizing, or enter
+  the daily signal path. The 2026-08-21 run covers 1,366 feature rows and
+  produces 0 READY candidates and 45 WATCH nodes; the latest mapping is
+  `CF701` / `FUTURES_LONG_OPTION_NEUTRAL` / `DYNAMIC_MIXED_PRESSURE`.
+
+## Post-R93N Research Route (R93O-R93P Implemented)
+
+R93N does not justify promoting a dynamic-wall rule: the full-history 5D
+dynamic-wall hit rate is 44.74% versus 51.83% for the R48 reference, the
+mature-active 5D return increment is only 0.03 percentage points, and no
+candidate passes the current READY gate. The next route therefore tests a
+small number of pre-registered hypotheses instead of adding another broad
+factor layer.
+
+- R93O: option-wall factor v2 is implemented as an independent research
+  sidecar. It adds only interpretable, as-of features: wall
+  distance to the underlying, normalized wall OI change, 1/3/5-session wall
+  migration, call/put build-unwind asymmetry, IV-RV repricing, PCR change and
+  expiry bucket. It compares each fixed candidate against the plain futures
+  baseline, R48 and R93N, with the same 1D/3D/5D labels and dead zone, then
+  applies FDR and mature-active leave-one-year-out checks. The output is only
+  `KEEP/WATCH/REJECT`; no post-hoc threshold search and no direction reversal.
+  It does not write to `signal_matrix`, `composite_score`, direction or sizing.
+  The first real run through 2026-08-21 generated 1,366 feature rows, 16 fixed
+  candidates and 192 candidate/horizon/stage evidence rows. Mature-active
+  decisions were `KEEP=0`, `WATCH=15`, `REJECT=33`; this is a valid negative
+  promotion result, not a reason to reverse the factor direction or reopen
+  thresholds.
+- R93P: event timing and path study is implemented as an independent sidecar.
+  It consumes only the frozen R93N event and event-lifecycle tables, separates
+  approach, touch, breakout, migration, build/unwind and range events, and
+  evaluates continuation, reversal, MFE, MAE, co-occurrence and resolution
+  timing at fixed T+1/T+3/T+5 checkpoints. It also emits market-stage,
+  expiry-bucket and 01/05/09-cycle strata plus a five-session purged
+  leave-one-year-out table. Explanatory evidence and predictive screening are
+  separate; the first full-history run has no stable predictive WATCH
+  candidate, so R93P cannot modify signals, direction or sizing.
+- R93Q: regime interaction study is implemented. It freezes the 2021
+  early-thin, 2022-2023 expansion and 2024-2026 mature-active partitions,
+  compresses consecutive repeated events into first-observable episodes, and
+  crosses event families with 01/05/09 main-contract cycle, expiry bucket,
+  roll context, cotton-year and trend phase. Fundamental and policy series are
+  named observation context only. The real run through 2026-08-21 contains
+  3,252 source events, 2,066 independent episodes, 2,313 primary interactions
+  and 4,401 exploratory interactions. No interaction reached READY or WATCH;
+  the stable interaction count is zero. The opposite 2021 and 2022-2023 Call
+  wall 1D stage effects are historical descriptions, not mature-period alpha.
+- R93R: evidence gate and analyst decision pack. Publish one comparison table
+  for futures-only, R48, R93N and any R93O candidate, including sample count,
+  mean/median return, hit rate, MFE/MAE, resolution timing, FDR q-value,
+  leave-one-year-out stability and cost sensitivity. The output status is
+  `KEEP`, `WATCH` or `REJECT`; it cannot modify `signal_matrix`,
+  `composite_score`, direction or sizing.
+
+R94 strategy work remains blocked until at least one fixed candidate has
+  positive incremental evidence in the mature-active sample, survives the
+  leave-one-year-out check without relying on 2026 alone, has adequate sample
+  size at each claimed horizon, and passes the existing research review gate.
+  If no candidate passes, the correct outcome is to retain the option line as
+  explanatory structure evidence and stop adding option factors for the
+  current cycle.
+
+Palm-oil P has a separate `CONDITIONAL_GO_P0` entry assessment. Real iFinD
+probes confirm `P2609.DCE`, `P2701.DCE` daily quote fields and the DCE trading
+calendar, but this repository has no P product config, DCE raw/core connector,
+official contract-rule implementation or product-specific research contract.
+An explicitly approved P0 lane may build those foundations in product-isolated
+paths; it is not an R94 production promotion and must not copy CF semantics.
+See `docs/PALM_OIL_QUANT_TRACKING_ENTRY_ASSESSMENT_2026-08-23.md`.
 
 ## Sprint Order
 
