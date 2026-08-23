@@ -16,7 +16,9 @@ from cotton_factor.common.paths import data_dir, reports_dir
 from cotton_factor.common.time import utc_now
 
 PRODUCT_CODE = "CF"
-FUTURES_OPTION_DIVERGENCE_VERSION = "R69_futures_option_divergence_battle_v1"
+FUTURES_OPTION_DIVERGENCE_VERSION = (
+    "R69_futures_option_divergence_battle_v3_main_cycle_relay"
+)
 OUTPUT_DIR = "futures_option_divergence"
 DEFAULT_HORIZONS = (1, 3, 5, 10, 20, 40)
 DEFAULT_DEAD_ZONE_BPS = 10
@@ -405,6 +407,23 @@ def _bool_series(series: pd.Series) -> pd.Series:
     )
 
 
+def _bool_value(value: object) -> bool:
+    if value is None or pd.isna(value):
+        return False
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"true", "1", "yes", "y"}
+
+
+def _int_or_none(value: object) -> int | None:
+    if value is None or pd.isna(value):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 def _event_rows(
     *,
     validation: pd.DataFrame,
@@ -445,6 +464,17 @@ def _event_rows(
                 "trade_date": item["trade_date"],
                 "horizon": int(item["horizon"]),
                 "main_contract": str(item["main_contract"]),
+                "option_underlying_contract": str(
+                    item.get("option_underlying_contract") or item["main_contract"]
+                ),
+                "option_selection_reason": str(
+                    item.get("option_selection_reason")
+                    or "LEGACY_MAIN_CONTRACT_FALLBACK"
+                ),
+                "option_relay_used": _bool_value(item.get("option_relay_used")),
+                "option_tenor_gap_months": _int_or_none(
+                    item.get("option_tenor_gap_months")
+                ),
                 "futures_direction": futures_direction,
                 "option_direction": str(item.get("option_signal_direction") or "unknown"),
                 "divergence_type": divergence_type,

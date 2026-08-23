@@ -12,6 +12,7 @@ from cotton_factor.research_workbench import (
     build_cf_signal_matrix,
     build_cf_signal_matrix_validation,
 )
+from cotton_factor.research_workbench.signal_matrix import SIGNAL_MATRIX_VERSION
 
 
 def test_build_cf_signal_matrix_validation_writes_rolling_outputs(tmp_path: Path) -> None:
@@ -62,7 +63,7 @@ def test_build_cf_signal_matrix_validation_writes_rolling_outputs(tmp_path: Path
     payload = json.loads(result.json_path.read_text(encoding="utf-8"))
     assert payload["report_type"] == "signal_matrix_rolling_validation"
     assert payload["forward_returns_are_validation_labels"] is True
-    assert payload["source_signal_matrix_rule_version"] == "R35_signal_matrix_v1"
+    assert payload["source_signal_matrix_rule_version"] == SIGNAL_MATRIX_VERSION
 
     markdown = result.markdown_path.read_text(encoding="utf-8")
     assert "CF 多周期信号矩阵滚动验证" in markdown

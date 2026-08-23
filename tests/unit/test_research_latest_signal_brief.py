@@ -73,6 +73,50 @@ def test_build_cf_latest_signal_brief_uses_latest_date_and_writes_outputs(
     assert "cost sensitivity" not in markdown.lower()
 
 
+def test_latest_signal_uses_010509_cycle_when_cf611_has_more_oi(tmp_path: Path) -> None:
+    path = tmp_path / "main_cycle" / "CF" / "core_quote_daily.parquet"
+    path.parent.mkdir(parents=True)
+    trade_dates = _business_dates(date(2026, 7, 1), count=25)
+    rows: list[dict[str, object]] = []
+    for offset, trade_date in enumerate(trade_dates):
+        rows.extend(
+            [
+                _quote(
+                    contract_code="CF609",
+                    trade_date=trade_date,
+                    settle=15_500 + offset,
+                    volume=120_000,
+                    open_interest=200_000,
+                ),
+                _quote(
+                    contract_code="CF611",
+                    trade_date=trade_date,
+                    settle=15_700 + offset,
+                    volume=150_000,
+                    open_interest=330_000,
+                ),
+                _quote(
+                    contract_code="CF701",
+                    trade_date=trade_date,
+                    settle=15_850 + offset,
+                    volume=210_000,
+                    open_interest=300_000,
+                ),
+            ]
+        )
+    pd.DataFrame(rows).to_parquet(path, index=False)
+
+    result = build_cf_latest_signal_brief(
+        core_quote_path=path,
+        output_root=tmp_path / "daily",
+        run_id="r23_main_cycle_guard",
+    )
+
+    assert result.main_contract == "CF701"
+    activity = result.summary["market_facts"]["contract_activity"]  # type: ignore[index]
+    assert activity[0]["contract_code"] == "CF611"
+
+
 def test_build_cf_latest_signal_brief_connects_trend_rule_candidate_context(
     tmp_path: Path,
 ) -> None:

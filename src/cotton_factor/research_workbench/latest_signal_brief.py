@@ -14,6 +14,7 @@ import pandas as pd
 from cotton_factor.common.exceptions import ResearchWorkbenchError
 from cotton_factor.common.paths import data_dir, project_root
 from cotton_factor.common.time import utc_now
+from cotton_factor.core.chain_map import CF_MAIN_CYCLE_MONTHS
 from cotton_factor.research_workbench.core_quotes import CORE_QUOTE_FILE_NAME
 from cotton_factor.research_workbench.trend_phase import (
     SignalDirection,
@@ -25,7 +26,7 @@ PRODUCT_CODE = "CF"
 EXCHANGE = "CZCE"
 UNIVERSE = "CF_MAIN"
 SIGNAL_OBJECT_ID = "CF.C1"
-LATEST_SIGNAL_RULE_VERSION = "R23_latest_signal_only_brief_v1"
+LATEST_SIGNAL_RULE_VERSION = "R23_latest_signal_only_brief_v2_main_cycle"
 WARNING_SEVERITY = "WARN"
 INFO_SEVERITY = "INFO"
 DEFAULT_LOOKBACK_DAYS = 20
@@ -180,9 +181,12 @@ def build_cf_latest_signal_brief(
         raise ResearchWorkbenchError(f"no {PRODUCT_CODE} core rows for {active_date.isoformat()}")
 
     brief_run_id = run_id or _default_run_id(active_date)
-    # 主力合约按最新日持仓量优先、成交量次优排序，排序表会写入报告供人工复核。
+    # CF方向研究只在01/05/09主力周期内按持仓、成交排序；03/07/11仍保留在全链观察表。
     activity_rows = _activity_rows(visible_quotes=visible_quotes, active_date=active_date)
-    main_row = activity_rows[0]
+    main_row = _research_main_activity_row(
+        activity_rows=activity_rows,
+        active_date=active_date,
+    )
     main_contract = str(main_row["contract_code"])
     main_history = _main_contract_history(
         visible_quotes=visible_quotes,
@@ -397,6 +401,16 @@ def _signal_matrix_context(
             "primary_horizon": primary.get("horizon"),
             "primary_direction": primary.get("direction"),
             "primary_confidence": primary.get("confidence"),
+            "primary_option_underlying_contract": primary.get(
+                "option_underlying_contract"
+            ),
+            "primary_option_selection_reason": primary.get("option_selection_reason"),
+            "primary_option_underlying_futures_oi_share": primary.get(
+                "option_underlying_futures_oi_share"
+            ),
+            "primary_option_underlying_futures_volume_share": primary.get(
+                "option_underlying_futures_volume_share"
+            ),
             "research_boundary": "R35 矩阵只使用 T 日及以前可观察数据，不包含未来收益标签。",
         }
     )
@@ -438,6 +452,18 @@ def _signal_matrix_row(row: object) -> dict[str, object]:
         "option_signal": _none_if_missing(row.get("option_signal")),
         "option_signal_direction": _none_if_missing(row.get("option_signal_direction")),
         "option_factor_status": _none_if_missing(row.get("option_factor_status")),
+        "option_underlying_contract": _none_if_missing(
+            row.get("option_underlying_contract")
+        ),
+        "option_selection_reason": _none_if_missing(row.get("option_selection_reason")),
+        "option_relay_used": bool(row.get("option_relay_used", False)),
+        "option_tenor_gap_months": _int_or_none(row.get("option_tenor_gap_months")),
+        "option_underlying_futures_oi_share": _float_or_none(
+            row.get("option_underlying_futures_oi_share")
+        ),
+        "option_underlying_futures_volume_share": _float_or_none(
+            row.get("option_underlying_futures_volume_share")
+        ),
         "option_atm_iv_rank": _float_or_none(row.get("option_atm_iv_rank")),
         "option_pcr_volume": _float_or_none(row.get("option_pcr_volume")),
         "option_pcr_oi": _float_or_none(row.get("option_pcr_oi")),
@@ -690,7 +716,12 @@ def _classify_trend_phase_for_date(
     day_visible_quotes = visible_quotes.loc[visible_quotes["trade_date"] <= active_date].copy()
     latest_quotes = day_visible_quotes.loc[day_visible_quotes["trade_date"] == active_date].copy()
     activity_rows = _activity_rows(visible_quotes=day_visible_quotes, active_date=active_date)
-    main_contract = str(activity_rows[0]["contract_code"])
+    main_contract = str(
+        _research_main_activity_row(
+            activity_rows=activity_rows,
+            active_date=active_date,
+        )["contract_code"]
+    )
     main_history = _main_contract_history(
         visible_quotes=day_visible_quotes,
         contract_code=main_contract,
@@ -769,6 +800,28 @@ def _activity_rows(*, visible_quotes: pd.DataFrame, active_date: date) -> list[d
     if not records:
         raise ResearchWorkbenchError(f"no active contract rows for {active_date.isoformat()}")
     return records
+
+
+def _research_main_activity_row(
+    *,
+    activity_rows: list[dict[str, object]],
+    active_date: date,
+) -> dict[str, object]:
+    """在CF的01/05/09主力周期中选择当日研究主力。"""
+    for row in activity_rows:
+        contract_code = str(row.get("contract_code") or "")
+        try:
+            delivery_month = _delivery_date(
+                contract_code=contract_code,
+                trade_date=active_date,
+            ).month
+        except ResearchWorkbenchError:
+            continue
+        if delivery_month in CF_MAIN_CYCLE_MONTHS:
+            return row
+    raise ResearchWorkbenchError(
+        f"no CF 01/05/09 main-cycle contract for {active_date.isoformat()}"
+    )
 
 
 def _main_contract_history(
@@ -1034,6 +1087,8 @@ def _build_summary(
         },
         "market_facts": {
             "main_contract": main_metrics["contract_code"],
+            "main_contract_selection_rule": "CF_01_05_09_OI_THEN_VOLUME",
+            "intermediate_contract_role": "STRUCTURE_DELIVERY_HEDGE_OBSERVATION_ONLY",
             "main_settle": main_metrics["latest_settle"],
             "main_volume": main_metrics["latest_volume"],
             "main_open_interest": main_metrics["latest_open_interest"],
@@ -1275,6 +1330,12 @@ def _trend_rule_markdown_lines(*, trend_rule_context: object) -> list[str]:
 def _signal_matrix_markdown_lines(*, signal_matrix_context: dict[str, object]) -> list[str]:
     rows = signal_matrix_context.get("rows")
     assert isinstance(rows, list)
+    option_futures_oi_share = _fmt_percent(
+        signal_matrix_context.get("primary_option_underlying_futures_oi_share")
+    )
+    option_futures_volume_share = _fmt_percent(
+        signal_matrix_context.get("primary_option_underlying_futures_volume_share")
+    )
     lines = [
         "",
         "## 六、多周期信号矩阵",
@@ -1283,9 +1344,14 @@ def _signal_matrix_markdown_lines(*, signal_matrix_context: dict[str, object]) -
         f"- 主观察 horizon：`{signal_matrix_context.get('primary_horizon')}`",
         f"- 主观察方向：`{_signal_cn(signal_matrix_context.get('primary_direction'))}`",
         f"- 主观察置信度：`{signal_matrix_context.get('primary_confidence')}`",
+        "- 期权采用标的/原因："
+        f"`{signal_matrix_context.get('primary_option_underlying_contract')}` / "
+        f"`{signal_matrix_context.get('primary_option_selection_reason')}`",
+        "- 期权标的对应期货持仓/成交份额："
+        f"`{option_futures_oi_share}` / `{option_futures_volume_share}`",
         "",
-        "| Horizon | 方向 | 期权过滤 | 置信分 | 阶段 | 证据等级 | 操作类型 | 风险标签 |",
-        "| ---: | --- | --- | ---: | --- | --- | --- | --- |",
+        "| Horizon | 方向 | 期权标的 | 期权过滤 | 置信分 | 阶段 | 证据等级 | 操作类型 | 风险标签 |",
+        "| ---: | --- | --- | --- | ---: | --- | --- | --- | --- |",
     ]
     for row in sorted(rows, key=lambda item: int(item.get("horizon") or 0)):
         assert isinstance(row, dict)
@@ -1296,6 +1362,7 @@ def _signal_matrix_markdown_lines(*, signal_matrix_context: dict[str, object]) -
                 [
                     str(row.get("horizon")),
                     _signal_cn(row.get("direction")),
+                    str(row.get("option_underlying_contract") or "未连接"),
                     str(row.get("option_signal") or "not_connected"),
                     _fmt_number(row.get("confidence_score")),
                     phase,
@@ -1410,7 +1477,9 @@ def _write_markdown(*, result: LatestSignalBriefResult) -> None:
         "",
         "## 二、市场事实",
         "",
-        f"- 主力合约：`{market['main_contract']}`",
+        f"- 研究主力合约：`{market['main_contract']}`",
+        "- 主力选择口径：仅在 `01/05/09` 周期内按持仓量、成交量排序。",
+        "- `03/07/11` 合约：保留用于曲线、交割和套保结构观察，不代替研究主力。",
         f"- 主力结算价：`{_fmt_number(market['main_settle'])}`",
         f"- 主力成交量：`{_fmt_number(market['main_volume'])}`",
         f"- 主力持仓量：`{_fmt_number(market['main_open_interest'])}`",

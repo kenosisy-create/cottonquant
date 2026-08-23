@@ -22,6 +22,7 @@ def test_build_cf_weekly_research_audit_from_r58_manifest(tmp_path: Path) -> Non
     assert result.passed is True
     assert result.warning_count == 0
     assert result.step_statuses["historical_evidence"] == "completed"
+    assert result.step_statuses["fundamental_trend_incremental"] == "completed"
     assert result.step_statuses["event_threshold_sensitivity"] == "completed"
     assert result.event_context_coverage["r55_event_count"] == 10
     assert result.event_context_coverage["r55_context_available_count"] == 10
@@ -40,6 +41,7 @@ def test_build_cf_weekly_research_audit_from_r58_manifest(tmp_path: Path) -> Non
     markdown = result.markdown_path.read_text(encoding="utf-8")
     assert "周更链路完成情况" in markdown
     assert "R41 历史证据" in markdown
+    assert "R93K 基本面趋势增量证据" in markdown
     assert "R55 事件解释与基本面上下文覆盖" in markdown
     assert "R60 事件阈值敏感性" in markdown
     assert "KEEP=2" in markdown
@@ -88,6 +90,15 @@ def _write_weekly_manifest(tmp_path: Path) -> Path:
             tmp_path / "data" / "historical_stability.parquet"
         ),
         "historical_report": _touch(tmp_path / "reports" / "historical.md"),
+        "fundamental_incremental_summary": _touch(
+            tmp_path / "data" / "fundamental_incremental_summary.parquet"
+        ),
+        "fundamental_incremental_sensitivity": _touch(
+            tmp_path / "data" / "fundamental_incremental_sensitivity.parquet"
+        ),
+        "fundamental_incremental_report": _touch(
+            tmp_path / "reports" / "fundamental_incremental.md"
+        ),
         "event_events": _touch(tmp_path / "data" / "event_events.parquet"),
         "event_summary": _touch(tmp_path / "data" / "event_summary.parquet"),
         "event_report": _touch(tmp_path / "reports" / "event.md"),
@@ -109,7 +120,7 @@ def _write_weekly_manifest(tmp_path: Path) -> Path:
         json.dumps(
             {
                 "report_type": "cf_weekly_research_run_manifest",
-                "rule_version": "R58_cf_weekly_research_run_v1",
+                "rule_version": "R58_cf_weekly_research_run_v2",
                 "run_id": "r58_fixture",
                 "product_code": "CF",
                 "data_asof": "2026-07-03",
@@ -117,6 +128,7 @@ def _write_weekly_manifest(tmp_path: Path) -> Path:
                 "weekly_chain_enabled": True,
                 "effective_steps": {
                     "historical_evidence": True,
+                    "fundamental_trend_incremental": True,
                     "event_explanation": True,
                     "event_threshold_sensitivity": True,
                     "validated_brief": True,
@@ -147,6 +159,20 @@ def _write_weekly_manifest(tmp_path: Path) -> Path:
                             artifact_paths["historical_stability"]
                         ),
                         "markdown_path": str(artifact_paths["historical_report"]),
+                    },
+                    "fundamental_trend_incremental": {
+                        "status": "completed",
+                        "summary_path": str(
+                            artifact_paths["fundamental_incremental_summary"]
+                        ),
+                        "sensitivity_path": str(
+                            artifact_paths["fundamental_incremental_sensitivity"]
+                        ),
+                        "markdown_path": str(
+                            artifact_paths["fundamental_incremental_report"]
+                        ),
+                        "warning_count": 2,
+                        "fundamental_signal_status": "not_connected",
                     },
                     "event_explanation": {
                         "status": "completed",

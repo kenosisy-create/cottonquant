@@ -15,8 +15,13 @@
     [switch]$RunOptionCoreIngest,
     [switch]$RunOptionFactorProxy,
     [switch]$SkipStateUpgradePack,
+    [switch]$RunStrategyShadow,
     [switch]$SkipStrategyShadow,
     [switch]$RunTrendForwardLedger,
+    [switch]$RunReboundLifecycle,
+    [switch]$RunFundamentalTrendIncremental,
+    [switch]$RunTrendConfirmationTiming,
+    [switch]$RunOptionMaturityConfirmation,
     [switch]$RunForwardEvidenceWeekly,
     [switch]$RunHistoricalEvidence,
     [switch]$RunEventExplanation,
@@ -25,6 +30,10 @@
     [switch]$RunFuturesOptionPlaybook,
     [switch]$RunMemberPositionResearch,
     [switch]$RunOptionStrikePositionResearch,
+    [switch]$RunDynamicOptionWallResearch,
+    [switch]$RunOptionWallFactorV2,
+    [switch]$RunFuturesOptionEventPath,
+    [switch]$RunFuturesOptionRegimeInteraction,
     [switch]$RunValidatedBrief,
     [switch]$RunPublishPack,
     [switch]$RunWeeklyResearchPack,
@@ -69,11 +78,29 @@ $runFuturesOptionDivergenceEffective = $RunFuturesOptionDivergence.IsPresent -or
 $runFuturesOptionPlaybookEffective = $RunFuturesOptionPlaybook.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runMemberPositionResearchEffective = $RunMemberPositionResearch.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runOptionStrikePositionResearchEffective = $RunOptionStrikePositionResearch.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runDynamicOptionWallResearchEffective = $RunDynamicOptionWallResearch.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runOptionWallFactorV2Effective = $RunOptionWallFactorV2.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runFuturesOptionEventPathEffective = $RunFuturesOptionEventPath.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runFuturesOptionRegimeInteractionEffective = (
+    $RunFuturesOptionRegimeInteraction.IsPresent -or $RunWeeklyResearchPack.IsPresent
+)
 $runValidatedBriefEffective = $RunValidatedBrief.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runPublishPackEffective = $RunPublishPack.IsPresent
 $runDailyOperationAuditEffective = $RunDailyOperationAudit.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runWeeklyManifestEffective = $RunWeeklyResearchPack.IsPresent
 $runTrendForwardLedgerEffective = $RunTrendForwardLedger.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runReboundLifecycleEffective = $RunReboundLifecycle.IsPresent -or $RunWeeklyResearchPack.IsPresent
+$runFundamentalTrendIncrementalEffective = (
+    $RunFundamentalTrendIncremental.IsPresent -or $RunWeeklyResearchPack.IsPresent
+)
+$runTrendConfirmationTimingEffective = (
+    $RunTrendConfirmationTiming.IsPresent -or
+    $RunOptionMaturityConfirmation.IsPresent -or
+    $RunWeeklyResearchPack.IsPresent
+)
+$runOptionMaturityConfirmationEffective = (
+    $RunOptionMaturityConfirmation.IsPresent -or $RunWeeklyResearchPack.IsPresent
+)
 $runForwardEvidenceWeeklyEffective = $RunForwardEvidenceWeekly.IsPresent -or $RunWeeklyResearchPack.IsPresent
 $runOptionCoreIngestEffective = (
     $RunOptionCoreIngest.IsPresent -or
@@ -84,6 +111,9 @@ $runOptionFactorProxyEffective = (
     ($DownloadOfficialDaily.IsPresent -and -not $SkipOptionDailyDownload.IsPresent)
 )
 $runStateUpgradeEffective = -not $SkipStateUpgradePack.IsPresent
+$runStrategyShadowEffective = (
+    $RunStrategyShadow.IsPresent -and -not $SkipStrategyShadow.IsPresent
+)
 $effectiveSourceDir = $SourceDir
 $effectiveOptionSourceDir = $OptionSourceDir
 $effectiveOptionFactorPath = $OptionFactorPath
@@ -592,6 +622,30 @@ if ($latestSignal.trend_rule_context) {
     Write-Host "Trend rule context: $($latestSignal.trend_rule_context.transition_code) $($latestSignal.trend_rule_context.candidate_status)"
 }
 
+# R93J只读取已规范化基本面与iFinD侧车产物，不联网、不生成方向信号。
+$fundamentalStatusArgs = @(
+    "-3.12",
+    "-m",
+    "cotton_factor.cli.main",
+    "research",
+    "build-cf-fundamental-data-status",
+    "--as-of-date",
+    "$($metadata.max_trade_date)",
+    "--core-quote-path",
+    "$($metadata.core_path)",
+    "--run-id",
+    "$RunId"
+)
+$fundamentalStatusJson = & py @fundamentalStatusArgs
+if ($LASTEXITCODE -ne 0) {
+    Write-Warning "CF fundamental data status build failed; futures/options daily research remains valid."
+}
+else {
+    $fundamentalStatus = $fundamentalStatusJson | ConvertFrom-Json
+    Write-Host "Fundamental data status: $($fundamentalStatus.markdown_path)"
+    Write-Host "Fundamental freshness counts: $($fundamentalStatus.status_counts | ConvertTo-Json -Compress)"
+}
+
 $trendBoardArgs = @(
     "-3.12",
     "-m",
@@ -633,7 +687,12 @@ if ($trendBoard.trend_quality_calibration_context -and $trendBoard.trend_quality
 
 $strategyInput = $null
 $strategyInputError = $null
-$strategyInputRequired = $runTrendForwardLedgerEffective -or -not $SkipStrategyShadow.IsPresent
+$strategyInputRequired = (
+    $runTrendForwardLedgerEffective -or
+    $runReboundLifecycleEffective -or
+    $runFundamentalTrendIncrementalEffective -or
+    $runStrategyShadowEffective
+)
 if ($strategyInputRequired) {
     try {
         # R93A 与策略影子复用同一份最新跨年度输入，避免先读到上一交易日文件。
@@ -649,15 +708,26 @@ if ($strategyInputRequired) {
     }
     catch {
         $strategyInputError = $_.Exception.Message
-        if ($runTrendForwardLedgerEffective) {
-            throw "CF strategy inputs required by R93A/R93D failed: $strategyInputError"
+        if (
+            $runTrendForwardLedgerEffective -or
+            $runReboundLifecycleEffective -or
+            $runFundamentalTrendIncrementalEffective -or
+            $runTrendConfirmationTimingEffective
+        ) {
+            throw "CF strategy inputs required by R93A/R93D/R93I/R93K/R93L failed: $strategyInputError"
         }
         Write-Warning "Strategy inputs unavailable without blocking daily brief: $strategyInputError"
     }
 }
 
 $trendForwardLedger = $null
-if ($runTrendForwardLedgerEffective) {
+$symmetricTrend = $null
+if (
+    $runTrendForwardLedgerEffective -or
+    $runReboundLifecycleEffective -or
+    $runFundamentalTrendIncrementalEffective -or
+    $runTrendConfirmationTimingEffective
+) {
     $symmetricTrendJson = & py -3.12 -m cotton_factor.cli.main research build-cf-symmetric-trend-research `
         --continuous-price-path "$($strategyInput.continuous_price_path)" `
         --run-id "$($RunId)_r93a"
@@ -665,6 +735,58 @@ if ($runTrendForwardLedgerEffective) {
         throw "CF R93A symmetric trend refresh failed."
     }
     $symmetricTrend = $symmetricTrendJson | ConvertFrom-Json
+}
+
+$trendConfirmationTiming = $null
+if ($runTrendConfirmationTimingEffective) {
+    # R93L只进入周更或显式研究，不回写日度信号与策略。
+    $chainOiStructureValue = Get-Variable -Name "chainOiStructure" -ValueOnly -ErrorAction SilentlyContinue
+    $optionStructureValue = Get-Variable -Name "optionStructure" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -eq $symmetricTrend -or $null -eq $chainOiStructureValue -or $null -eq $optionStructureValue) {
+        throw "CF R93L requires R93A symmetric trend, R74 chain OI and R75 option structure outputs."
+    }
+    $trendConfirmationTimingJson = & py -3.12 -m cotton_factor.cli.main research build-cf-trend-confirmation-timing-research `
+        --symmetric-trend-daily-path "$($symmetricTrend.daily_path)" `
+        --breakout-event-path "$($symmetricTrend.breakout_event_path)" `
+        --chain-oi-path "$($chainOiStructureValue.daily_parquet_path)" `
+        --option-structure-path "$($optionStructureValue.daily_parquet_path)" `
+        --output-dir "data\research\CF\trend_confirmation_timing" `
+        --report-output-dir "reports\research\trend_confirmation_timing" `
+        --run-id "$($RunId)_r93l"
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93L trend confirmation timing research failed."
+    }
+    $trendConfirmationTiming = $trendConfirmationTimingJson | ConvertFrom-Json
+    Write-Host "Trend confirmation timing: $($trendConfirmationTiming.markdown_path)"
+    Write-Host "Trend confirmation episodes/candidates: $($trendConfirmationTiming.event_count) / $($trendConfirmationTiming.positive_candidate_count)/$($trendConfirmationTiming.negative_filter_count)"
+}
+
+$optionMaturityConfirmation = $null
+if ($runOptionMaturityConfirmationEffective) {
+    # R93M只读取规范化期权core和本次R93L产物，按市场成熟阶段研究可知检查点。
+    if ($null -eq $trendConfirmationTiming) {
+        throw "CF R93M requires the R93L trend confirmation timing output."
+    }
+    $optionCorePath = "data\core\CF\core_option_quote_daily.parquet"
+    if (-not (Test-Path $optionCorePath)) {
+        throw "CF R93M option core does not exist: $optionCorePath"
+    }
+    $optionMaturityConfirmationJson = & py -3.12 -m cotton_factor.cli.main research build-cf-option-maturity-confirmation-research `
+        --option-core-path "$optionCorePath" `
+        --trend-confirmation-event-path "$($trendConfirmationTiming.event_index_path)" `
+        --trend-confirmation-trajectory-path "$($trendConfirmationTiming.trajectory_path)" `
+        --output-dir "data\research\CF\option_maturity_confirmation" `
+        --report-output-dir "reports\research\option_maturity_confirmation" `
+        --run-id "$($RunId)_r93m"
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93M option maturity confirmation research failed."
+    }
+    $optionMaturityConfirmation = $optionMaturityConfirmationJson | ConvertFrom-Json
+    Write-Host "Option maturity confirmation: $($optionMaturityConfirmation.markdown_path)"
+    Write-Host "Option maturity stages: $($optionMaturityConfirmation.early_event_count)/$($optionMaturityConfirmation.expansion_event_count)/$($optionMaturityConfirmation.mature_event_count)"
+}
+
+if ($runTrendForwardLedgerEffective) {
     $trendForwardJson = & py -3.12 -m cotton_factor.cli.main research build-cf-trend-candidate-forward-ledger `
         --symmetric-trend-daily-path "$($symmetricTrend.daily_path)" `
         --breakout-event-path "$($symmetricTrend.breakout_event_path)" `
@@ -678,8 +800,54 @@ if ($runTrendForwardLedgerEffective) {
     Write-Host "Trend forward status: $($trendForwardLedger.status), captures=$($trendForwardLedger.capture_appended_count), outcomes=$($trendForwardLedger.outcome_appended_count)"
 }
 
+$reboundLifecycle = $null
+if ($runReboundLifecycleEffective) {
+    $optionStructureValue = Get-Variable -Name "optionStructure" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -eq $optionStructureValue) {
+        throw "CF R93I rebound lifecycle requires the R75 option structure output."
+    }
+    $reboundLifecycleJson = & py -3.12 -m cotton_factor.cli.main research build-cf-rebound-lifecycle `
+        --signal-matrix-path "$($signalMatrix.matrix_parquet_path)" `
+        --symmetric-trend-daily-path "$($symmetricTrend.daily_path)" `
+        --option-structure-path "$($optionStructureValue.daily_parquet_path)" `
+        --output-dir "data\research\CF\rebound_lifecycle" `
+        --report-output-dir "reports\research\rebound_lifecycle" `
+        --run-id "$($RunId)_r93i"
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93I rebound lifecycle research failed."
+    }
+    $reboundLifecycle = $reboundLifecycleJson | ConvertFrom-Json
+    Write-Host "Rebound lifecycle: $($reboundLifecycle.markdown_path)"
+    Write-Host "Rebound state/stability: $($reboundLifecycle.current_state) / $($reboundLifecycle.stability_status)"
+}
+
+$fundamentalTrendIncremental = $null
+if ($runFundamentalTrendIncrementalEffective) {
+    # R93K复用R93A独立episode，只在周更或显式运行时做全历史后验检验。
+    if ($null -eq $symmetricTrend) {
+        throw "CF R93K fundamental trend research requires the R93A symmetric trend output."
+    }
+    $fundamentalTrendIncrementalJson = & py -3.12 -m cotton_factor.cli.main research build-cf-fundamental-trend-incremental-research `
+        --breakout-event-path "$($symmetricTrend.breakout_event_path)" `
+        --core-quote-path "$($metadata.core_path)" `
+        --horizons "5,20" `
+        --change-periods 4 `
+        --min-sample-size 20 `
+        --fdr-level 0.10 `
+        --proxy-lags "0,5,10" `
+        --output-dir "data\research\CF\fundamental_trend_incremental" `
+        --report-output-dir "reports\research\fundamental_trend_incremental" `
+        --run-id "$($RunId)_r93k"
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93K fundamental trend incremental research failed."
+    }
+    $fundamentalTrendIncremental = $fundamentalTrendIncrementalJson | ConvertFrom-Json
+    Write-Host "Fundamental trend incremental research: $($fundamentalTrendIncremental.markdown_path)"
+    Write-Host "Fundamental trend event evidence: exact=$($fundamentalTrendIncremental.exact_event_feature_count), proxy=$($fundamentalTrendIncremental.proxy_event_feature_count), candidates=$($fundamentalTrendIncremental.positive_candidate_count)/$($fundamentalTrendIncremental.negative_filter_count)"
+}
+
 $strategyShadow = $null
-if (-not $SkipStrategyShadow.IsPresent) {
+if ($runStrategyShadowEffective) {
     try {
         if ($null -eq $strategyInput) {
             throw "CF strategy inputs are unavailable: $strategyInputError"
@@ -699,7 +867,7 @@ if (-not $SkipStrategyShadow.IsPresent) {
     }
 }
 else {
-    Write-Host "Strategy shadow: skipped by -SkipStrategyShadow."
+    Write-Host "Strategy shadow: retired from the default research mainline; use -RunStrategyShadow only for explicit historical audit."
 }
 
 if ($runForwardEvidenceWeeklyEffective) {
@@ -901,6 +1069,244 @@ if ($runOptionStrikePositionResearchEffective) {
     }
     $optionStrikePosition = $optionStrikePositionJson | ConvertFrom-Json
     Write-Host "Option strike-position research: $($optionStrikePosition.markdown_path)"
+}
+
+if ($runDynamicOptionWallResearchEffective) {
+    # R93N只在周更或显式研究时运行；日更保持轻量，不把动态墙写回主信号。
+    $dynamicWallArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-futures-option-dynamic-wall-research",
+        "--option-core-path",
+        "data\core\CF\core_option_quote_daily.parquet",
+        "--core-quote-path",
+        "$($metadata.core_path)",
+        "--signal-matrix-path",
+        "$($signalMatrix.matrix_parquet_path)",
+        "--horizons",
+        "1,3,5",
+        "--output-dir",
+        "data\research\CF\futures_option_dynamic_wall",
+        "--report-output-dir",
+        "reports\research\futures_option_dynamic_wall",
+        "--run-id",
+        "$($RunId)_r93n"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($effectiveOptionFactorPath)) {
+        $dynamicWallArgs += @("--option-factor-path", "$effectiveOptionFactorPath")
+    }
+    $trendPhaseValue = Get-Variable -Name "trendPhaseV2" -ValueOnly -ErrorAction SilentlyContinue
+    $dynamicTrendPhasePath = ""
+    if ($null -ne $trendPhaseValue -and $trendPhaseValue.daily_parquet_path) {
+        $dynamicTrendPhasePath = "$($trendPhaseValue.daily_parquet_path)"
+    }
+    if ([string]::IsNullOrWhiteSpace($dynamicTrendPhasePath)) {
+        $dynamicTrendPhasePath = Get-LatestResearchPath `
+            -Directory "data\research\CF\trend_phase_v2" `
+            -Pattern "CF_*_trend_phase_v2_daily.parquet"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($dynamicTrendPhasePath)) {
+        $dynamicWallArgs += @("--trend-phase-path", "$dynamicTrendPhasePath")
+    }
+    $optionStrikeValue = Get-Variable -Name "optionStrikePosition" -ValueOnly -ErrorAction SilentlyContinue
+    $dynamicStrikePath = ""
+    if ($null -ne $optionStrikeValue -and $optionStrikeValue.daily_parquet_path) {
+        $dynamicStrikePath = "$($optionStrikeValue.daily_parquet_path)"
+    }
+    if ([string]::IsNullOrWhiteSpace($dynamicStrikePath)) {
+        $dynamicStrikePath = Get-LatestResearchPath `
+            -Directory "data\research\CF\option_strike_position" `
+            -Pattern "CF_*_option_strike_position_daily.parquet"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($dynamicStrikePath)) {
+        $dynamicWallArgs += @("--option-strike-position-path", "$dynamicStrikePath")
+    }
+    $dynamicWallJson = & py @dynamicWallArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93N dynamic option-wall research failed."
+    }
+    $dynamicOptionWall = $dynamicWallJson | ConvertFrom-Json
+    Write-Host "Dynamic option wall: $($dynamicOptionWall.markdown_path)"
+    Write-Host "Dynamic wall latest node: $($dynamicOptionWall.latest_dynamic_node), mature rows=$($dynamicOptionWall.mature_feature_count)"
+}
+
+if ($runOptionWallFactorV2Effective) {
+    # R93O只消费R93N冻结产物；不重新读取交易所raw，也不写回主信号。
+    $wallFeaturePath = ""
+    $wallLabelPath = ""
+    $dynamicWallValue = Get-Variable -Name "dynamicOptionWall" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $dynamicWallValue -and $dynamicWallValue.feature_parquet_path) {
+        $wallFeaturePath = "$($dynamicWallValue.feature_parquet_path)"
+        $wallLabelPath = "$($dynamicWallValue.label_parquet_path)"
+    }
+    if ([string]::IsNullOrWhiteSpace($wallFeaturePath)) {
+        $wallFeaturePath = Get-LatestResearchPath `
+            -Directory "data\research\CF\futures_option_dynamic_wall" `
+            -Pattern "CF_*_futures_option_dynamic_wall_feature_daily.parquet"
+        $wallLabelPath = Get-LatestResearchPath `
+            -Directory "data\research\CF\futures_option_dynamic_wall" `
+            -Pattern "CF_*_futures_option_dynamic_wall_lifecycle_label_daily.parquet"
+    }
+    if ([string]::IsNullOrWhiteSpace($wallFeaturePath) -or [string]::IsNullOrWhiteSpace($wallLabelPath)) {
+        throw "CF R93O requires an existing R93N feature and lifecycle label artifact."
+    }
+    $wallFactorArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-futures-option-wall-factor-v2",
+        "--dynamic-wall-feature-path",
+        "$wallFeaturePath",
+        "--dynamic-wall-label-path",
+        "$wallLabelPath",
+        "--horizons",
+        "1,3,5",
+        "--output-dir",
+        "data\research\CF\futures_option_wall_factor_v2",
+        "--report-output-dir",
+        "reports\research\futures_option_wall_factor_v2",
+        "--run-id",
+        "$($RunId)_r93o"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($effectiveOptionFactorPath)) {
+        $wallFactorArgs += @("--option-factor-path", "$effectiveOptionFactorPath")
+    }
+    $wallFactorJson = & py @wallFactorArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93O option-wall factor v2 research failed."
+    }
+    $optionWallFactorV2 = $wallFactorJson | ConvertFrom-Json
+    Write-Host "Option-wall factor v2: $($optionWallFactorV2.markdown_path)"
+    Write-Host "R93O decision counts: KEEP=$($optionWallFactorV2.keep_count), WATCH=$($optionWallFactorV2.watch_count), REJECT=$($optionWallFactorV2.reject_count)"
+}
+
+if ($runFuturesOptionEventPathEffective) {
+    # R93P只消费R93N冻结事件和标签，研究固定检查点路径，不回写任何主信号。
+    $eventPathInput = ""
+    $eventLifecycleLabelInput = ""
+    $featurePathInput = ""
+    $dynamicWallValue = Get-Variable -Name "dynamicOptionWall" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $dynamicWallValue -and $dynamicWallValue.event_parquet_path) {
+        $eventPathInput = "$($dynamicWallValue.event_parquet_path)"
+        $eventLifecycleLabelInput = "$($dynamicWallValue.event_label_parquet_path)"
+        $featurePathInput = "$($dynamicWallValue.feature_parquet_path)"
+    }
+    if ([string]::IsNullOrWhiteSpace($eventPathInput)) {
+        $eventPathInput = Get-LatestResearchPath `
+            -Directory "data\research\CF\futures_option_dynamic_wall" `
+            -Pattern "CF_*_futures_option_dynamic_wall_event_daily.parquet"
+        $eventLifecycleLabelInput = Get-LatestResearchPath `
+            -Directory "data\research\CF\futures_option_dynamic_wall" `
+            -Pattern "CF_*_futures_option_dynamic_wall_event_lifecycle_label.parquet"
+        $featurePathInput = Get-LatestResearchPath `
+            -Directory "data\research\CF\futures_option_dynamic_wall" `
+            -Pattern "CF_*_futures_option_dynamic_wall_feature_daily.parquet"
+    }
+    if ([string]::IsNullOrWhiteSpace($eventPathInput) -or [string]::IsNullOrWhiteSpace($eventLifecycleLabelInput)) {
+        throw "R93P requires existing R93N event and event lifecycle label artifacts."
+    }
+    $eventPathArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-futures-option-event-path-research",
+        "--event-path",
+        "$eventPathInput",
+        "--event-lifecycle-label-path",
+        "$eventLifecycleLabelInput",
+        "--horizons",
+        "1,3,5",
+        "--output-dir",
+        "data\research\CF\futures_option_event_path",
+        "--report-output-dir",
+        "reports\research\futures_option_event_path",
+        "--run-id",
+        "$($RunId)_r93p"
+    )
+    if (-not [string]::IsNullOrWhiteSpace($featurePathInput)) {
+        $eventPathArgs += @("--feature-path", "$featurePathInput")
+    }
+    $eventPathJson = & py @eventPathArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93P futures-option event path research failed."
+    }
+    $futuresOptionEventPath = $eventPathJson | ConvertFrom-Json
+    Write-Host "Futures-option event path: $($futuresOptionEventPath.markdown_path)"
+    Write-Host "R93P OOS rows: $($futuresOptionEventPath.oos_row_count), predictive WATCH=$($futuresOptionEventPath.predictive_watch_count)"
+}
+
+if ($runFuturesOptionRegimeInteractionEffective) {
+    # R93Q只用R93N T日事件/特征和R93P后验表；基本面与政策仅作为具名上下文。
+    $regimeEventInput = Get-LatestResearchPath `
+        -Directory "data\research\CF\futures_option_dynamic_wall" `
+        -Pattern "CF_*_futures_option_dynamic_wall_event_daily.parquet"
+    $regimeFeatureInput = Get-LatestResearchPath `
+        -Directory "data\research\CF\futures_option_dynamic_wall" `
+        -Pattern "CF_*_futures_option_dynamic_wall_feature_daily.parquet"
+    $regimeCheckpointInput = Get-LatestResearchPath `
+        -Directory "data\research\CF\futures_option_event_path" `
+        -Pattern "CF_*_futures_option_event_path_checkpoint_daily.parquet"
+    $regimePathInput = Get-LatestResearchPath `
+        -Directory "data\research\CF\futures_option_event_path" `
+        -Pattern "CF_*_futures_option_event_path_path_daily.parquet"
+    $eventPathValue = Get-Variable -Name "futuresOptionEventPath" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $eventPathValue) {
+        $regimeCheckpointInput = "$($eventPathValue.checkpoint_parquet_path)"
+        $regimePathInput = "$($eventPathValue.path_parquet_path)"
+    }
+    $dynamicWallValue = Get-Variable -Name "dynamicOptionWall" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $dynamicWallValue) {
+        $regimeEventInput = "$($dynamicWallValue.event_parquet_path)"
+        $regimeFeatureInput = "$($dynamicWallValue.feature_parquet_path)"
+    }
+    if (
+        [string]::IsNullOrWhiteSpace($regimeEventInput) -or
+        [string]::IsNullOrWhiteSpace($regimeFeatureInput) -or
+        [string]::IsNullOrWhiteSpace($regimeCheckpointInput) -or
+        [string]::IsNullOrWhiteSpace($regimePathInput)
+    ) {
+        throw "R93Q requires existing R93N event/feature and R93P checkpoint/path artifacts."
+    }
+    $regimeInteractionArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.cli.main",
+        "research",
+        "build-cf-futures-option-regime-interaction-research",
+        "--event-path",
+        "$regimeEventInput",
+        "--checkpoint-path",
+        "$regimeCheckpointInput",
+        "--path-path",
+        "$regimePathInput",
+        "--feature-path",
+        "$regimeFeatureInput",
+        "--horizons",
+        "1,3,5",
+        "--output-dir",
+        "data\research\CF\futures_option_regime_interaction",
+        "--report-output-dir",
+        "reports\research\futures_option_regime_interaction",
+        "--run-id",
+        "$($RunId)_r93q"
+    )
+    if (Test-Path $fundamentalContextPath) {
+        $regimeInteractionArgs += @(
+            "--fundamental-context-path",
+            "$fundamentalContextPath"
+        )
+    }
+    $regimeInteractionJson = & py @regimeInteractionArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF R93Q futures-option regime interaction research failed."
+    }
+    $futuresOptionRegimeInteraction = $regimeInteractionJson | ConvertFrom-Json
+    Write-Host "Futures-option regime interaction: $($futuresOptionRegimeInteraction.markdown_path)"
+    Write-Host "R93Q episodes: $($futuresOptionRegimeInteraction.episode_count), stable interactions=$($futuresOptionRegimeInteraction.stable_interaction_count)"
 }
 
 if ($runEventExplanationEffective) {
@@ -1436,23 +1842,14 @@ if ($runWeeklyManifestEffective) {
     $dailyAuditValue = Get-Variable -Name "dailyAudit" -ValueOnly -ErrorAction SilentlyContinue
     $memberPositionResearchValue = Get-Variable -Name "memberPositionResearch" -ValueOnly -ErrorAction SilentlyContinue
     $optionStrikePositionValue = Get-Variable -Name "optionStrikePosition" -ValueOnly -ErrorAction SilentlyContinue
+    $dynamicOptionWallValue = Get-Variable -Name "dynamicOptionWall" -ValueOnly -ErrorAction SilentlyContinue
+    $optionWallFactorV2Value = Get-Variable -Name "optionWallFactorV2" -ValueOnly -ErrorAction SilentlyContinue
+    $reboundLifecycleValue = Get-Variable -Name "reboundLifecycle" -ValueOnly -ErrorAction SilentlyContinue
+    $fundamentalTrendIncrementalValue = Get-Variable -Name "fundamentalTrendIncremental" -ValueOnly -ErrorAction SilentlyContinue
+    $trendConfirmationTimingValue = Get-Variable -Name "trendConfirmationTiming" -ValueOnly -ErrorAction SilentlyContinue
+    $optionMaturityConfirmationValue = Get-Variable -Name "optionMaturityConfirmation" -ValueOnly -ErrorAction SilentlyContinue
     $strategyWeeklyAudit = $null
-    $shadowLedgers = Get-ChildItem -Path "data\strategy\CF" -Filter "*_shadow_ledger.parquet" -File -ErrorAction SilentlyContinue
-    if ($null -ne $shadowLedgers -and $shadowLedgers.Count -gt 0) {
-        $strategyWeeklyAuditJson = & py -3.12 -m cotton_factor.cli.main strategy weekly-audit `
-            --date "$($metadata.max_trade_date)" `
-            --ledger-root "data\strategy\CF" `
-            --report-output-dir "reports\strategy" `
-            --run-id "$($RunId)_strategy_weekly"
-        if ($LASTEXITCODE -ne 0) {
-            throw "CF weekly strategy audit failed."
-        }
-        $strategyWeeklyAudit = $strategyWeeklyAuditJson | ConvertFrom-Json
-        Write-Host "Weekly strategy audit: $($strategyWeeklyAudit.markdown_path)"
-    }
-    else {
-        Write-Warning "Weekly strategy audit skipped: no materialized shadow ledger."
-    }
+    Write-Host "Weekly strategy shadow audit: retired from the research mainline."
 
     $weeklySteps = [ordered]@{
         signal_matrix = [ordered]@{
@@ -1497,7 +1894,7 @@ if ($runWeeklyManifestEffective) {
         }
     }
     else {
-        $weeklySteps["strategy_shadow_audit"] = [ordered]@{ status = "missing" }
+        $weeklySteps["strategy_shadow_audit"] = [ordered]@{ status = "retired" }
     }
 
     if ($null -ne $historicalEvidenceValue) {
@@ -1547,6 +1944,99 @@ if ($runWeeklyManifestEffective) {
     }
     else {
         $weeklySteps["option_strike_position_research"] = [ordered]@{ status = "skipped" }
+    }
+
+    if ($null -ne $dynamicOptionWallValue) {
+        $weeklySteps["futures_option_dynamic_wall"] = [ordered]@{
+            status = "completed"
+            feature_parquet_path = "$($dynamicOptionWallValue.feature_parquet_path)"
+            event_parquet_path = "$($dynamicOptionWallValue.event_parquet_path)"
+            label_parquet_path = "$($dynamicOptionWallValue.label_parquet_path)"
+            summary_by_horizon_parquet_path = "$($dynamicOptionWallValue.summary_by_horizon_parquet_path)"
+            summary_by_node_parquet_path = "$($dynamicOptionWallValue.summary_by_node_parquet_path)"
+            oos_summary_parquet_path = "$($dynamicOptionWallValue.oos_summary_parquet_path)"
+            resolution_timing_parquet_path = "$($dynamicOptionWallValue.resolution_timing_parquet_path)"
+            markdown_path = "$($dynamicOptionWallValue.markdown_path)"
+            json_path = "$($dynamicOptionWallValue.json_path)"
+            manifest_path = "$($dynamicOptionWallValue.manifest_path)"
+            latest_main_contract = "$($dynamicOptionWallValue.latest_main_contract)"
+            latest_dynamic_node = "$($dynamicOptionWallValue.latest_dynamic_node)"
+            latest_joint_node = "$($dynamicOptionWallValue.latest_joint_node)"
+            mature_feature_count = $dynamicOptionWallValue.mature_feature_count
+            warning_count = $dynamicOptionWallValue.warning_count
+        }
+    }
+    else {
+        $weeklySteps["futures_option_dynamic_wall"] = [ordered]@{ status = "skipped" }
+    }
+
+    if ($null -ne $optionWallFactorV2Value) {
+        $weeklySteps["futures_option_wall_factor_v2"] = [ordered]@{
+            status = "completed"
+            feature_parquet_path = "$($optionWallFactorV2Value.feature_parquet_path)"
+            candidate_signal_parquet_path = "$($optionWallFactorV2Value.candidate_signal_parquet_path)"
+            posterior_label_parquet_path = "$($optionWallFactorV2Value.posterior_label_parquet_path)"
+            model_comparison_parquet_path = "$($optionWallFactorV2Value.model_comparison_parquet_path)"
+            candidate_evidence_parquet_path = "$($optionWallFactorV2Value.candidate_evidence_parquet_path)"
+            oos_parquet_path = "$($optionWallFactorV2Value.oos_parquet_path)"
+            markdown_path = "$($optionWallFactorV2Value.markdown_path)"
+            json_path = "$($optionWallFactorV2Value.json_path)"
+            manifest_path = "$($optionWallFactorV2Value.manifest_path)"
+            keep_count = $optionWallFactorV2Value.keep_count
+            watch_count = $optionWallFactorV2Value.watch_count
+            reject_count = $optionWallFactorV2Value.reject_count
+            warning_count = $optionWallFactorV2Value.warning_count
+        }
+    }
+    else {
+        $weeklySteps["futures_option_wall_factor_v2"] = [ordered]@{ status = "skipped" }
+    }
+
+    $futuresOptionEventPathValue = Get-Variable -Name "futuresOptionEventPath" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $futuresOptionEventPathValue) {
+        $weeklySteps["futures_option_event_path"] = [ordered]@{
+            status = "completed"
+            checkpoint_parquet_path = "$($futuresOptionEventPathValue.checkpoint_parquet_path)"
+            path_parquet_path = "$($futuresOptionEventPathValue.path_parquet_path)"
+            event_summary_parquet_path = "$($futuresOptionEventPathValue.event_summary_parquet_path)"
+            stratum_summary_parquet_path = "$($futuresOptionEventPathValue.stratum_summary_parquet_path)"
+            frequency_parquet_path = "$($futuresOptionEventPathValue.frequency_parquet_path)"
+            cooccurrence_parquet_path = "$($futuresOptionEventPathValue.cooccurrence_parquet_path)"
+            resolution_parquet_path = "$($futuresOptionEventPathValue.resolution_parquet_path)"
+            oos_parquet_path = "$($futuresOptionEventPathValue.oos_parquet_path)"
+            markdown_path = "$($futuresOptionEventPathValue.markdown_path)"
+            json_path = "$($futuresOptionEventPathValue.json_path)"
+            manifest_path = "$($futuresOptionEventPathValue.manifest_path)"
+            predictive_watch_count = $futuresOptionEventPathValue.predictive_watch_count
+            warning_count = $futuresOptionEventPathValue.warning_count
+        }
+    }
+    else {
+        $weeklySteps["futures_option_event_path"] = [ordered]@{ status = "skipped" }
+    }
+
+    $regimeInteractionValue = Get-Variable -Name "futuresOptionRegimeInteraction" -ValueOnly -ErrorAction SilentlyContinue
+    if ($null -ne $regimeInteractionValue) {
+        $weeklySteps["futures_option_regime_interaction"] = [ordered]@{
+            status = "completed"
+            episode_feature_parquet_path = "$($regimeInteractionValue.episode_feature_parquet_path)"
+            episode_validation_parquet_path = "$($regimeInteractionValue.episode_validation_parquet_path)"
+            named_context_parquet_path = "$($regimeInteractionValue.named_context_parquet_path)"
+            main_effect_parquet_path = "$($regimeInteractionValue.main_effect_parquet_path)"
+            primary_interaction_parquet_path = "$($regimeInteractionValue.primary_interaction_parquet_path)"
+            exploratory_interaction_parquet_path = "$($regimeInteractionValue.exploratory_interaction_parquet_path)"
+            annual_stability_parquet_path = "$($regimeInteractionValue.annual_stability_parquet_path)"
+            oos_parquet_path = "$($regimeInteractionValue.oos_parquet_path)"
+            markdown_path = "$($regimeInteractionValue.markdown_path)"
+            json_path = "$($regimeInteractionValue.json_path)"
+            manifest_path = "$($regimeInteractionValue.manifest_path)"
+            episode_count = $regimeInteractionValue.episode_count
+            stable_interaction_count = $regimeInteractionValue.stable_interaction_count
+            warning_count = $regimeInteractionValue.warning_count
+        }
+    }
+    else {
+        $weeklySteps["futures_option_regime_interaction"] = [ordered]@{ status = "skipped" }
     }
 
     if ($null -ne $eventExplanationValue) {
@@ -1617,6 +2107,91 @@ if ($runWeeklyManifestEffective) {
         $weeklySteps["futures_option_playbook"] = [ordered]@{ status = "skipped" }
     }
 
+    if ($null -ne $reboundLifecycleValue) {
+        $weeklySteps["rebound_lifecycle"] = [ordered]@{
+            status = "completed"
+            current_state = "$($reboundLifecycleValue.current_state)"
+            stability_status = "$($reboundLifecycleValue.stability_status)"
+            episode_count = $reboundLifecycleValue.episode_count
+            triggered_episode_count = $reboundLifecycleValue.triggered_episode_count
+            confirmed_episode_count = $reboundLifecycleValue.confirmed_episode_count
+            daily_path = "$($reboundLifecycleValue.daily_path)"
+            episode_path = "$($reboundLifecycleValue.episode_path)"
+            validation_path = "$($reboundLifecycleValue.validation_path)"
+            markdown_path = "$($reboundLifecycleValue.markdown_path)"
+        }
+    }
+    else {
+        $weeklySteps["rebound_lifecycle"] = [ordered]@{ status = "skipped" }
+    }
+
+    if ($null -ne $fundamentalTrendIncrementalValue) {
+        $weeklySteps["fundamental_trend_incremental"] = [ordered]@{
+            status = "completed"
+            event_row_count = $fundamentalTrendIncrementalValue.event_row_count
+            independent_episode_count = $fundamentalTrendIncrementalValue.independent_episode_count
+            exact_feature_count = $fundamentalTrendIncrementalValue.exact_feature_count
+            proxy_feature_count = $fundamentalTrendIncrementalValue.proxy_feature_count
+            exact_event_feature_count = $fundamentalTrendIncrementalValue.exact_event_feature_count
+            proxy_event_feature_count = $fundamentalTrendIncrementalValue.proxy_event_feature_count
+            positive_candidate_count = $fundamentalTrendIncrementalValue.positive_candidate_count
+            negative_filter_count = $fundamentalTrendIncrementalValue.negative_filter_count
+            summary_path = "$($fundamentalTrendIncrementalValue.summary_path)"
+            sensitivity_path = "$($fundamentalTrendIncrementalValue.sensitivity_path)"
+            markdown_path = "$($fundamentalTrendIncrementalValue.markdown_path)"
+            manifest_path = "$($fundamentalTrendIncrementalValue.manifest_path)"
+            warning_count = $fundamentalTrendIncrementalValue.warning_count
+            fundamental_signal_status = "$($fundamentalTrendIncrementalValue.fundamental_signal_status)"
+        }
+    }
+    else {
+        $weeklySteps["fundamental_trend_incremental"] = [ordered]@{ status = "skipped" }
+    }
+
+    if ($null -ne $trendConfirmationTimingValue) {
+        $weeklySteps["trend_confirmation_timing"] = [ordered]@{
+            status = "completed"
+            event_count = $trendConfirmationTimingValue.event_count
+            mature_5d_count = $trendConfirmationTimingValue.mature_5d_count
+            mature_20d_count = $trendConfirmationTimingValue.mature_20d_count
+            option_confirmed_by_breakout_count = $trendConfirmationTimingValue.option_confirmed_by_breakout_count
+            option_never_confirmed_count = $trendConfirmationTimingValue.option_never_confirmed_count
+            positive_candidate_count = $trendConfirmationTimingValue.positive_candidate_count
+            negative_filter_count = $trendConfirmationTimingValue.negative_filter_count
+            state_summary_path = "$($trendConfirmationTimingValue.state_summary_path)"
+            annual_summary_path = "$($trendConfirmationTimingValue.annual_summary_path)"
+            delay_summary_path = "$($trendConfirmationTimingValue.delay_summary_path)"
+            markdown_path = "$($trendConfirmationTimingValue.markdown_path)"
+            manifest_path = "$($trendConfirmationTimingValue.manifest_path)"
+            warning_count = $trendConfirmationTimingValue.warning_count
+        }
+    }
+    else {
+        $weeklySteps["trend_confirmation_timing"] = [ordered]@{ status = "skipped" }
+    }
+
+    if ($null -ne $optionMaturityConfirmationValue) {
+        $weeklySteps["option_maturity_confirmation"] = [ordered]@{
+            status = "completed"
+            event_count = $optionMaturityConfirmationValue.event_count
+            early_event_count = $optionMaturityConfirmationValue.early_event_count
+            expansion_event_count = $optionMaturityConfirmationValue.expansion_event_count
+            mature_event_count = $optionMaturityConfirmationValue.mature_event_count
+            significant_positive_count = $optionMaturityConfirmationValue.significant_positive_count
+            significant_negative_count = $optionMaturityConfirmationValue.significant_negative_count
+            latest_event_stage = "$($optionMaturityConfirmationValue.latest_event_stage)"
+            latest_event_activity_state = "$($optionMaturityConfirmationValue.latest_event_activity_state)"
+            activity_annual_path = "$($optionMaturityConfirmationValue.activity_annual_path)"
+            stage_summary_path = "$($optionMaturityConfirmationValue.stage_summary_path)"
+            markdown_path = "$($optionMaturityConfirmationValue.markdown_path)"
+            manifest_path = "$($optionMaturityConfirmationValue.manifest_path)"
+            warning_count = $optionMaturityConfirmationValue.warning_count
+        }
+    }
+    else {
+        $weeklySteps["option_maturity_confirmation"] = [ordered]@{ status = "skipped" }
+    }
+
     if ($null -ne $validatedBriefValue) {
         $weeklySteps["validated_brief"] = [ordered]@{
             status = "completed"
@@ -1661,7 +2236,7 @@ if ($runWeeklyManifestEffective) {
 
     $weeklyManifest = [ordered]@{
         report_type = "cf_weekly_research_run_manifest"
-        rule_version = "R58_cf_weekly_research_run_v1"
+        rule_version = "R58_cf_weekly_research_run_v2"
         generated_at = (Get-Date).ToUniversalTime().ToString("o")
         run_id = "$RunId"
         product_code = "CF"
@@ -1674,12 +2249,18 @@ if ($runWeeklyManifestEffective) {
             event_threshold_sensitivity = $runEventThresholdSensitivityEffective
             futures_option_divergence = $runFuturesOptionDivergenceEffective
             futures_option_playbook = $runFuturesOptionPlaybookEffective
+            rebound_lifecycle = $runReboundLifecycleEffective
+            fundamental_trend_incremental = $runFundamentalTrendIncrementalEffective
             member_position_research = $runMemberPositionResearchEffective
             option_strike_position_research = $runOptionStrikePositionResearchEffective
+            futures_option_dynamic_wall = $runDynamicOptionWallResearchEffective
+            futures_option_wall_factor_v2 = $runOptionWallFactorV2Effective
+            futures_option_event_path = $runFuturesOptionEventPathEffective
+            futures_option_regime_interaction = $runFuturesOptionRegimeInteractionEffective
             validated_brief = $runValidatedBriefEffective
             publish_pack = $runPublishPackEffective
             daily_operation_audit = $runDailyOperationAuditEffective
-            strategy_shadow_audit = $true
+            strategy_shadow_audit = $false
         }
         steps = $weeklySteps
         research_boundary = [ordered]@{
@@ -1697,7 +2278,15 @@ if ($runWeeklyManifestEffective) {
                 "member_position_roll_migration_interpretation",
                 "option_open_interest_long_short_ownership_unknown",
                 "call_put_wall_interpretation",
+                "dynamic_wall_direction_proxy_interpretation",
+                "dynamic_wall_oos_incremental_evidence",
+                "wall_factor_v2_direction_proxy_interpretation",
+                "wall_factor_v2_fdr_and_oos_interpretation",
+                "event_path_fixed_checkpoint_interpretation",
+                "event_path_purged_loo_interpretation",
                 "fundamental_context_interpretation",
+                "historical_release_date_backfill",
+                "fundamental_incremental_sample_size",
                 "publish_wording"
             )
         }

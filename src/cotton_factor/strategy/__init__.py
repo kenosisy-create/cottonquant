@@ -30,6 +30,13 @@ from cotton_factor.strategy.registry import (
     StrategyRegistryEntry,
     load_strategy_registry,
 )
+from cotton_factor.strategy.roll_neutral_return import (
+    RollNeutralReturnDailyRow,
+    RollNeutralReturnResearchResult,
+    build_cf_roll_neutral_return_research,
+    build_roll_neutral_return_index,
+    build_tsmom_measurement_comparison,
+)
 from cotton_factor.strategy.shadow_ledger import ShadowRunResult, run_cf_strategy_shadow
 from cotton_factor.strategy.spec import (
     CostScenarioSpec,
@@ -49,6 +56,8 @@ __all__ = [
     "ExecutionSpec",
     "GateRuleSpec",
     "OverlayTestResult",
+    "RollNeutralReturnDailyRow",
+    "RollNeutralReturnResearchResult",
     "SizingSpec",
     "StrategyBacktestResult",
     "StrategyComparisonResult",
@@ -61,6 +70,9 @@ __all__ = [
     "build_phase_gated_targets",
     "build_cf_weekly_strategy_audit",
     "build_overlay_targets",
+    "build_cf_roll_neutral_return_research",
+    "build_roll_neutral_return_index",
+    "build_tsmom_measurement_comparison",
     "compare_cf_strategies",
     "evaluate_cf_strategy",
     "load_strategy_registry",

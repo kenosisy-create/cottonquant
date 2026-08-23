@@ -122,6 +122,195 @@ def test_build_cf_signal_matrix_connects_option_factor_filter(tmp_path: Path) ->
     assert "期权过滤" in markdown
 
 
+def test_signal_matrix_relays_to_next_ready_main_cycle(tmp_path: Path) -> None:
+    core_path, trade_dates = _write_signal_matrix_core_quotes(tmp_path)
+    option_path = tmp_path / "option_factors" / "relay.parquet"
+    option_path.parent.mkdir(parents=True)
+    latest_date = trade_dates[-1]
+    common = {
+        "trade_date": latest_date,
+        "atm_iv_rank": 0.20,
+        "pcr_volume": 0.70,
+        "pcr_oi": 0.75,
+        "skew_proxy": -0.002,
+        "eligible_option_count": 20,
+    }
+    pd.DataFrame(
+        [
+            {
+                **common,
+                "underlying_contract": "CF405",
+                "factor_status": "WEAK_OR_INCOMPLETE",
+                "eligible_option_count": 0,
+                "option_liquidity_score": None,
+            },
+            {
+                **common,
+                "underlying_contract": "CF409",
+                "factor_status": "READY",
+                "option_liquidity_score": 65.0,
+            },
+            {
+                **common,
+                "underlying_contract": "CF411",
+                "factor_status": "READY",
+                "option_liquidity_score": 90.0,
+            },
+        ]
+    ).to_parquet(option_path, index=False)
+
+    result = build_cf_signal_matrix(
+        start=trade_dates[-2],
+        end=latest_date,
+        horizons=(20,),
+        core_quote_path=core_path,
+        option_factor_path=option_path,
+        output_dir=tmp_path / "research",
+        report_output_dir=tmp_path / "reports",
+        run_id="r35_option_relay",
+    )
+
+    latest = pd.read_parquet(result.matrix_parquet_path).iloc[-1]
+    assert latest["main_contract"] == "CF405"
+    assert latest["option_underlying_contract"] == "CF409"
+    assert latest["option_selection_reason"] == "NEXT_MAIN_CYCLE_RELAY"
+    assert bool(latest["option_relay_used"]) is True
+    assert latest["option_tenor_gap_months"] == 4
+    assert latest["option_factor_status"] == "READY"
+    assert latest["option_liquidity_score"] == pytest.approx(65.0)
+    assert latest["option_underlying_futures_oi_share"] > 0.10
+    assert latest["option_underlying_futures_volume_share"] > 0.10
+    assert "option_tenor_relay" in latest["warning_flags"]
+    assert "R35_OPTION_NEXT_MAIN_CYCLE_RELAY_USED" in result.warning_csv_path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_signal_matrix_skips_cf611_and_relays_cf609_to_cf701(tmp_path: Path) -> None:
+    core_path, trade_dates = _write_cf609_relay_core_quotes(tmp_path)
+    latest_date = trade_dates[-1]
+    option_path = tmp_path / "option_factors" / "cf609_relay.parquet"
+    option_path.parent.mkdir(parents=True)
+    common = {
+        "trade_date": latest_date,
+        "atm_iv_rank": 0.20,
+        "pcr_volume": 0.70,
+        "pcr_oi": 0.75,
+        "skew_proxy": -0.002,
+        "eligible_option_count": 20,
+    }
+    pd.DataFrame(
+        [
+            {
+                **common,
+                "underlying_contract": "CF609",
+                "factor_status": "WEAK_OR_INCOMPLETE",
+                "eligible_option_count": 0,
+                "option_liquidity_score": None,
+            },
+            {
+                **common,
+                "underlying_contract": "CF611",
+                "factor_status": "READY",
+                "option_liquidity_score": 90.0,
+            },
+            {
+                **common,
+                "underlying_contract": "CF701",
+                "factor_status": "READY",
+                "option_liquidity_score": 65.0,
+            },
+        ]
+    ).to_parquet(option_path, index=False)
+
+    result = build_cf_signal_matrix(
+        start=trade_dates[-2],
+        end=latest_date,
+        horizons=(20,),
+        core_quote_path=core_path,
+        option_factor_path=option_path,
+        output_dir=tmp_path / "research",
+        report_output_dir=tmp_path / "reports",
+        run_id="r35_cf609_main_cycle_relay",
+    )
+
+    latest = pd.read_parquet(result.matrix_parquet_path).iloc[-1]
+    assert latest["main_contract"] == "CF609"
+    assert latest["option_underlying_contract"] == "CF701"
+    assert latest["option_underlying_contract"] != "CF611"
+    assert latest["option_selection_reason"] == "NEXT_MAIN_CYCLE_RELAY"
+    assert latest["option_tenor_gap_months"] == 4
+    assert latest["option_underlying_futures_open_interest"] == pytest.approx(288_000)
+    assert latest["option_underlying_futures_volume"] == pytest.approx(140_000)
+
+
+def test_signal_matrix_does_not_fallback_to_cf611_when_cf701_is_inactive(
+    tmp_path: Path,
+) -> None:
+    core_path, trade_dates = _write_cf609_relay_core_quotes(tmp_path)
+    core = pd.read_parquet(core_path)
+    inactive = core["contract_code"].eq("CF701")
+    core.loc[inactive, "open_interest"] = 1_000
+    core.loc[inactive, "volume"] = 1_000
+    core.to_parquet(core_path, index=False)
+    latest_date = trade_dates[-1]
+    option_path = tmp_path / "option_factors" / "inactive_cf701.parquet"
+    option_path.parent.mkdir(parents=True)
+    common = {
+        "trade_date": latest_date,
+        "atm_iv_rank": 0.20,
+        "pcr_volume": 0.70,
+        "pcr_oi": 0.75,
+        "skew_proxy": -0.002,
+        "eligible_option_count": 20,
+        "option_liquidity_score": 65.0,
+    }
+    pd.DataFrame(
+        [
+            {
+                **common,
+                "underlying_contract": "CF609",
+                "factor_status": "WEAK_OR_INCOMPLETE",
+                "eligible_option_count": 0,
+                "option_liquidity_score": None,
+            },
+            {
+                **common,
+                "underlying_contract": "CF611",
+                "factor_status": "READY",
+                "option_liquidity_score": 90.0,
+            },
+            {
+                **common,
+                "underlying_contract": "CF701",
+                "factor_status": "READY",
+            },
+        ]
+    ).to_parquet(option_path, index=False)
+
+    result = build_cf_signal_matrix(
+        start=trade_dates[-2],
+        end=latest_date,
+        horizons=(20,),
+        core_quote_path=core_path,
+        option_factor_path=option_path,
+        output_dir=tmp_path / "inactive_research",
+        report_output_dir=tmp_path / "inactive_reports",
+        run_id="r35_no_intermediate_fallback",
+    )
+
+    latest = pd.read_parquet(result.matrix_parquet_path).iloc[-1]
+    assert latest["main_contract"] == "CF609"
+    assert latest["option_underlying_contract"] == "CF609"
+    assert latest["option_underlying_contract"] != "CF611"
+    assert bool(latest["option_relay_used"]) is False
+    assert (
+        latest["option_selection_reason"]
+        == "MAIN_CONTRACT_DEGRADED_NO_MAIN_CYCLE_RELAY"
+    )
+    assert latest["option_signal"] == "option_watch"
+
+
 def test_build_cf_signal_matrix_validates_window(tmp_path: Path) -> None:
     core_path, _ = _write_signal_matrix_core_quotes(tmp_path)
 
@@ -198,6 +387,41 @@ def _write_signal_matrix_core_quotes(tmp_path: Path) -> tuple[Path, list[date]]:
                     settle=main_settle + 4,
                     volume=600 + offset,
                     open_interest=6_000 + offset,
+                ),
+            ]
+        )
+    pd.DataFrame(rows).to_parquet(path, index=False)
+    return path, trade_dates
+
+
+def _write_cf609_relay_core_quotes(tmp_path: Path) -> tuple[Path, list[date]]:
+    path = tmp_path / "core_cf609" / "CF" / "core_quote_daily.parquet"
+    path.parent.mkdir(parents=True)
+    trade_dates = _business_dates(date(2026, 6, 1), count=48)
+    rows: list[dict[str, object]] = []
+    for offset, trade_date in enumerate(trade_dates):
+        rows.extend(
+            [
+                _quote(
+                    contract_code="CF609",
+                    trade_date=trade_date,
+                    settle=15_500 + offset,
+                    volume=240_000,
+                    open_interest=335_000,
+                ),
+                _quote(
+                    contract_code="CF611",
+                    trade_date=trade_date,
+                    settle=15_700 + offset,
+                    volume=85_000,
+                    open_interest=292_000,
+                ),
+                _quote(
+                    contract_code="CF701",
+                    trade_date=trade_date,
+                    settle=15_850 + offset,
+                    volume=140_000,
+                    open_interest=288_000,
                 ),
             ]
         )

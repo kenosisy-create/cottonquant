@@ -14,7 +14,12 @@ from cotton_factor.common.exceptions import (
     TradeMappingError,
 )
 from cotton_factor.common.paths import data_dir, reports_dir
-from cotton_factor.core import build_chain_map, build_trade_mapping
+from cotton_factor.core import (
+    CF_MAIN_CYCLE_MONTHS,
+    CF_MAIN_CYCLE_ROLL_RULE_VERSION,
+    build_chain_map,
+    build_trade_mapping,
+)
 from cotton_factor.core.schemas import (
     CoreChainMapDailyRow,
     CoreQuoteDailyRow,
@@ -110,8 +115,10 @@ def build_cf_research_mapping(
             calendar=contract_universe.calendar,
             product_code=PRODUCT_CODE,
             signal_object_id=signal_object_id,
+            roll_rule_version=CF_MAIN_CYCLE_ROLL_RULE_VERSION,
             ltd_buffer_days=ltd_buffer_days,
             min_volume=min_volume,
+            eligible_delivery_months=CF_MAIN_CYCLE_MONTHS,
         )
         trade_result = build_trade_mapping(
             chain_rows=chain_result.rows,

@@ -1,6 +1,8 @@
 """Core fact layer package."""
 
 from cotton_factor.core.chain_map import (
+    CF_MAIN_CYCLE_MONTHS,
+    CF_MAIN_CYCLE_ROLL_RULE_VERSION,
     ChainMapBuildResult,
     ChainMapError,
     build_chain_map,
@@ -72,6 +74,8 @@ from cotton_factor.core.trading_calendar import (
 __all__ = [
     "ArchiveRunManifestRow",
     "CSV_FIXTURE_CALENDAR_VERSION",
+    "CF_MAIN_CYCLE_MONTHS",
+    "CF_MAIN_CYCLE_ROLL_RULE_VERSION",
     "ChainMapBuildResult",
     "ChainMapError",
     "ContractMasterBuildResult",

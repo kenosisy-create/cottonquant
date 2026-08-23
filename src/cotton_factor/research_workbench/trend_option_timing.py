@@ -18,7 +18,7 @@ from cotton_factor.common.exceptions import ResearchWorkbenchError
 from cotton_factor.common.paths import data_dir, reports_dir
 
 PRODUCT_CODE = "CF"
-TREND_OPTION_TIMING_VERSION = "V5.1_R93B_trend_option_timing_v1"
+TREND_OPTION_TIMING_VERSION = "V5.1_R93B_trend_option_timing_v3_main_cycle_relay"
 DEFAULT_RANK_WINDOW = 252
 DEFAULT_RANK_MIN_PERIODS = 60
 DEFAULT_MIN_SAMPLE_SIZE = 30
@@ -35,7 +35,7 @@ HUMAN_REVIEW_REQUIRED = (
 )
 RESEARCH_BOUNDARY = (
     "事件特征仅使用突破当日及以前数据；方向收益只作为历史后验标签。"
-    "本模块进行多重检验校正，不修改现有影子策略，不构成交易指令。"
+    "本模块进行多重检验校正，不修改期货主模型，不构成交易指令。"
 )
 DAILY_COLUMNS = {
     "trade_date",
@@ -77,6 +77,12 @@ OPTION_COLUMNS = {
     "skew_proxy_change_1d",
     "volatility_repricing_state",
     "option_liquidity_score",
+}
+OPTION_RELAY_COLUMNS = {
+    "main_contract",
+    "option_selection_reason",
+    "option_relay_used",
+    "option_tenor_gap_months",
 }
 STRIKE_COLUMNS = {
     "trade_date",
@@ -339,11 +345,24 @@ def _build_daily_features(
     rank_window: int,
     rank_min_periods: int,
 ) -> pd.DataFrame:
-    option_working = option.rename(columns={"underlying_contract": "main_contract"})
-    strike_working = strike.rename(columns={"underlying_contract": "main_contract"})
+    option_working = option.copy()
+    if "main_contract" not in option_working.columns:
+        option_working["main_contract"] = option_working["underlying_contract"]
+    option_working = option_working.rename(
+        columns={"underlying_contract": "option_underlying_contract"}
+    )
+    if "option_selection_reason" not in option_working.columns:
+        option_working["option_selection_reason"] = "LEGACY_MAIN_CONTRACT_FALLBACK"
+    if "option_relay_used" not in option_working.columns:
+        option_working["option_relay_used"] = False
+    if "option_tenor_gap_months" not in option_working.columns:
+        option_working["option_tenor_gap_months"] = 0
+    strike_working = strike.rename(
+        columns={"underlying_contract": "strike_underlying_contract"}
+    )
     if option_working.duplicated(["trade_date", "main_contract"]).any():
         raise ResearchWorkbenchError("option structure has duplicate date/contract rows")
-    if strike_working.duplicated(["trade_date", "main_contract"]).any():
+    if strike_working.duplicated(["trade_date", "strike_underlying_contract"]).any():
         raise ResearchWorkbenchError("strike position has duplicate date/contract rows")
     working = daily.merge(
         option_working,
@@ -351,9 +370,13 @@ def _build_daily_features(
         how="left",
         validate="one_to_one",
     )
+    working["strike_join_contract"] = working["option_underlying_contract"].fillna(
+        working["main_contract"]
+    )
     working = working.merge(
         strike_working,
-        on=["trade_date", "main_contract"],
+        left_on=["trade_date", "strike_join_contract"],
+        right_on=["trade_date", "strike_underlying_contract"],
         how="left",
         validate="one_to_one",
     )
@@ -449,6 +472,10 @@ def _build_independent_events(
     feature_columns = [
         "trade_date",
         "main_contract",
+        "option_underlying_contract",
+        "option_selection_reason",
+        "option_relay_used",
+        "option_tenor_gap_months",
         "trend_direction",
         "trend_stage",
         "trend_strength",
@@ -1305,6 +1332,10 @@ def _current_context(latest: pd.Series) -> dict[str, object]:
     columns = (
         "trade_date",
         "main_contract",
+        "option_underlying_contract",
+        "option_selection_reason",
+        "option_relay_used",
+        "option_tenor_gap_months",
         "trend_direction",
         "trend_stage",
         "trend_strength",
@@ -1331,7 +1362,8 @@ def _load_frame(path: Path, required: set[str], label: str) -> pd.DataFrame:
     missing = required.difference(frame.columns)
     if missing:
         raise ResearchWorkbenchError(f"{label} missing columns {sorted(missing)}: {path}")
-    selected = frame[list(sorted(required))].copy()
+    selected_columns = required | (OPTION_RELAY_COLUMNS & set(frame.columns))
+    selected = frame[list(sorted(selected_columns))].copy()
     date_column = "event_date" if "event_date" in selected.columns else "trade_date"
     selected[date_column] = pd.to_datetime(
         selected[date_column], errors="coerce"

@@ -20,7 +20,7 @@ from cotton_factor.research_workbench.futures_option_divergence import (
 
 PRODUCT_CODE = "CF"
 FUTURES_OPTION_DIVERGENCE_PLAYBOOK_VERSION = (
-    "R71_futures_option_divergence_playbook_v1"
+    "R71_futures_option_divergence_playbook_v2_main_cycle_relay"
 )
 OUTPUT_DIR = "futures_option_divergence_playbook"
 DEFAULT_MIN_SAMPLE_SIZE = 30

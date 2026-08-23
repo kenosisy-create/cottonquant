@@ -311,6 +311,63 @@ def test_r76_uses_roll_context_without_hiding_net_exit() -> None:
     assert "全链资金退出" in daily_roll_but_window_exit[4]
 
 
+def test_r75_keeps_futures_main_and_uses_next_main_cycle_option(
+    tmp_path: Path,
+) -> None:
+    dates = pd.bdate_range("2026-08-03", periods=3)
+    option_path = tmp_path / "relay_option.parquet"
+    matrix_path = tmp_path / "relay_matrix.parquet"
+    pd.DataFrame(
+        [
+            {
+                "trade_date": timestamp.date(),
+                "underlying_contract": "CF701",
+                "atm_iv_proxy": 0.025 + index * 0.001,
+                "atm_iv_rank": 0.10 + index * 0.02,
+                "pcr_volume": 0.75,
+                "pcr_oi": 0.80,
+                "skew_proxy": -0.002,
+                "factor_status": "READY",
+                "eligible_option_count": 24,
+                "option_liquidity_score": 65.0,
+            }
+            for index, timestamp in enumerate(dates)
+        ]
+    ).to_parquet(option_path, index=False)
+    pd.DataFrame(
+        [
+            {
+                "trade_date": timestamp.date(),
+                "horizon": 20,
+                "main_contract": "CF609",
+                "direction": "long",
+                "option_underlying_contract": "CF701",
+                "option_selection_reason": "NEXT_MAIN_CYCLE_RELAY",
+                "option_relay_used": True,
+                "option_tenor_gap_months": 4,
+            }
+            for timestamp in dates
+        ]
+    ).to_parquet(matrix_path, index=False)
+
+    result = build_cf_option_structure_research(
+        option_factor_path=option_path,
+        signal_matrix_path=matrix_path,
+        output_dir=tmp_path / "relay_output",
+        report_output_dir=tmp_path / "relay_reports",
+        run_id="r75_relay_unit",
+    )
+
+    daily = pd.read_parquet(result.daily_parquet_path)
+    latest = daily.iloc[-1]
+    assert latest["main_contract"] == "CF609"
+    assert latest["underlying_contract"] == "CF701"
+    assert bool(latest["option_relay_used"]) is True
+    assert latest["option_selection_reason"] == "NEXT_MAIN_CYCLE_RELAY"
+    assert latest["option_direction"] == "long"
+    assert "期货主力：`CF609`" in result.markdown_path.read_text(encoding="utf-8")
+
+
 def test_r74_excludes_last_trade_day_oi_reset_from_adjusted_flow(
     tmp_path: Path,
 ) -> None:
