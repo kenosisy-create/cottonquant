@@ -97,6 +97,15 @@ posterior evidence, and mature-market leave-one-year-out incremental checks.
 It is a research-only sidecar and does not modify `signal_matrix`,
 `composite_score`, direction, sizing, or any strategy registry.
 
+As of 2026-09-02 the daily operations lane owns the research refresh: a
+testable Python orchestrator (`cotton_factor.operations.daily_update`) runs
+the light daily chain in about one minute, writes the R23/R29/R34/R35 artifacts
+into `runs/daily/CF/<date>/`, and finishes by rebuilding the CF Studio
+evidence workbench page. The R93R unified evidence gate has formally stopped
+CF option-factor expansion (zero promotable candidates, R94-R99 blocked), so
+heavy weekly research now runs only on explicit request. The default research
+consumer is the Studio page described at the bottom of this file.
+
 ## Current Direction
 
 The project is no longer being pushed as a full production-grade factor
@@ -833,8 +842,8 @@ scenarios and annual promotion gate. The first real CF run classified option
 veto as `WATCH` (full conservative Delta Sharpe +0.061), Top20 member-position
 flow as `REJECT` (-0.621), and same-side strike walls as `WATCH` (+0.010).
 
-Build the local single-file research dashboard, including the strategy-shadow
-section when an auditable R90 ledger is present, with:
+Build the legacy single-file research dashboard (superseded by the CF Studio
+workbench below, kept as a compatibility artifact) with:
 
 ```powershell
 py -3.12 scripts\build_dashboard.py --date 2026-07-20
@@ -842,3 +851,57 @@ py -3.12 scripts\build_dashboard.py --date 2026-07-20
 
 The strategy section reads no forward-return labels and stays hidden when the
 shadow ledger is absent or invalid.
+
+## CF Studio Evidence Workbench (current dashboard)
+
+`scripts/build_cf_studio_dashboard.py` + `scripts/cf_studio_template.html`
+(V2) / `scripts/cf_studio_template_v3.html` (V3) build the current research
+workbench page into `reports/dashboard/`:
+
+```powershell
+py -3.12 scripts\build_cf_studio_dashboard.py --v3
+```
+
+- `--v3` uses the 2360px-wide V3 template with the R93E validated-brief
+  summary section and writes `CF_studio_v3_<date>.html` plus
+  `CF_studio_v3_latest.html`. Without `--v3`, the V2 template writes
+  `CF_studio_<date>.html` / `CF_studio_latest.html`. The two output families
+  never overwrite each other.
+- The page is a self-contained offline HTML file (open with `file://`). It
+  embeds the extracted research payload and reads no live services. Five
+  workspaces: today structure, R93R unified evidence gate, R87/R88/R92
+  strategy accountability, R93C/R93D candidate forward evidence, and data/run
+  coverage with the official CZCE calendar.
+- The generator reads only frozen research artifacts (`runs/daily/CF/<date>/`,
+  R93R gate module summaries, strategy evaluations, the R93D event ledger, the
+  official calendar) and asserts the final HTML contains no
+  forward-return label tokens. It never modifies research outputs.
+- Coverage days are classified as full / partial / missing / closed /
+  uncovered; calendar rows after the last confirmed official trade date are
+  shown as uncovered, never as holidays.
+
+## Automated daily update chain
+
+The full chain is wired end to end (verified 2026-09-02):
+
+1. `scripts/run_cf_daily_scheduled.ps1` checks the official CZCE calendar and
+   skips non-trading days. Logs roll under `logs/daily_update/` (30-day
+   retention).
+2. `scripts/update_cf_latest_research.ps1 -DownloadOfficialDaily` delegates
+   the light daily path to the Python orchestrator
+   `cotton_factor.operations.daily_update` (`operations run-cf-daily-update`).
+3. The orchestrator finishes with a non-blocking `studio_dashboard` step that
+   rebuilds the V3 workbench page from the fresh run, so every trading day the
+   page reflects the latest data without manual commands.
+4. A Windows scheduled task `Cottonquant CF Daily Research Update` triggers
+   the launcher daily at 18:30; `scripts/register_cf_daily_task.ps1`
+   re-registers it after a machine reset.
+
+The light daily chain runs in about 60-75 seconds. `signal_matrix` (full
+history times six horizons) and the incremental R48 option factor proxy are
+the largest steps. Heavy weekly research (R41/R83-R93 option-chain evidence)
+is intentionally out of the daily lane; the R93R evidence gate formally
+stopped CF option-factor expansion (`REJECT_STOP_OPTION_FACTOR_EXPANSION`,
+R94-R99 blocked), so the weekly pack runs only on explicit request. The daily
+path also records the studio step result inside
+`runs/daily/CF/<date>/daily_update_pipeline.json`.
