@@ -46,6 +46,7 @@ GATE_DIR = ROOT / "data" / "research" / "CF" / "futures_option_evidence_gate"
 LEDGER_EVENTS = ROOT / "data" / "research" / "CF" / "trend_candidate_forward_ledger" / "events"
 STRATEGY_DIR = ROOT / "reports" / "strategy"
 VALIDATED_DIR = ROOT / "reports" / "research" / "validated_brief"
+VALIDATION_DIR = ROOT / "data" / "research" / "CF" / "signal_matrix_validation"
 
 RULE_VERSION = "cf_studio_dashboard_v2"
 FORBIDDEN_DATA_TOKENS = ("forward_return", "fwd_ret")
@@ -378,6 +379,53 @@ def collect_validated() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# 今日结构历史对照(R36 后验标签仅作历史证据, 不进入当日结论)
+# ---------------------------------------------------------------------------
+
+def collect_phase_evidence() -> dict:
+    daily_files = sorted(VALIDATION_DIR.glob("*_signal_matrix_validation_daily.parquet")) if VALIDATION_DIR.is_dir() else []
+    if not daily_files:
+        return {"available": False, "reason": "no validation daily artifact"}
+    latest = daily_files[-1]
+    try:
+        import pandas as pd
+
+        frame = pd.read_parquet(
+            latest,
+            columns=["trade_date", "horizon", "trend_phase", "trend_phase_direction", "direction",
+                     "forward_return", "forward_label_available", "directional_hit"],
+        )
+    except Exception as exc:  # noqa: BLE001
+        return {"available": False, "reason": f"read failed: {exc}"}
+    history = frame[frame["forward_label_available"].fillna(False)]
+    if history.empty:
+        return {"available": False, "reason": "no labeled history"}
+    grouped = (
+        history.groupby(["trend_phase", "direction", "horizon"])
+        .agg(n=("directional_hit", "size"), hit=("directional_hit", "mean"), ret=("forward_return", "mean"))
+        .reset_index()
+    )
+    rows = [
+        {
+            "phase": str(r.trend_phase),
+            "direction": str(r.direction),
+            "horizon": int(r.horizon),
+            "n": int(r.n),
+            "hit": None if pd.isna(r.hit) else round(float(r.hit), 4),
+            "ret": None if pd.isna(r.ret) else round(float(r.ret), 5),
+        }
+        for r in grouped.itertuples(index=False)
+    ]
+    asof = str(history["trade_date"].max())
+    return {
+        "available": True,
+        "asof": asof,
+        "file": latest.name,
+        "rows": rows,
+    }
+
+
+# ---------------------------------------------------------------------------
 # R93E 验证明细(V3 模板专用, 来自最新综合验证简报)
 # ---------------------------------------------------------------------------
 
@@ -446,6 +494,7 @@ def collect_payload(*, include_validated_detail: bool = False) -> dict:
     }
     if include_validated_detail:
         payload["validated_detail"] = collect_validated_detail()
+        payload["phase_evidence"] = collect_phase_evidence()
     _assert_clean(payload)
     return payload
 
