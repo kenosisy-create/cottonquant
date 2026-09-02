@@ -76,6 +76,15 @@ class TrendContinuityWarningRecord:
 
 
 @dataclass(frozen=True)
+class _QuoteIndex:
+    """按日期和合约预索引核心行情，避免历史循环反复扫描整张表。"""
+
+    by_date: dict[date, pd.DataFrame]
+    previous_by_date: dict[date, pd.DataFrame]
+    by_contract: dict[str, pd.DataFrame]
+
+
+@dataclass(frozen=True)
 class ResearchTrendContinuityBoardResult:
     """Result of building the R29 latest trend continuity board."""
 
@@ -242,10 +251,16 @@ def _board_rows(
     candidates: pd.DataFrame | None,
 ) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
+    quote_index = _build_quote_index(quotes)
     previous_phase_code: str | None = None
     phase_run_length = 0
     for trade_date in trade_dates:
-        row = _single_day_row(quotes=quotes, trade_date=trade_date, run_id=run_id)
+        row = _single_day_row(
+            quotes=quotes,
+            trade_date=trade_date,
+            run_id=run_id,
+            quote_index=quote_index,
+        )
         current_phase_code = str(row["trend_phase_code"])
         if previous_phase_code is None:
             transition_code = None
@@ -433,22 +448,85 @@ def _trend_quality_label(score: int) -> str:
     return "趋势解释失效风险"
 
 
-def _single_day_row(*, quotes: pd.DataFrame, trade_date: date, run_id: str) -> dict[str, object]:
+def _build_quote_index(quotes: pd.DataFrame) -> _QuoteIndex:
+    """构造历史计算索引；索引只引用已加载的核心数据，不改变数据口径。"""
+    by_date = {
+        trade_date: daily
+        for trade_date, daily in quotes.groupby("trade_date", sort=True)
+    }
+    dates = sorted(by_date)
+    empty = quotes.iloc[0:0].copy()
+    previous_by_date: dict[date, pd.DataFrame] = {}
+    for index, trade_date in enumerate(dates):
+        previous_by_date[trade_date] = (
+            empty if index == 0 else by_date[dates[index - 1]]
+        )
+    by_contract: dict[str, pd.DataFrame] = {}
+    for contract_code, history in quotes.groupby("contract_code", sort=False):
+        by_contract[str(contract_code)] = history.sort_values(
+            "trade_date", kind="stable"
+        ).reset_index(drop=True)
+    return _QuoteIndex(
+        by_date=by_date,
+        previous_by_date=previous_by_date,
+        by_contract=by_contract,
+    )
+
+
+def _single_day_row(
+    *,
+    quotes: pd.DataFrame,
+    trade_date: date,
+    run_id: str,
+    quote_index: _QuoteIndex | None = None,
+) -> dict[str, object]:
     # 每一行都按当日可见核心表重新识别主力和因子，避免用最新主力回填历史。
-    visible_quotes = quotes.loc[quotes["trade_date"] <= trade_date].copy()
-    latest_quotes = visible_quotes.loc[visible_quotes["trade_date"] == trade_date].copy()
-    activity_rows = r23._activity_rows(visible_quotes=visible_quotes, active_date=trade_date)
+    if quote_index is None:
+        visible_quotes = quotes.loc[quotes["trade_date"] <= trade_date].copy()
+        latest_quotes = visible_quotes.loc[
+            visible_quotes["trade_date"] == trade_date
+        ].copy()
+        activity_rows = r23._activity_rows(
+            visible_quotes=visible_quotes,
+            active_date=trade_date,
+        )
+    else:
+        latest_quotes = quote_index.by_date.get(trade_date)
+        previous_quotes = quote_index.previous_by_date.get(trade_date)
+        if latest_quotes is None or previous_quotes is None:
+            raise ResearchWorkbenchError(
+                f"no CF core rows for {trade_date.isoformat()}"
+            )
+        activity_rows = _activity_rows_from_frames(
+            latest=latest_quotes,
+            previous=previous_quotes,
+            active_date=trade_date,
+        )
     main_contract = str(
         r23._research_main_activity_row(
             activity_rows=activity_rows,
             active_date=trade_date,
         )["contract_code"]
     )
-    main_history = r23._main_contract_history(
-        visible_quotes=visible_quotes,
-        contract_code=main_contract,
-        active_date=trade_date,
-    )
+    if quote_index is None:
+        main_history = r23._main_contract_history(
+            visible_quotes=visible_quotes,
+            contract_code=main_contract,
+            active_date=trade_date,
+        )
+    else:
+        contract_history = quote_index.by_contract.get(main_contract)
+        if contract_history is None:
+            raise ResearchWorkbenchError(
+                f"main contract history not found: {main_contract}"
+            )
+        main_history = contract_history.loc[
+            contract_history["trade_date"] <= trade_date
+        ].copy()
+        if main_history.empty:
+            raise ResearchWorkbenchError(
+                f"main contract history not found: {main_contract}"
+            )
     main_metrics = r23._main_metrics(main_history=main_history)
     term_structure = r23._term_structure(latest_quotes=latest_quotes, main_contract=main_contract)
     factor_signals = r23._factor_signals(
@@ -508,6 +586,67 @@ def _single_day_row(*, quotes: pd.DataFrame, trade_date: date, run_id: str) -> d
         "source_snapshot_ids": ";".join(snapshot_ids),
         "continuity_rule_version": TREND_CONTINUITY_RULE_VERSION,
     }
+
+
+def _activity_rows_from_frames(
+    *,
+    latest: pd.DataFrame,
+    previous: pd.DataFrame,
+    active_date: date,
+) -> list[dict[str, object]]:
+    """用已索引的当日/前日切片复用 R23 的主力识别口径。"""
+    previous_by_contract = {
+        str(row.contract_code): row for row in previous.itertuples(index=False)
+    }
+    records: list[dict[str, object]] = []
+    ordered = latest.sort_values(
+        ["open_interest", "volume", "contract_code"],
+        ascending=[False, False, True],
+        na_position="last",
+    )
+    for rank, row in enumerate(ordered.itertuples(index=False), start=1):
+        prior = previous_by_contract.get(str(row.contract_code))
+        prev_settle = (
+            r23._float_or_none(getattr(prior, "settle", None))
+            if prior
+            else None
+        )
+        prev_oi = (
+            r23._float_or_none(getattr(prior, "open_interest", None))
+            if prior
+            else None
+        )
+        settle = r23._float_or_none(row.settle)
+        open_interest = r23._float_or_none(row.open_interest)
+        settle_change = None if settle is None or prev_settle is None else settle - prev_settle
+        settle_return = (
+            None
+            if settle is None or prev_settle is None or prev_settle <= 0
+            else settle / prev_settle - 1
+        )
+        oi_change = (
+            None
+            if open_interest is None or prev_oi is None
+            else open_interest - prev_oi
+        )
+        records.append(
+            {
+                "rank": rank,
+                "contract_code": row.contract_code,
+                "settle": settle,
+                "prev_settle": prev_settle,
+                "settle_change": settle_change,
+                "settle_return": settle_return,
+                "volume": r23._float_or_none(row.volume),
+                "open_interest": open_interest,
+                "prev_open_interest": prev_oi,
+                "oi_change": oi_change,
+                "source_snapshot_id": str(row.source_snapshot_id),
+            }
+        )
+    if not records:
+        raise ResearchWorkbenchError(f"no active contract rows for {active_date.isoformat()}")
+    return records
 
 
 def _candidate_context(

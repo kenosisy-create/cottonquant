@@ -173,6 +173,10 @@ def test_update_cf_latest_research_has_official_daily_download_contract() -> Non
     assert "[switch]$RemoveDownloadedDailyAfterIngest" in script
     assert "official_daily_cleanup_manifest" in script
     assert "data\\incoming" in script
+    assert "UseLegacyPowerShellOrchestrator" in script
+    assert "cotton_factor.operations.daily_update" in script
+    assert "$heavyResearchRequested" in script
+    assert "Python daily orchestrator" in script
 
 
 def test_readme_documents_weekly_pack_command() -> None:

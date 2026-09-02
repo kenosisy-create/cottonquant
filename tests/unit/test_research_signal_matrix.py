@@ -10,7 +10,13 @@ from typer.testing import CliRunner
 
 from cotton_factor.cli.main import app
 from cotton_factor.common.exceptions import ResearchWorkbenchError
-from cotton_factor.research_workbench import build_cf_signal_matrix
+from cotton_factor.research_workbench import (
+    build_cf_signal_matrix,
+    trend_continuity_board,
+)
+from cotton_factor.research_workbench import (
+    signal_matrix as signal_matrix_module,
+)
 
 
 def test_build_cf_signal_matrix_writes_multi_horizon_outputs(tmp_path: Path) -> None:
@@ -86,6 +92,37 @@ def test_build_cf_signal_matrix_writes_multi_horizon_outputs(tmp_path: Path) -> 
     manifest = json.loads(result.manifest_path.read_text(encoding="utf-8"))
     assert manifest["no_lookahead"] is True
     assert manifest["contains_forward_return_validation"] is False
+
+
+def test_settle_lookup_matches_legacy_past_return_path(tmp_path: Path) -> None:
+    """索引优化只减少重复扫描，不得改变历史动量结果。"""
+    core_path, trade_dates = _write_signal_matrix_core_quotes(tmp_path)
+    quotes = signal_matrix_module.r23._load_core_quotes(input_path=core_path)
+    board_rows = trend_continuity_board._board_rows(
+        quotes=quotes,
+        trade_dates=trade_dates,
+        run_id="r35_lookup_equivalence",
+        candidates=None,
+    )
+    lookup = signal_matrix_module._build_settle_history_lookup(quotes)
+    for board_row in board_rows:
+        active_date = date.fromisoformat(str(board_row["trade_date"]))
+        contract = str(board_row["main_contract"])
+        for horizon in (1, 5, 20, 40):
+            legacy = signal_matrix_module._past_return(
+                quotes=quotes,
+                trade_date=active_date,
+                contract_code=contract,
+                horizon=horizon,
+            )
+            indexed = signal_matrix_module._past_return(
+                quotes=quotes,
+                trade_date=active_date,
+                contract_code=contract,
+                horizon=horizon,
+                settle_lookup=lookup,
+            )
+            assert indexed == pytest.approx(legacy) if legacy is not None else indexed is None
 
 
 def test_build_cf_signal_matrix_connects_option_factor_filter(tmp_path: Path) -> None:

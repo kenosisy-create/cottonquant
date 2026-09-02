@@ -38,6 +38,7 @@
     [switch]$RunValidatedBrief,
     [switch]$RunPublishPack,
     [switch]$RunWeeklyResearchPack,
+    [switch]$UseLegacyPowerShellOrchestrator,
     [string]$TrendRuleCandidatePath = "",
     [string]$TrendQualityCalibrationManifestPath = "",
     [string]$SignalThresholdResearchPath = "",
@@ -114,6 +115,109 @@ $runOptionFactorProxyEffective = (
     $RunOptionFactorProxy.IsPresent -or
     ($DownloadOfficialDaily.IsPresent -and -not $SkipOptionDailyDownload.IsPresent)
 )
+$heavyResearchRequested = (
+    $RunResearchWindow.IsPresent -or
+    $RunTrendForwardLedger.IsPresent -or
+    $RunReboundLifecycle.IsPresent -or
+    $RunFundamentalTrendIncremental.IsPresent -or
+    $RunTrendConfirmationTiming.IsPresent -or
+    $RunOptionMaturityConfirmation.IsPresent -or
+    $RunForwardEvidenceWeekly.IsPresent -or
+    $RunHistoricalEvidence.IsPresent -or
+    $RunEventExplanation.IsPresent -or
+    $RunEventThresholdSensitivity.IsPresent -or
+    $RunFuturesOptionDivergence.IsPresent -or
+    $RunFuturesOptionPlaybook.IsPresent -or
+    $RunMemberPositionResearch.IsPresent -or
+    $RunOptionStrikePositionResearch.IsPresent -or
+    $RunDynamicOptionWallResearch.IsPresent -or
+    $RunOptionWallFactorV2.IsPresent -or
+    $RunFuturesOptionEventPath.IsPresent -or
+    $RunFuturesOptionRegimeInteraction.IsPresent -or
+    $RunFuturesOptionEvidenceGate.IsPresent -or
+    $RunValidatedBrief.IsPresent -or
+    $RunPublishPack.IsPresent -or
+    $RunWeeklyResearchPack.IsPresent -or
+    $RunStrategyShadow.IsPresent -or
+    $RemoveDownloadedDailyAfterIngest.IsPresent
+)
+
+# 默认轻量日更交给 Python 编排器；历史研究和清理仍保留旧入口，确保兼容性。
+if (-not $UseLegacyPowerShellOrchestrator.IsPresent -and -not $heavyResearchRequested) {
+    $pythonDailyArgs = @(
+        "-3.12",
+        "-m",
+        "cotton_factor.operations.daily_update",
+        "--date",
+        "$DownloadDate",
+        "--run-id",
+        "$RunId",
+        "--futures-source-dir",
+        "$SourceDir",
+        "--options-source-dir",
+        "$OptionSourceDir",
+        "--trend-board-lookback-days",
+        "$TrendBoardLookbackDays"
+    )
+    if ($DownloadOfficialDaily.IsPresent) {
+        $pythonDailyArgs += @("--download-official")
+    }
+    if ($SkipOptionDailyDownload.IsPresent) {
+        $pythonDailyArgs += @("--skip-options")
+    }
+    if ($OverwriteOfficialDaily.IsPresent) {
+        $pythonDailyArgs += @("--overwrite-official")
+    }
+    if ($RunOptionCoreIngest.IsPresent) {
+        $pythonDailyArgs += @("--refresh-option-core")
+    }
+    if ($RunOptionFactorProxy.IsPresent) {
+        $pythonDailyArgs += @("--refresh-option-factors")
+    }
+    if ($SkipDataContinuityAudit.IsPresent) {
+        $pythonDailyArgs += @("--skip-continuity-audit")
+    }
+    if ($SkipStateUpgradePack.IsPresent) {
+        $pythonDailyArgs += @("--skip-state-upgrade")
+    }
+    if ($RunDailyOperationAudit.IsPresent) {
+        $pythonDailyArgs += @("--run-daily-operation-audit")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($TrendRuleCandidatePath)) {
+        $pythonDailyArgs += @("--trend-rule-candidate-path", "$TrendRuleCandidatePath")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($TrendQualityCalibrationManifestPath)) {
+        $pythonDailyArgs += @(
+            "--trend-quality-calibration-manifest-path",
+            "$TrendQualityCalibrationManifestPath"
+        )
+    }
+    if (-not [string]::IsNullOrWhiteSpace($SignalThresholdResearchPath)) {
+        $pythonDailyArgs += @("--signal-threshold-research-path", "$SignalThresholdResearchPath")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($OptionFactorPath)) {
+        $pythonDailyArgs += @("--option-factor-path", "$OptionFactorPath")
+    }
+
+    $pythonDailyJson = & py @pythonDailyArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "CF Python daily orchestrator failed."
+    }
+    # 编排器完整摘要可能超过 PowerShell 5.1 ConvertFrom-Json 的 2MB 限制，
+    # 只提取标量字段用于展示；完整结果以 daily_update_pipeline.json 落盘为准。
+    $pythonDailyText = ($pythonDailyJson -join "`n")
+    function Get-PythonDailyScalar([string]$Name) {
+        $match = [regex]::Match($pythonDailyText, '"' + $Name + '"' + '\s*:\s*("?)([^",}\r\n]+)\1')
+        if ($match.Success) { return $match.Groups[2].Value }
+        return "unknown"
+    }
+    Write-Host "Python daily orchestrator status: $(Get-PythonDailyScalar 'status'), data_asof=$(Get-PythonDailyScalar 'data_asof'), elapsed=$(Get-PythonDailyScalar 'elapsed_seconds')s"
+    $pipelineJsonPath = Join-Path (Get-Location) "runs\daily\CF\$(Get-PythonDailyScalar 'data_asof')\daily_update_pipeline.json"
+    if (Test-Path $pipelineJsonPath) {
+        Write-Host "Python daily pipeline summary: $pipelineJsonPath"
+    }
+    exit 0
+}
 $runStateUpgradeEffective = -not $SkipStateUpgradePack.IsPresent
 $runStrategyShadowEffective = (
     $RunStrategyShadow.IsPresent -and -not $SkipStrategyShadow.IsPresent

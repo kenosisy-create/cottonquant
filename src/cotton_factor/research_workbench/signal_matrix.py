@@ -85,6 +85,15 @@ class OptionFactorLookup:
 
 
 @dataclass(frozen=True)
+class _SettleHistoryLookup:
+    """按真实合约缓存结算价位置，避免每个 horizon 重复筛选行情表。"""
+
+    dates_by_contract: dict[str, tuple[date, ...]]
+    settles_by_contract: dict[str, tuple[float | None, ...]]
+    position_by_contract_date: dict[tuple[str, date], int]
+
+
+@dataclass(frozen=True)
 class ResearchSignalMatrixResult:
     """Result of building R35 signal matrix artifacts."""
 
@@ -190,6 +199,7 @@ def build_cf_signal_matrix(
         else r23._load_trend_rule_candidates(input_path=trend_rule_candidate_path)
     )
     option_lookup = _load_option_factor_lookup(option_factor_path, quotes=quotes)
+    settle_lookup = _build_settle_history_lookup(quotes)
     # R35 复用 R29 逐日可观察状态，避免另起一套主力识别、趋势阶段和质量评分规则。
     score_dates = [value for value in available_dates if value <= active_end]
     board_rows = r29._board_rows(
@@ -205,6 +215,7 @@ def build_cf_signal_matrix(
         end=active_end,
         horizons=normalized_horizons,
         option_lookup=option_lookup,
+        settle_lookup=settle_lookup,
     )
     if not matrix_rows:
         raise ResearchWorkbenchError("signal matrix has no rows")
@@ -270,6 +281,7 @@ def _matrix_rows(
     end: date,
     horizons: tuple[int, ...],
     option_lookup: OptionFactorLookup | None,
+    settle_lookup: _SettleHistoryLookup | None = None,
 ) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for board_row in board_rows:
@@ -283,6 +295,7 @@ def _matrix_rows(
                     quotes=quotes,
                     horizon=horizon,
                     option_lookup=option_lookup,
+                    settle_lookup=settle_lookup,
                 )
             )
     return rows
@@ -294,6 +307,7 @@ def _matrix_row(
     quotes: pd.DataFrame,
     horizon: int,
     option_lookup: OptionFactorLookup | None,
+    settle_lookup: _SettleHistoryLookup | None = None,
 ) -> dict[str, object]:
     trade_date = date.fromisoformat(str(board_row["trade_date"]))
     main_contract = str(board_row["main_contract"])
@@ -302,6 +316,7 @@ def _matrix_row(
         trade_date=trade_date,
         contract_code=main_contract,
         horizon=horizon,
+        settle_lookup=settle_lookup,
     )
     price_signal = _direction(horizon_return)
     momentum_signal = _horizon_momentum_signal(
@@ -422,7 +437,22 @@ def _past_return(
     trade_date: date,
     contract_code: str,
     horizon: int,
+    settle_lookup: _SettleHistoryLookup | None = None,
 ) -> float | None:
+    if settle_lookup is not None:
+        contract = str(contract_code)
+        position = settle_lookup.position_by_contract_date.get((contract, trade_date))
+        if position is None:
+            return None
+        prior_position = position - horizon
+        if prior_position < 0:
+            return None
+        settles = settle_lookup.settles_by_contract.get(contract)
+        if settles is None or prior_position >= len(settles):
+            return None
+        latest = r23._float_or_none(settles[position])
+        prior = r23._float_or_none(settles[prior_position])
+        return None if latest is None or prior is None or prior <= 0 else latest / prior - 1
     series = quotes.loc[quotes["contract_code"].astype(str) == contract_code].copy()
     series = series.sort_values("trade_date").reset_index(drop=True)
     matches = series.index[series["trade_date"] == trade_date].tolist()
@@ -435,6 +465,33 @@ def _past_return(
     latest = r23._float_or_none(series.iloc[current_index]["settle"])
     prior = r23._float_or_none(series.iloc[prior_index]["settle"])
     return None if latest is None or prior is None or prior <= 0 else latest / prior - 1
+
+
+def _build_settle_history_lookup(quotes: pd.DataFrame) -> _SettleHistoryLookup:
+    """构造按合约的有序结算价索引，保持重复日期取首行的旧口径。"""
+    dates_by_contract: dict[str, tuple[date, ...]] = {}
+    settles_by_contract: dict[str, tuple[float | None, ...]] = {}
+    position_by_contract_date: dict[tuple[str, date], int] = {}
+    for contract_code, history in quotes.groupby("contract_code", sort=False):
+        contract = str(contract_code)
+        ordered = history.sort_values("trade_date", kind="stable")
+        dates: list[date] = []
+        settles: list[float | None] = []
+        for row in ordered.itertuples(index=False):
+            trade_date = row.trade_date
+            if not isinstance(trade_date, date):
+                trade_date = pd.Timestamp(trade_date).date()
+            position = len(dates)
+            dates.append(trade_date)
+            settles.append(r23._float_or_none(row.settle))
+            position_by_contract_date.setdefault((contract, trade_date), position)
+        dates_by_contract[contract] = tuple(dates)
+        settles_by_contract[contract] = tuple(settles)
+    return _SettleHistoryLookup(
+        dates_by_contract=dates_by_contract,
+        settles_by_contract=settles_by_contract,
+        position_by_contract_date=position_by_contract_date,
+    )
 
 
 def _load_option_factor_lookup(

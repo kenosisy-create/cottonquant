@@ -76,6 +76,39 @@ def test_connect_cf_option_history_csv_preserves_raw_and_writes_core(
     assert manifest["option_signal_status"] == "not_connected"
 
 
+def test_connect_cf_option_history_skips_unchanged_sources_idempotently(
+    tmp_path: Path,
+) -> None:
+    source_dir = _write_option_source(tmp_path)
+    core_quote_path = _write_underlying_core_quotes(tmp_path)
+    common = {
+        "source_dir": source_dir,
+        "raw_root": tmp_path / "raw",
+        "core_output_dir": tmp_path / "core",
+        "core_quote_path": core_quote_path,
+        "report_output_dir": tmp_path / "reports",
+    }
+
+    first = connect_cf_option_history(run_id="r47_first", **common)
+    second = connect_cf_option_history(run_id="r47_second", **common)
+
+    assert first.core_row_count == 2
+    assert second.status == "COMPLETED"
+    assert second.core_row_count == 2
+    assert [record.status for record in second.source_records] == [
+        "SKIPPED_UNCHANGED"
+    ]
+    summary = second.to_summary()
+    assert summary["parsed_source_file_count"] == 0
+    assert summary["skipped_unchanged_source_file_count"] == 1
+    manifest_lines = (tmp_path / "raw" / "manifest.jsonl").read_text(
+        encoding="utf-8"
+    ).splitlines()
+    assert len(manifest_lines) == 1
+    core = pd.read_parquet(second.core_option_quote_path)
+    assert len(core) == 2
+
+
 def test_connect_cf_option_history_daily_excel_uses_title_date(
     tmp_path: Path,
 ) -> None:

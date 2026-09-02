@@ -19,7 +19,7 @@ from cotton_factor.common.hashing import sha256_bytes
 from cotton_factor.common.paths import data_dir, reports_dir
 from cotton_factor.common.time import utc_now
 from cotton_factor.core.schemas import CoreOptionQuoteDailyRow
-from cotton_factor.raw import RawSnapshotStore
+from cotton_factor.raw import RawSnapshotRecord, RawSnapshotStore
 from cotton_factor.research_workbench.core_quotes import CORE_QUOTE_FILE_NAME
 from cotton_factor.research_workbench.option_data_contract import (
     CORE_OPTION_QUOTE_FILE_NAME,
@@ -164,6 +164,15 @@ class ResearchOptionCoreIngestResult:
             "raw_snapshot_count": self.raw_snapshot_count,
             "core_row_count": self.core_row_count,
             "source_file_count": self.source_file_count,
+            "parsed_source_file_count": sum(
+                record.status == "PARSED" for record in self.source_records
+            ),
+            "skipped_unchanged_source_file_count": sum(
+                record.status == "SKIPPED_UNCHANGED" for record in self.source_records
+            ),
+            "parse_failed_source_file_count": sum(
+                record.status == "PARSE_FAILED" for record in self.source_records
+            ),
             "core_option_quote_path": (
                 None if self.core_option_quote_path is None else str(self.core_option_quote_path)
             ),
@@ -224,6 +233,7 @@ def connect_cf_option_history(
         return result
 
     store = RawSnapshotStore(raw_root)
+    existing_snapshots = _existing_source_snapshots(store)
     underlying_lookup = _underlying_price_lookup(core_quote_path)
     records: list[OptionSourceRecord] = []
     rows: list[CoreOptionQuoteDailyRow] = []
@@ -231,6 +241,22 @@ def connect_cf_option_history(
 
     for source_file in source_files:
         payload = source_file.read_bytes()
+        payload_sha256 = sha256_bytes(payload)
+        existing_snapshot = existing_snapshots.get(
+            (_source_path_identity(source_file), payload_sha256)
+        )
+        if existing_snapshot is not None and core_path.exists():
+            # 文件内容和解析版本均未变化时，直接复用已留存快照，避免重复解压历史 ZIP。
+            records.append(
+                OptionSourceRecord(
+                    source_path=source_file,
+                    status="SKIPPED_UNCHANGED",
+                    snapshot_id=existing_snapshot.snapshot_id,
+                    byte_size=existing_snapshot.byte_size,
+                    sha256=existing_snapshot.sha256,
+                )
+            )
+            continue
         snapshot = store.write_snapshot(
             payload=payload,
             source_name=SOURCE_NAME,
@@ -280,24 +306,32 @@ def connect_cf_option_history(
                 row_count=len(parsed_rows),
                 snapshot_id=snapshot.snapshot_id,
                 byte_size=len(payload),
-                sha256=sha256_bytes(payload),
+                sha256=payload_sha256,
             )
         )
 
     core_output_path: Path | None = None
+    core_row_count = 0
     if rows:
         _validate_unique_core_keys(rows)
         core_output_path = core_path
-        _write_parquet_replace_keys(output_path=core_path, rows=rows)
+        core_row_count = _write_parquet_replace_keys(output_path=core_path, rows=rows)
+    elif core_path.exists():
+        core_output_path = core_path
+        core_row_count = _core_row_count(core_path)
 
     result = ResearchOptionCoreIngestResult(
         product_code=PRODUCT_CODE,
         exchange=EXCHANGE,
         run_id=ingest_run_id,
-        status=_result_status(records=records, row_count=len(rows)),
+        status=_result_status(
+            records=records,
+            row_count=len(rows),
+            core_row_count=core_row_count,
+        ),
         incoming_dir=incoming_dir,
         raw_snapshot_count=sum(1 for record in records if record.snapshot_id is not None),
-        core_row_count=len(rows),
+        core_row_count=core_row_count,
         source_file_count=len(source_files),
         core_option_quote_path=core_output_path,
         quality_csv_path=quality_path,
@@ -416,6 +450,26 @@ def _parse_zip_payload(
     if not rows:
         raise ResearchWorkbenchError(f"{source_name}: no CF option rows parsed from ZIP")
     return rows, quality_rows
+
+
+def _existing_source_snapshots(
+    store: RawSnapshotStore,
+) -> dict[tuple[str, str], RawSnapshotRecord]:
+    """索引已留存的源文件快照，供增量接入按路径和哈希复用。"""
+    snapshots: dict[tuple[str, str], RawSnapshotRecord] = {}
+    for record in store.find_records(source_name=SOURCE_NAME, product_code=PRODUCT_CODE):
+        if record.parser_version != OPTION_CORE_INGEST_VERSION:
+            continue
+        source_path = record.metadata.get("source_path")
+        if not source_path:
+            continue
+        snapshots[(_source_path_identity(Path(str(source_path))), record.sha256)] = record
+    return snapshots
+
+
+def _source_path_identity(path: Path) -> str:
+    """统一相对/绝对路径表示，避免编排器入口不同造成重复解析。"""
+    return str(path.resolve()).casefold()
 
 
 def _read_csv(*, payload: bytes, source_name: str) -> pd.DataFrame:
@@ -897,7 +951,11 @@ def _parse_date(value: object, source_label: str, row_number: int) -> date:
     raise ResearchWorkbenchError(f"{source_label}:{row_number}: invalid trade date {value!r}")
 
 
-def _write_parquet_replace_keys(*, output_path: Path, rows: list[CoreOptionQuoteDailyRow]) -> None:
+def _write_parquet_replace_keys(
+    *,
+    output_path: Path,
+    rows: list[CoreOptionQuoteDailyRow],
+) -> int:
     new_frame = pd.DataFrame([row.model_dump(mode="json") for row in rows])
     key_columns = ["exchange", "option_symbol", "trade_date"]
     if output_path.exists():
@@ -921,6 +979,12 @@ def _write_parquet_replace_keys(*, output_path: Path, rows: list[CoreOptionQuote
     combined = combined.sort_values(["trade_date", "option_symbol"]).reset_index(drop=True)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     combined.to_parquet(output_path, index=False)
+    return len(combined)
+
+
+def _core_row_count(path: Path) -> int:
+    """读取既有 core 总行数，确保增量摘要反映完整表而非本批新增行。"""
+    return len(pd.read_parquet(path, columns=["option_symbol"]))
 
 
 def _validate_unique_core_keys(rows: list[CoreOptionQuoteDailyRow]) -> None:
@@ -1092,10 +1156,18 @@ def _risk_flag_counts(quality_rows: tuple[OptionQualityRow, ...]) -> dict[str, i
     return dict(sorted(counts.items()))
 
 
-def _result_status(*, records: list[OptionSourceRecord], row_count: int) -> str:
-    if row_count > 0 and all(record.status == "PARSED" for record in records):
+def _result_status(
+    *,
+    records: list[OptionSourceRecord],
+    row_count: int,
+    core_row_count: int,
+) -> str:
+    successful_statuses = {"PARSED", "SKIPPED_UNCHANGED"}
+    if core_row_count > 0 and all(
+        record.status in successful_statuses for record in records
+    ):
         return "COMPLETED"
-    if row_count > 0:
+    if row_count > 0 or core_row_count > 0:
         return "PARTIAL"
     if any(record.status == "PARSE_FAILED" for record in records):
         return "PARSE_FAILED"
