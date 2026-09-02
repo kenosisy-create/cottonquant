@@ -139,6 +139,9 @@ The current research direction is documented in:
 - `docs/RESEARCH_EXPANSION_GATE.md`
 - `docs/RESEARCH_DATA_PORTS_NEXT.md`
 - `docs/POST_R22_CF_VALIDATION_PACK.md`
+- `docs/PROJECT_OPTIMIZATION_PLAN_2026_08_26.md`
+- `docs/RESEARCH_ARTIFACT_RETENTION_POLICY.md`
+- `docs/CF_DAILY_ORCHESTRATOR.md`
 
 ## Architecture
 
@@ -157,13 +160,18 @@ T+1.
 
 ## Setup
 
-This project requires Python 3.11+. On this Windows machine, the default
-`python` currently points to Python 3.8, so use `py -3.12` or a newer 3.11+
-runtime explicitly.
+The compatibility declaration remains Python 3.11+, while the current
+reproducible research baseline is Python 3.12.10. On this Windows machine, use
+`py -3.12` explicitly. The preferred setup uses the committed `uv.lock`:
 
-```bash
-py -3.12 -m pip install -e ".[dev]"
+```powershell
+py -3.12 -m pip install --user uv
+py -3.12 -m uv sync --extra dev --frozen
 ```
+
+See `docs/DEPENDENCIES.md` for lock-file maintenance and verification. Direct
+editable installation remains available for compatibility, but it is not the
+authoritative reproducible setup.
 
 ## Commands
 
@@ -178,6 +186,7 @@ $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main core build-continuous-
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main ingest czce-daily-quote --date 2024-01-02 --product CF --fixture tests/fixtures/czce_daily_quote_sample.html
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main ingest czce-history --year 2024 --product CF --file-type csv --fixture tests/fixtures/czce_history_2024
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main ingest czce-settlement --date 2024-01-02 --product CF --fixture tests/fixtures/czce_settlement_param_sample.csv
+$env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main operations run-cf-daily-update --date 2026-08-27 --download-official
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main raw list --source CZCE_HISTORY_QUOTE --product CF --year 2024
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main smoke cf --start 2024-01-01 --end 2024-01-05 --dry-run
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main smoke cf --start 2024-01-02 --end 2024-02-05 --run
@@ -256,6 +265,12 @@ $env:PYTHONPATH="src"; powershell -ExecutionPolicy Bypass -File scripts/update_c
 $env:PYTHONPATH="src"; powershell -ExecutionPolicy Bypass -File scripts/update_cf_latest_research.ps1 -Year 2026 -RunResearchWindow
 $env:PYTHONPATH="src"; py -3.12 -m cotton_factor.cli.main research run-cf-validation-pack --date 2024-01-31 --start 2024-01-22 --end 2024-01-31 --horizons 1 --lookback-periods 3
 ```
+
+`operations run-cf-daily-update` is the Python-owned light daily orchestrator.
+It writes a step-by-step JSON/Markdown run summary and keeps historical
+evidence, publish packs, and other heavy research jobs out of the daily path.
+The existing `scripts/update_cf_latest_research.ps1` remains the compatible
+Windows entrypoint for the full set of explicit daily and weekly switches.
 
 For daily CF updates, place the newest official file under
 `data/incoming/CF/history/` as one of `CFFUTURES{year}.xlsx`,

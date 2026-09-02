@@ -46,6 +46,7 @@ if typer is not None:
     release_app = typer.Typer(help="Release freeze commands.")
     research_app = typer.Typer(help="Research workbench commands.")
     strategy_app = typer.Typer(help="CF strategy-accountable research commands.")
+    operations_app = typer.Typer(help="Research operations commands.")
 
     def _version_callback(value: bool) -> None:
         if value:
@@ -6533,6 +6534,98 @@ if typer is not None:
             raise typer.Exit(1) from exc
         typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
 
+    @operations_app.command("run-cf-daily-update")
+    def operations_run_cf_daily_update(
+        trade_date: Annotated[
+            str | None,
+            typer.Option("--date", help="CF data date in YYYY-MM-DD format."),
+        ] = None,
+        futures_source_dir: Annotated[
+            Path,
+            typer.Option(
+                "--futures-source-dir",
+                help="Official CF futures incoming directory.",
+            ),
+        ] = Path("data/incoming/CF/history"),
+        options_source_dir: Annotated[
+            Path,
+            typer.Option(
+                "--options-source-dir",
+                help="Official CF options incoming directory.",
+            ),
+        ] = Path("data/incoming/CF/options/history"),
+        download_official: Annotated[
+            bool,
+            typer.Option("--download-official", help="Fetch today's official files first."),
+        ] = False,
+        skip_options: Annotated[
+            bool,
+            typer.Option("--skip-options", help="Skip the options sidecar."),
+        ] = False,
+        overwrite_official: Annotated[
+            bool,
+            typer.Option("--overwrite-official", help="Overwrite existing daily files."),
+        ] = False,
+        refresh_option_core: Annotated[
+            bool,
+            typer.Option("--refresh-option-core", help="Refresh option core from incoming files."),
+        ] = False,
+        refresh_option_factors: Annotated[
+            bool,
+            typer.Option(
+                "--refresh-option-factors",
+                help="Refresh option factor proxy incrementally.",
+            ),
+        ] = False,
+        skip_continuity_audit: Annotated[
+            bool,
+            typer.Option("--skip-continuity-audit", help="Skip the continuity audit."),
+        ] = False,
+        skip_state_upgrade: Annotated[
+            bool,
+            typer.Option("--skip-state-upgrade", help="Skip dual-price and state sidecars."),
+        ] = False,
+        run_daily_operation_audit: Annotated[
+            bool,
+            typer.Option("--run-daily-operation-audit", help="Write the daily operation audit."),
+        ] = False,
+        run_id: Annotated[
+            str | None,
+            typer.Option("--run-id", help="Optional stable daily run id."),
+        ] = None,
+    ) -> None:
+        """Run the testable CF light daily-update orchestrator."""
+        from cotton_factor.operations import CfDailyUpdateConfig, run_cf_daily_update
+        from cotton_factor.operations.daily_update import default_run_id
+
+        active_date = _parse_iso_date(trade_date) if trade_date else date.today()
+        try:
+            result = run_cf_daily_update(
+                CfDailyUpdateConfig(
+                    trade_date=active_date,
+                    year=active_date.year,
+                    run_id=run_id or default_run_id(active_date),
+                    repo_root=Path.cwd(),
+                    futures_source_dir=futures_source_dir,
+                    options_source_dir=options_source_dir,
+                    download_official=download_official,
+                    include_options=not skip_options,
+                    overwrite_official=overwrite_official,
+                    refresh_option_core=refresh_option_core,
+                    refresh_option_factors=refresh_option_factors,
+                    run_continuity_audit=not skip_continuity_audit,
+                    run_state_upgrade=not skip_state_upgrade,
+                    run_daily_operation_audit=run_daily_operation_audit,
+                )
+            )
+        except CottonFactorError as exc:
+            typer.echo(str(exc), err=True)
+            raise typer.Exit(1) from exc
+
+        typer.echo(json.dumps(result.to_summary(), ensure_ascii=False, sort_keys=True))
+        if not result.passed:
+            raise typer.Exit(1)
+
     app.add_typer(core_app, name="core")
     app.add_typer(ingest_app, name="ingest")
     app.add_typer(raw_app, name="raw")
@@ -6542,6 +6635,7 @@ if typer is not None:
     app.add_typer(release_app, name="release")
     app.add_typer(research_app, name="research")
     app.add_typer(strategy_app, name="strategy")
+    app.add_typer(operations_app, name="operations")
 
     def cli() -> None:
         """Run the Typer application."""
