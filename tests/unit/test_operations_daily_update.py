@@ -51,6 +51,9 @@ def test_daily_update_runs_light_steps_in_dependency_order(tmp_path: Path) -> No
         "build-cf-fundamental-data-status",
         "build-cf-trend-continuity-board",
         "build-cf-daily-operation-audit",
+        "prepare-inputs",
+        "build-cf-symmetric-trend-research",
+        "build-cf-trend-candidate-forward-ledger",
     ]
     studio = next(step for step in result.steps if step.step_id == "studio_dashboard")
     assert studio.status in {"COMPLETED", "WARNING"}
@@ -90,6 +93,9 @@ def test_daily_update_download_path_refreshes_option_sidecar(tmp_path: Path) -> 
         "build-cf-latest-signal-brief",
         "build-cf-fundamental-data-status",
         "build-cf-trend-continuity-board",
+        "prepare-inputs",
+        "build-cf-symmetric-trend-research",
+        "build-cf-trend-candidate-forward-ledger",
     ]
     studio = next(step for step in result.steps if step.step_id == "studio_dashboard")
     assert studio.status in {"COMPLETED", "WARNING"}
@@ -248,5 +254,18 @@ def _summary(command_name: str) -> dict[str, Any]:
             "markdown_path": "runs/daily/CF/2026-08-27/trend_continuity_board.md",
         },
         "build-cf-daily-operation-audit": {"operation_status": "READY"},
+        "prepare-inputs": {
+            "continuous_price_path": "data/strategy/CF/inputs/continuous.parquet",
+        },
+        "build-cf-symmetric-trend-research": {
+            "daily_path": "data/research/CF/symmetric_trend/daily.parquet",
+            "breakout_event_path": "data/research/CF/symmetric_trend/events.parquet",
+        },
+        "build-cf-trend-candidate-forward-ledger": {
+            "capture_appended_count": 0,
+            "outcome_appended_count": 0,
+            "ledger_row_count": 2,
+            "strict_forward_count": 2,
+        },
     }
     return summaries[command_name]

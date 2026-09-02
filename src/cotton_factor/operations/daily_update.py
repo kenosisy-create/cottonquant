@@ -89,6 +89,8 @@ class CfDailyUpdateConfig:
     run_daily_operation_audit: bool = False
     trend_board_lookback_days: int = 20
     build_studio_dashboard: bool = True
+    build_forward_ledger: bool = True
+    strategy_inputs_start: str = "2021-01-04"
     trend_rule_candidate_path: Path | None = None
     trend_quality_calibration_manifest_path: Path | None = None
     signal_threshold_research_path: Path | None = None
@@ -335,6 +337,20 @@ def _daily_steps() -> tuple[DailyUpdateStep, ...]:
             False,
             _studio_dashboard_enabled,
             _build_studio_dashboard,
+        ),
+        DailyUpdateStep(
+            "strategy_inputs",
+            ("data_continuity_audit",),
+            False,
+            _forward_ledger_enabled,
+            _build_strategy_inputs,
+        ),
+        DailyUpdateStep(
+            "trend_forward_ledger",
+            ("strategy_inputs",),
+            False,
+            _forward_ledger_enabled,
+            _build_trend_forward_ledger,
         ),
     )
 
@@ -749,6 +765,59 @@ def _build_daily_audit(context: DailyUpdateContext) -> dict[str, Any]:
     )
 
 
+def _forward_ledger_enabled(context: DailyUpdateContext) -> bool:
+    return context.config.build_forward_ledger
+
+
+def _build_strategy_inputs(context: DailyUpdateContext) -> dict[str, Any]:
+    config = context.config
+    start_date = config.strategy_inputs_start
+    return context.executor.run(
+        [
+            "strategy",
+            "prepare-inputs",
+            "--start",
+            start_date,
+        ]
+    )
+
+
+def _build_trend_forward_ledger(context: DailyUpdateContext) -> dict[str, Any]:
+    inputs = context.values["strategy_inputs"]
+    config = context.config
+    args = [
+        "research",
+        "build-cf-symmetric-trend-research",
+        "--continuous-price-path",
+        str(inputs["continuous_price_path"]),
+        "--run-id",
+        f"{config.run_id}_r93a",
+    ]
+    symmetric = context.executor.run(args)
+    context.values["symmetric_trend"] = symmetric
+    ledger = context.executor.run(
+        [
+            "research",
+            "build-cf-trend-candidate-forward-ledger",
+            "--symmetric-trend-daily-path",
+            str(symmetric["daily_path"]),
+            "--breakout-event-path",
+            str(symmetric["breakout_event_path"]),
+            "--as-of-date",
+            _data_asof(context).isoformat(),
+            "--run-id",
+            f"{config.run_id}_r93d",
+        ]
+    )
+    return {
+        "status": "COMPLETED",
+        "capture_appended_count": ledger.get("capture_appended_count"),
+        "outcome_appended_count": ledger.get("outcome_appended_count"),
+        "ledger_row_count": ledger.get("ledger_row_count"),
+        "strict_forward_count": ledger.get("strict_forward_count"),
+    }
+
+
 def _build_studio_dashboard(context: DailyUpdateContext) -> dict[str, Any]:
     config = context.config
     script_path = (
@@ -1019,6 +1088,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--run-daily-operation-audit", action="store_true")
     parser.add_argument("--trend-board-lookback-days", type=int, default=20)
     parser.add_argument("--skip-studio-dashboard", action="store_true")
+    parser.add_argument("--skip-forward-ledger", action="store_true")
     parser.add_argument("--trend-rule-candidate-path", type=Path)
     parser.add_argument("--trend-quality-calibration-manifest-path", type=Path)
     parser.add_argument("--signal-threshold-research-path", type=Path)
@@ -1046,6 +1116,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         run_daily_operation_audit=args.run_daily_operation_audit,
         trend_board_lookback_days=args.trend_board_lookback_days,
         build_studio_dashboard=not args.skip_studio_dashboard,
+        build_forward_ledger=not args.skip_forward_ledger,
         trend_rule_candidate_path=args.trend_rule_candidate_path,
         trend_quality_calibration_manifest_path=args.trend_quality_calibration_manifest_path,
         signal_threshold_research_path=args.signal_threshold_research_path,
